@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>synqaro · Equipo</title>
+<title>synqalia · Equipo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22%230e1116%22/%3E%3Cg transform=%22translate%288 8%29%22%3E%3Cg fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%223.3%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M24 8.5c-3.6-3.2-9.6-1.7-10.2 3.4-4.6.3-7 5-4.6 8.6-3.4 2.3-3.1 7.6.6 9.1-1.5 3.8 1.5 8 5.6 7.6 1.9 3.3 6.2 3.8 8.6 1.6%22/%3E%3Cpath d=%22M24 8.5V38.8%22/%3E%3Cpath d=%22M18.6 19.6c2.6-.4 4.8.8 5.4 3.4%22/%3E%3Cpath d=%22M15.6 28.8c2.2.6 3.6 2.4 3.6 4.6%22/%3E%3Cpath d=%22M24 15.5h7.2l3.3-3.6%22/%3E%3Cpath d=%22M24 24h12.2%22/%3E%3Cpath d=%22M24 32.4h6.6l3.6 4%22/%3E%3C/g%3E%3Cg fill=%22%2338d0bd%22%3E%3Ccircle cx=%2236.3%22 cy=%2210.2%22 r=%222.6%22/%3E%3Ccircle cx=%2238.6%22 cy=%2224%22 r=%222.6%22/%3E%3Ccircle cx=%2236%22 cy=%2238.2%22 r=%222.6%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -394,7 +394,7 @@ sb.auth.onAuthStateChange((ev, session) => {
 function renderLogin(mode = 'login', msg = '', cls = '') {
   $app.innerHTML = `
   <div class="login"><form class="login-card" id="lf">
-    <div class="brand">${logo(42)}<div class="wordmark"><h1>synqaro</h1><div class="tagline">Tu equipo, una sola inteligencia</div></div></div>
+    <div class="brand">${logo(42)}<div class="wordmark"><h1>synqalia</h1><div class="tagline">Tu equipo, una sola inteligencia</div></div></div>
     <div class="login-box">
     <div class="seg" role="tablist">
       <button type="button" data-mode="login" aria-selected="${mode==='login'}">Entrar</button>
@@ -530,7 +530,7 @@ function renderSide() {
   const el = document.getElementById('side'); if (!el) return;
   const v = S.view;
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
-  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synqaro</h1><div class="tagline">Equipo</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
+  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synqalia</h1><div class="tagline">Equipo</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
     <button data-go="home" aria-current="${cur('home')}">Resumen del equipo</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
