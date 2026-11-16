@@ -308,6 +308,43 @@
   .toast { background:var(--navy-2); color:#fff; font-weight:600; }
   .av { font-weight:800; }
   @media (max-width:860px) { .menu-btn { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); color:#fff; } }
+
+  /* panel plegable, columnas redimensionables y barra horizontal */
+  .menu-btn { display:inline-flex; }
+  .shell { transition:grid-template-columns .2s; }
+  .shell.collapsed { grid-template-columns:0 1fr; }
+  .shell.collapsed .side { visibility:hidden; overflow:hidden; }
+  .side-x { margin-left:auto; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06); color:#fff; border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
+  .side-x:hover { background:rgba(255,255,255,.16); }
+  @media (max-width:860px) { .shell.collapsed { grid-template-columns:1fr; } .shell.collapsed .side { visibility:visible; } }
+  .tablewrap { max-height:calc(100vh - 250px); min-height:260px; overflow:auto; scrollbar-width:auto; scrollbar-color:#9aa3b5 var(--soft); }
+  .tablewrap::-webkit-scrollbar { height:14px; width:12px; }
+  .tablewrap::-webkit-scrollbar-track { background:var(--soft); }
+  .tablewrap::-webkit-scrollbar-thumb { background:#b3bacb; border-radius:8px; border:3px solid var(--soft); }
+  .tablewrap::-webkit-scrollbar-thumb:hover { background:#8891a6; }
+  table.grid { table-layout:fixed; min-width:100%; }
+  table.grid td { max-width:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  table.grid td.name { min-width:0; max-width:none; }
+  table.grid th { overflow:visible; text-overflow:ellipsis; }
+  th.colh { cursor:pointer; user-select:none; }
+  th.colh:hover { color:var(--ink); background:color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+  th .rz { position:absolute; top:0; right:-3px; width:8px; height:100%; cursor:col-resize; z-index:3; }
+  th .rz::after { content:""; position:absolute; top:22%; bottom:22%; left:3px; width:2px; border-radius:2px; background:transparent; }
+  th:hover .rz::after, body.resizing th .rz::after { background:var(--accent); }
+  body.resizing, body.resizing * { cursor:col-resize !important; user-select:none !important; }
+  th.addcol { text-align:center; padding:4px; }
+  .colmenu { position:fixed; z-index:80; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 40px rgba(13,27,51,.18); padding:6px; display:grid; width:220px; }
+  .colmenu .cm-t { font-weight:800; font-size:13px; padding:6px 10px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+  .colmenu .cm-t span { display:block; font-weight:500; font-size:11.5px; color:var(--muted); }
+  .colmenu button { text-align:left; border:0; background:transparent; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13.5px; font-weight:600; }
+  .colmenu button:hover:not(:disabled) { background:var(--soft); color:var(--accent); }
+  .colmenu button:disabled { opacity:.4; cursor:default; }
+  .colmenu button.danger:hover { color:var(--bad); }
+  .colsel { display:grid; gap:2px; max-height:50vh; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:6px; }
+  .colsel label { display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; }
+  .colsel label:hover { background:var(--soft); }
+  .colsel input { width:16px; height:16px; accent-color:var(--navy-2); }
+  .colsel em { margin-left:auto; font-style:normal; font-size:12px; color:var(--muted); font-weight:500; }
 </style>
 </head>
 <body>
@@ -322,7 +359,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const S = {
   user: null, me: null, members: [], spaces: [], boards: [], items: [], comments: {},
-  view: { kind: 'home' }, filters: {}, open: null, drawerTab: 'datos', sideOpen: false, collapsed: {},
+  view: { kind: 'home' }, filters: {}, sideCollapsed: (() => { try { return !!localStorage.getItem('sq-side'); } catch { return false; } })(), open: null, drawerTab: 'datos', sideOpen: false, collapsed: {},
 };
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -423,6 +460,8 @@ function subscribe() {
     if (p.eventType === 'DELETE') S.items = S.items.filter((i) => i.id !== p.old.id);
     else { const i = S.items.findIndex((x) => x.id === p.new.id); if (i >= 0) S.items[i] = p.new; else S.items.push(p.new); }
     scheduleRender();
+  }).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'boards' }, (p) => {
+    const b = board(p.new.id); if (b && !document.body.classList.contains('resizing')) { Object.assign(b, p.new); scheduleRender(); }
   }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (p) => {
     const c = S.comments[p.new.item_id]; if (c && !c.find((x) => x.id === p.new.id)) { c.push(p.new); if (S.open === p.new.item_id) renderDrawer(); }
   }).subscribe();
@@ -468,7 +507,7 @@ function route() {
 window.addEventListener('hashchange', () => { if (S.user) route(); });
 
 function renderShell() {
-  $app.innerHTML = `<div class="shell">
+  $app.innerHTML = `<div class="shell ${S.sideCollapsed ? 'collapsed' : ''}">
     <aside class="side ${S.sideOpen ? 'open' : ''}" id="side"></aside>
     <main class="main" id="main"></main>
   </div><div id="drawer-root"></div><div id="modal-root"></div>`;
@@ -478,7 +517,7 @@ function renderSide() {
   const el = document.getElementById('side'); if (!el) return;
   const v = S.view;
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
-  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synqaro</h1><div class="tagline">Equipo</div></div></div><nav class="nav">
+  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synqaro</h1><div class="tagline">Equipo</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
     <button data-go="home" aria-current="${cur('home')}">Resumen del equipo</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
@@ -495,11 +534,17 @@ function renderSide() {
   el.querySelectorAll('[data-board]').forEach((b) => b.onclick = () => go({ kind: 'board', id: +b.dataset.board }));
   el.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => { S.view = { kind: 'space', id: b.dataset.space }; location.hash = 'space-' + b.dataset.space; });
   el.querySelector('#logout').onclick = () => sb.auth.signOut();
+  el.querySelector('#sidex').onclick = () => toggleSide();
 }
 function headHtml(title, sub, right = '') {
   return `<div class="band"><div class="head"><button class="btn menu-btn" id="menu">☰</button><div class="grow"><h2>${esc(title)}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right}</div></div>`;
 }
-function bindMenu(root) { const m = root.querySelector('#menu'); if (m) m.onclick = () => { S.sideOpen = !S.sideOpen; document.getElementById('side').classList.toggle('open', S.sideOpen); }; }
+function toggleSide() {
+  if (innerWidth <= 860) { S.sideOpen = !S.sideOpen; document.getElementById('side').classList.toggle('open', S.sideOpen); return; }
+  S.sideCollapsed = !S.sideCollapsed; try { localStorage.setItem('sq-side', S.sideCollapsed ? '1' : ''); } catch {}
+  document.querySelector('.shell').classList.toggle('collapsed', S.sideCollapsed);
+}
+function bindMenu(root) { const m = root.querySelector('#menu'); if (m) { m.title = 'Mostrar u ocultar el panel'; m.onclick = toggleSide; } }
 
 function renderMain() {
   renderSide();
@@ -634,13 +679,9 @@ function actDetail(a) {
 
 /* ---------------- board ---------------- */
 function boardFilter(b) { return S.filters[b.id] || (S.filters[b.id] = { q: '', group: null, status: null, closed: false, late: false, mode: b.kind === 'pipeline' || b.kind === 'leads' ? 'table' : 'table', person: null }); }
-function visibleCols(b) {
-  const pri = { works: ['propio_franquicia', 'prioridad', 'estado', 'siguiente_paso', 'fecha_inicio', 'fecha_ejecucion', 'presupuesto_total', 'pendiente_de_pago'],
-    leads: ['estado', 'proxima_accion', 'fecha', 'marca', 'origen', 'zona_de_interes', 'telefono', 'email', 'capacidad_inversion'],
-    pipeline: ['tipo_de_operacion', 'marca', 'tipo_de_cliente', 'ubicacion', 'zona', 'contacto', 'canon', 'fecha', 'comentarios'] }[b.kind];
-  const cols = b.columns.filter((c) => !['files', 'long_text'].includes(c.type));
-  return pri ? pri.map((k) => cols.find((c) => c.key === k)).filter(Boolean) : cols;
-}
+function visibleCols(b) { return b.columns.filter((c) => !c.hidden); }
+const DEFW = { status: 150, date: 115, number: 125, text: 190, long_text: 240, files: 100, people: 100, link: 160 };
+const colW = (c) => c.width || DEFW[c.type] || 170;
 function filteredItems(b) {
   const f = boardFilter(b); const q = f.q.trim().toLowerCase();
   const st = statusCol(b.columns);
@@ -683,6 +724,7 @@ function renderBoard(el, b) {
         ${closedN ? `<button class="chip" id="fc" aria-pressed="${f.closed}">Ver cerrados (${closedN})</button>` : ''}
       </div>
       <span style="flex:1"></span>
+      <button class="btn" id="cols" title="Mostrar, ocultar o añadir columnas">Columnas</button>
       <div class="seg" style="width:auto"><button data-mode="table" aria-selected="${f.mode === 'table'}">Tabla</button><button data-mode="kanban" aria-selected="${f.mode === 'kanban'}">Kanban</button></div>
     </div>
     <div class="msg">${its.length} de ${total} elementos${f.group || f.status || f.q || f.late || f.person ? ' · <a href="#" id="clr">quitar filtros</a>' : ''}</div>`;
@@ -710,6 +752,117 @@ function renderBoard(el, b) {
     col.ondragleave = () => col.classList.remove('drop');
     col.ondrop = async (e) => { e.preventDefault(); col.classList.remove('drop'); const id = +e.dataTransfer.getData('text/plain'); await updateItem(id, { group_id: col.dataset.g }); };
   });
+  el.querySelector('#cols').onclick = () => columnsPanel(b);
+  el.querySelector('#addcol')?.addEventListener('click', () => addColumn(b));
+  el.querySelectorAll('th.colh').forEach((th) => th.onclick = (e) => { if (e.target.classList.contains('rz')) return; columnMenu(b, th.dataset.colh, th); });
+  el.querySelectorAll('.rz').forEach((rz) => rz.onmousedown = (e) => startResize(e, b, rz.dataset.rz, el));
+  // mantener la posición horizontal de la tabla entre repintados
+  const tw = el.querySelector('#tw'); if (tw) { tw.scrollLeft = S.hscroll?.[b.id] || 0; tw.onscroll = () => { (S.hscroll ||= {})[b.id] = tw.scrollLeft; }; }
+}
+
+/* ---------------- columnas ---------------- */
+async function saveBoard(b, patch) {
+  Object.assign(b, patch);
+  const { error } = await sb.from('boards').update(patch).eq('id', b.id);
+  if (error) err(error);
+}
+function startResize(e, b, key, root) {
+  e.preventDefault(); e.stopPropagation();
+  const colEl = root.querySelector(`col[data-c="${CSS.escape(key)}"]`); const table = root.querySelector('table.grid');
+  const startX = e.clientX; const startW = colEl.getBoundingClientRect().width || parseInt(colEl.style.width); const startT = parseInt(table.style.width);
+  document.body.classList.add('resizing');
+  const move = (ev) => { const w = Math.max(70, Math.round(startW + ev.clientX - startX)); colEl.style.width = w + 'px'; table.style.width = (startT + w - startW) + 'px'; };
+  const up = async () => {
+    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.classList.remove('resizing');
+    const w = parseInt(colEl.style.width);
+    if (key === '__name') await saveBoard(b, { settings: { ...(b.settings || {}), name_width: w } });
+    else await saveBoard(b, { columns: b.columns.map((c) => c.key === key ? { ...c, width: w } : c) });
+  };
+  document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+}
+const PALETTE = ['#579bfc', '#00c875', '#fdab3d', '#df2f4a', '#9d50dd', '#037f4c', '#ff5ac4', '#cab641', '#007eb5', '#7f5347', '#66ccff', '#784bd1'];
+const TYPES = { text: 'Texto', long_text: 'Texto largo', number: 'Número', date: 'Fecha', status: 'Estado / desplegable', people: 'Persona', files: 'Enlaces / documentos' };
+function slugKey(b, title) {
+  let base = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'col';
+  let k = base, i = 2; while (b.columns.some((c) => c.key === k)) k = `${base}_${i++}`; return k;
+}
+function formModal(title, inner, okText = 'Guardar') {
+  return new Promise((res) => {
+    const r = document.getElementById('modal-root');
+    r.innerHTML = `<div class="modal"><form class="box"><h3>${esc(title)}</h3>${inner}<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" id="cx">Cancelar</button><button class="btn primary">${esc(okText)}</button></div></form></div>`;
+    const f = r.querySelector('form'); f.querySelector('input,select,textarea')?.focus();
+    const done = (v) => { r.innerHTML = ''; res(v); };
+    f.onsubmit = (e) => { e.preventDefault(); done(Object.fromEntries(new FormData(f))); };
+    r.querySelector('#cx').onclick = () => done(null);
+    f.querySelector('[name=type]')?.addEventListener('change', (e) => f.querySelector('#optbox').classList.toggle('hidden', e.target.value !== 'status'));
+  });
+}
+async function addColumn(b) {
+  const v = await formModal('Añadir columna', `
+    <label class="field"><span>Nombre de la columna</span><input name="title" required></label>
+    <label class="field"><span>Tipo</span><select name="type">${Object.entries(TYPES).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
+    <label class="field hidden" id="optbox"><span>Opciones (una por línea)</span><textarea name="options" placeholder="Pendiente\nEn curso\nHecho"></textarea></label>`, 'Añadir');
+  if (!v || !v.title.trim()) return;
+  const col = { key: slugKey(b, v.title.trim()), title: v.title.trim(), type: v.type };
+  if (v.type === 'status') col.options = (v.options || '').split('\n').map((x) => x.trim()).filter(Boolean).map((label, i) => ({ label, color: PALETTE[i % PALETTE.length] }));
+  await saveBoard(b, { columns: [...b.columns, col] });
+  toast('Columna añadida'); renderMain();
+  const tw = document.getElementById('tw'); if (tw) tw.scrollLeft = tw.scrollWidth;
+}
+async function editOptions(b, key) {
+  const c = b.columns.find((x) => x.key === key);
+  const v = await formModal(`Etiquetas de «${c.title}»`, `<label class="field"><span>Una etiqueta por línea (el orden es el del desplegable)</span><textarea name="options" style="min-height:180px">${esc((c.options || []).map((o) => o.label).join('\n'))}</textarea></label>`);
+  if (!v) return;
+  const labels = v.options.split('\n').map((x) => x.trim()).filter(Boolean);
+  const options = labels.map((label, i) => ({ label, color: c.options?.find((o) => o.label === label)?.color || PALETTE[i % PALETTE.length] }));
+  await saveBoard(b, { columns: b.columns.map((x) => x.key === key ? { ...x, options } : x) }); renderMain();
+}
+function columnMenu(b, key, th) {
+  document.querySelector('.colmenu')?.remove();
+  const c = b.columns.find((x) => x.key === key); const vis = visibleCols(b); const i = vis.findIndex((x) => x.key === key);
+  const m = document.createElement('div'); m.className = 'colmenu';
+  m.innerHTML = `<div class="cm-t">${esc(c.title)} <span>${esc(TYPES[c.type] || c.type)}</span></div>
+    <button data-a="rename">Renombrar</button>
+    ${c.type === 'status' ? '<button data-a="opts">Editar etiquetas</button>' : ''}
+    <button data-a="left" ${i <= 0 ? 'disabled' : ''}>Mover a la izquierda</button>
+    <button data-a="right" ${i >= vis.length - 1 ? 'disabled' : ''}>Mover a la derecha</button>
+    <button data-a="width">Ancho automático</button>
+    <button data-a="hide">Ocultar columna</button>
+    <button data-a="del" class="danger">Eliminar columna</button>`;
+  document.body.appendChild(m);
+  const r = th.getBoundingClientRect(); m.style.left = Math.min(r.left, innerWidth - 230) + 'px'; m.style.top = (r.bottom + 4) + 'px';
+  const close = (e) => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', close); } };
+  setTimeout(() => document.addEventListener('mousedown', close));
+  m.onclick = async (e) => {
+    const a = e.target.dataset.a; if (!a) return; m.remove(); document.removeEventListener('mousedown', close);
+    let cols = [...b.columns];
+    if (a === 'rename') { const t = await ask('Renombrar columna', 'Nombre', c.title); if (!t) return; cols = cols.map((x) => x.key === key ? { ...x, title: t } : x); }
+    else if (a === 'opts') return editOptions(b, key);
+    else if (a === 'hide') cols = cols.map((x) => x.key === key ? { ...x, hidden: true } : x);
+    else if (a === 'width') cols = cols.map((x) => { if (x.key !== key) return x; const { width, ...rest } = x; return rest; });
+    else if (a === 'left' || a === 'right') {
+      const other = vis[a === 'left' ? i - 1 : i + 1]; const ia = cols.findIndex((x) => x.key === key), ib = cols.findIndex((x) => x.key === other.key);
+      [cols[ia], cols[ib]] = [cols[ib], cols[ia]];
+    } else if (a === 'del') {
+      if (!(await confirmBox(`¿Eliminar la columna «${c.title}»?`, 'Desaparece del tablero y de las fichas. Si solo quieres quitarla de la vista, usa «Ocultar columna».'))) return;
+      cols = cols.filter((x) => x.key !== key);
+    }
+    await saveBoard(b, { columns: cols }); renderMain();
+  };
+}
+async function columnsPanel(b) {
+  const r = document.getElementById('modal-root');
+  const draw = () => {
+    r.innerHTML = `<div class="modal"><div class="box" style="width:min(480px,100%)"><h3>Columnas de ${esc(b.name)}</h3>
+      <p class="sub" style="margin:0;color:var(--muted);font-size:13px">Marca las que quieres ver en la tabla. Todas siguen disponibles en la ficha de cada elemento. El ancho se cambia arrastrando el borde de la cabecera.</p>
+      <div class="colsel">${b.columns.map((c) => `<label><input type="checkbox" data-k="${esc(c.key)}" ${c.hidden ? '' : 'checked'}> <span>${esc(c.title)}</span><em>${esc(TYPES[c.type] || c.type)}</em></label>`).join('')}</div>
+      <div style="display:flex;gap:8px;justify-content:space-between"><button class="btn" id="nc">+ Añadir columna</button><button class="btn primary" id="ok">Hecho</button></div></div></div>`;
+    r.querySelectorAll('[data-k]').forEach((cb) => cb.onchange = async () => { await saveBoard(b, { columns: b.columns.map((c) => c.key === cb.dataset.k ? { ...c, hidden: !cb.checked } : c) }); renderMain(); });
+    r.querySelector('#ok').onclick = () => { r.innerHTML = ''; };
+    r.querySelector('#nc').onclick = () => { r.innerHTML = ''; addColumn(b); };
+    r.querySelector('.modal').onclick = (e) => { if (e.target.classList.contains('modal')) r.innerHTML = ''; };
+  };
+  draw();
 }
 function statusSelect(c, it) {
   const v = it.data[c.key] || '';
@@ -719,11 +872,14 @@ function tableHtml(b, its, cols) {
   const f = boardFilter(b);
   const groups = b.groups.filter((g) => its.some((i) => i.group_id === g.id) || (!g.closed && !f.q && !f.status && !f.late && !f.person && (!f.group || f.group === g.id)));
   if (!its.length && !groups.length) return '<div class="card empty">No hay elementos con estos filtros.</div>';
-  let h = `<div class="tablewrap"><table class="grid"><thead><tr><th class="name">Nombre</th>${cols.map((c) => `<th>${esc(c.title)}</th>`).join('')}</tr></thead><tbody>`;
+  const nw = b.settings?.name_width || 290;
+  const tw = nw + cols.reduce((a, c) => a + colW(c), 0) + 56;
+  let h = `<div class="tablewrap" id="tw"><table class="grid" style="width:${tw}px"><colgroup><col data-c="__name" style="width:${nw}px">${cols.map((c) => `<col data-c="${esc(c.key)}" style="width:${colW(c)}px">`).join('')}<col style="width:56px"></colgroup>
+    <thead><tr><th class="name">Nombre<span class="rz" data-rz="__name" title="Arrastra para cambiar el ancho"></span></th>${cols.map((c) => `<th class="colh" data-colh="${esc(c.key)}" title="Pulsa para opciones de la columna">${esc(c.title)}<span class="rz" data-rz="${esc(c.key)}" title="Arrastra para cambiar el ancho"></span></th>`).join('')}<th class="addcol"><button class="btn ghost sm" id="addcol" title="Añadir columna">+</button></th></tr></thead><tbody>`;
   for (const g of groups) {
     const gi = its.filter((i) => i.group_id === g.id);
     const col = S.collapsed[b.id + ':' + g.id];
-    h += `<tr class="grp" style="--gc:${g.color || '#579bfc'}"><td colspan="${cols.length + 1}"><span class="gt" data-tg="${esc(g.id)}">${col ? '▸' : '▾'} ${esc(g.title)} <span class="n">${gi.length}</span></span></td></tr>`;
+    h += `<tr class="grp" style="--gc:${g.color || '#579bfc'}"><td colspan="${cols.length + 2}"><span class="gt" data-tg="${esc(g.id)}">${col ? '▸' : '▾'} ${esc(g.title)} <span class="n">${gi.length}</span></span></td></tr>`;
     if (col) continue;
     for (const it of gi) {
       const subs = subsOf(it.id); const late = subs.some((s) => overdueOf(b, s, b.sub_columns)) || overdueOf(b, it, b.columns);
@@ -734,9 +890,9 @@ function tableHtml(b, its, cols) {
         if (c.type === 'status') h += `<td>${statusSelect(c, it)}</td>`;
         else h += `<td class="${c.type === 'number' ? 'num' : 'txt'}" title="${esc(Array.isArray(v) ? v.join(', ') : v ?? '')}">${cellHtml(c, v)}</td>`;
       }
-      h += '</tr>';
+      h += '<td></td></tr>';
     }
-    h += `<tr class="add"><td colspan="${cols.length + 1}"><button class="btn ghost sm addin" data-g="${esc(g.id)}">+ Añadir en ${esc(g.title)}</button></td></tr>`;
+    h += `<tr class="add"><td colspan="${cols.length + 2}"><button class="btn ghost sm addin" data-g="${esc(g.id)}">+ Añadir en ${esc(g.title)}</button></td></tr>`;
   }
   return h + '</tbody></table></div>';
 }
