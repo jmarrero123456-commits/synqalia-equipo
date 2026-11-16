@@ -700,6 +700,13 @@
   .wordmark h1 .alia { color: var(--gold-2); }
   .brand { flex-wrap: wrap; }
   .team-link { margin-left: 6px; align-self: center; font: 700 12.5px/1 var(--font-body); color: #fff; text-decoration: none; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); }
+  .ms-link { margin-left: 6px; align-self: center; font: 700 12.5px/1 var(--font-body); color: #fff; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+  .ms-link:hover { background: rgba(255,255,255,.16); }
+  .ms-link .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa3ad; }
+  .ms-link.ok .dot { background: #5fe0cf; } .ms-link.err .dot { background: #f59e0b; }
+  .ms-pop { position: fixed; z-index: 9999; top: 70px; right: 20px; width: min(360px, calc(100vw - 40px)); background: #fff; color: #1b2430; border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.25); padding: 18px; font: 14px/1.45 var(--font-body); }
+  .ms-pop h4 { margin: 0 0 6px; font-size: 15px; } .ms-pop p { margin: 6px 0; color: #4b5563; } .ms-pop .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .ms-pop button { font: 600 13px var(--font-body); border-radius: 9px; padding: 8px 12px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; } .ms-pop button.pri { background: #2b4fd8; border-color: #2b4fd8; color: #fff; }
   .team-link:hover { background: rgba(255,255,255,.16); }
   .import-card { border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line)); }
 </style>
@@ -709,7 +716,7 @@
   <header class="top">
     <div class="brand">
       <svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg>
-      <div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Tu trabajo, una sola inteligencia</div></div><a class="team-link" href="./" title="Ir al espacio del equipo">Equipo →</a>
+      <div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Tu trabajo, una sola inteligencia</div></div><a class="team-link" href="./" title="Ir al espacio del equipo">Equipo →</a><button type="button" class="ms-link" id="ms-link" title="Microsoft 365"><span class="dot"></span><span id="ms-label">Microsoft 365</span></button>
     </div>
     <div class="date"><div class="date-row"><div id="today-label"></div><button type="button" id="btn-refresh" class="refresh-btn" title="Actualizar ahora" aria-label="Actualizar ahora"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 5.2A5.6 5.6 0 1 0 13.6 9"/><path d="M13.6 2.4v3h-3"/></svg></button></div><div id="sync-label" class="status">Conectando…</div><div id="olk-label" class="olk"></div></div>
   </header>
@@ -2104,7 +2111,7 @@
       });
       btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(ready);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
-      if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: Claude la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
+      if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
       box.appendChild(el('div', 'section-label', 'Siguiente acción'));
       const na = el('div', 'change');
       const ni = document.createElement('input'); ni.type = 'text'; ni.id = 'na-' + m.id; ni.placeholder = 'Crear tarea…'; ni.setAttribute('aria-label', 'Siguiente acción');
@@ -3469,6 +3476,59 @@
   };
 })();
 
+</script>
+<script>
+/* synqalia · conexión con Microsoft 365 (correo, agenda y Teams por Microsoft Graph) */
+(async () => {
+  await window.__sqReady;
+  const sb = window.__sb;
+  const btn = document.getElementById('ms-link'), label = document.getElementById('ms-label');
+  if (!btn) return;
+  const call = async (action) => { const { data, error } = await sb.functions.invoke('graph', { body: { action } }); if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch {} throw new Error(t); } return data; };
+  const hora = (t) => t ? new Date(t).toLocaleString('es-ES', { timeZone: 'Atlantic/Canary', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  let st = null;
+  async function refresh() {
+    try { st = await call('status'); } catch (e) { st = { error: e.message }; }
+    btn.classList.toggle('ok', !!st.connected && !st.last_error);
+    btn.classList.toggle('err', !!st.connected && !!st.last_error);
+    label.textContent = st.connected ? (st.last_ok ? 'Microsoft 365 · ' + hora(st.last_ok).split(', ').pop() : 'Microsoft 365 · conectando…') : 'Conectar Microsoft 365';
+  }
+  function pop(html) {
+    document.querySelector('.ms-pop')?.remove();
+    const d = document.createElement('div'); d.className = 'ms-pop'; d.innerHTML = html; document.body.appendChild(d);
+    setTimeout(() => document.addEventListener('click', function off(e) { if (!d.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { d.remove(); document.removeEventListener('click', off); } }), 0);
+    return d;
+  }
+  async function connect() {
+    try { const { url } = await call('start'); location.href = url; } catch (e) { alert('No se pudo conectar: ' + e.message); }
+  }
+  btn.addEventListener('click', async () => {
+    if (!st) await refresh();
+    if (!st.connected) {
+      const d = pop(`<h4>Conectar con Microsoft 365</h4><p>synqalia leerá tu correo, tu agenda y tus chats de Teams cada pocos minutos, sin depender de tu ordenador. También podrá dejar tus respuestas como <b>borradores</b> en Outlook (nunca envía nada por ti).</p><p>Microsoft te pedirá aceptar estos permisos con tu cuenta de Provalliance.</p><div class="row"><button class="pri" data-a="go">Conectar</button><button data-a="x">Ahora no</button></div>`);
+      d.querySelector('[data-a=go]').onclick = connect; d.querySelector('[data-a=x]').onclick = () => d.remove();
+      return;
+    }
+    const last = st.last || {};
+    const c = last.correo || {};
+    const d = pop(`<h4>Microsoft 365 conectado</h4><p>Cuenta: <b>${st.upn}</b><br>Última sincronización: <b>${hora(st.last_ok)}</b>${typeof c === 'object' && c.nuevos != null ? `<br>Última pasada: ${c.nuevos} correos nuevos, ${c.actualizados || 0} actualizados` : ''}</p>${st.last_error ? `<p style="color:#b45309">Aviso: ${String(st.last_error).replace(/</g,'&lt;').slice(0,300)}</p>` : ''}<p>Se actualiza sola cada 10 minutos.</p><div class="row"><button class="pri" data-a="sync">Sincronizar ahora</button><button data-a="re">Volver a conectar</button><button data-a="off">Desconectar</button></div>`);
+    d.querySelector('[data-a=sync]').onclick = async (e) => { e.target.disabled = true; e.target.textContent = 'Sincronizando…'; try { const r = await call('sync'); await refresh(); d.remove(); if (r.error) alert('Error: ' + r.error); } catch (er) { alert(er.message); e.target.disabled = false; e.target.textContent = 'Sincronizar ahora'; } };
+    d.querySelector('[data-a=re]').onclick = connect;
+    d.querySelector('[data-a=off]').onclick = async () => { if (!confirm('¿Desconectar Microsoft 365? synqalia dejará de actualizar tu correo, agenda y Teams.')) return; await call('disconnect'); await refresh(); d.remove(); };
+  });
+  // vuelta de Microsoft
+  const h = decodeURIComponent(location.hash || '');
+  if (h.startsWith('#microsoft=')) {
+    history.replaceState(null, '', location.pathname);
+    const v = h.slice(11);
+    if (v === 'ok') {
+      label.textContent = 'Microsoft 365 · primera sincronización…';
+      pop('<h4>¡Conectado!</h4><p>Estoy trayendo tu correo, agenda y Teams. La primera vez tarda uno o dos minutos; los datos irán apareciendo solos.</p>');
+      call('sync').then(refresh).catch(refresh);
+    } else { pop(`<h4>No se pudo conectar</h4><p>${v.replace(/^error:/, '').replace(/</g, '&lt;')}</p>`); refresh(); }
+  } else refresh();
+  setInterval(refresh, 120000);
+})();
 </script>
 </body>
 </html>
