@@ -1,0 +1,22 @@
+{
+  "name": "synqalia",
+  "short_name": "synqalia",
+  "description": "Tu trabajo y tu equipo, una sola inteligencia",
+  "id": "/",
+  "start_url": "/mi.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d1015",
+  "theme_color": "#121821",
+  "lang": "es",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mi trabajo", "url": "/mi.html", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Equipo", "url": "/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
