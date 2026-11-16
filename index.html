@@ -345,6 +345,15 @@
   .colsel label:hover { background:var(--soft); }
   .colsel input { width:16px; height:16px; accent-color:var(--navy-2); }
   .colsel em { margin-left:auto; font-style:normal; font-size:12px; color:var(--muted); font-weight:500; }
+
+  .nav .nb { color:rgba(255,255,255,.45); font-size:13px; font-weight:600; padding:5px 10px; }
+  .nav .nb:hover { color:var(--gold-2); background:transparent; }
+  .glist { display:grid; gap:6px; max-height:50vh; overflow:auto; }
+  .grow-r { display:flex; gap:6px; align-items:center; }
+  .grow-r .input { flex:1; min-width:0; max-width:none; }
+  .grow-r input[type=color] { width:32px; height:32px; border:1px solid var(--line); border-radius:8px; padding:2px; background:var(--panel); cursor:pointer; flex:none; }
+  .grow-r .gcl { display:flex; align-items:center; gap:4px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
+  .grow-r .n { font-size:12px; color:var(--muted); min-width:24px; text-align:right; }
 </style>
 </head>
 <body>
@@ -460,6 +469,10 @@ function subscribe() {
     if (p.eventType === 'DELETE') S.items = S.items.filter((i) => i.id !== p.old.id);
     else { const i = S.items.findIndex((x) => x.id === p.new.id); if (i >= 0) S.items[i] = p.new; else S.items.push(p.new); }
     scheduleRender();
+  }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'boards' }, (p) => {
+    if (!board(p.new.id)) { S.boards.push(p.new); S.boards.sort((a, b) => a.sort - b.sort); scheduleRender(); }
+  }).on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'boards' }, (p) => {
+    S.boards = S.boards.filter((b) => b.id !== p.old.id); if (S.view.id === p.old.id) go({ kind: 'home' }); else scheduleRender();
   }).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'boards' }, (p) => {
     const b = board(p.new.id); if (b && !document.body.classList.contains('resizing')) { Object.assign(b, p.new); scheduleRender(); }
   }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (p) => {
@@ -489,7 +502,7 @@ function logo(s = 32) { return `<svg class="mark" width="${s}" height="${s}" vie
 function overdueOf(b, it, cols) {
   const st = statusCol(cols); const v = st ? it.data[st.key] : null;
   if (isDoneVal(st, v)) return null;
-  const dc = cols.find((c) => c.type === 'date' && /entrega|ejecuci|fecha$/i.test(c.title)) ;
+  const dc = cols.find((c) => c.type === 'date' && /entrega|ejecuci|l[ií]mite|fecha$/i.test(c.title)) ;
   const d = dc ? it.data[dc.key] : null;
   return d && d < today() ? d : null;
 }
@@ -526,6 +539,7 @@ function renderSide() {
       const open = topItems(b.id).filter((i) => !isClosed(b, i)).length;
       h += `<button data-board="${b.id}" aria-current="${cur('board', b.id)}"><span>${esc(b.name)}</span><span class="n">${open}</span></button>`;
     }
+    h += `<button class="nb" data-newboard="${esc(s.id)}">+ Nuevo tablero</button>`;
   }
   if (S.me.role === 'admin') h += `<div class="sec">Administración</div><button data-go="team" aria-current="${cur('team')}">Equipo y accesos</button>`;
   h += `</nav><div class="me">${avatar(S.me.email)}<div class="who"><b>${esc(S.me.name)}</b><span>${esc(S.me.email)}</span></div><button class="btn ghost sm" id="logout" title="Salir">Salir</button></div>`;
@@ -535,6 +549,7 @@ function renderSide() {
   el.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => { S.view = { kind: 'space', id: b.dataset.space }; location.hash = 'space-' + b.dataset.space; });
   el.querySelector('#logout').onclick = () => sb.auth.signOut();
   el.querySelector('#sidex').onclick = () => toggleSide();
+  el.querySelectorAll('[data-newboard]').forEach((b) => b.onclick = () => newBoard(b.dataset.newboard));
 }
 function headHtml(title, sub, right = '') {
   return `<div class="band"><div class="head"><button class="btn menu-btn" id="menu">☰</button><div class="grow"><h2>${esc(title)}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right}</div></div>`;
@@ -713,7 +728,7 @@ function renderBoard(el, b) {
   const statusCols = b.columns.filter((c) => c.type === 'status');
   const people = [...new Set(S.items.filter((i) => i.board_id === b.id).flatMap((i) => Object.values(i.data).filter(Array.isArray).flat().filter((x) => String(x).includes('@'))))];
   const closedN = topItems(b.id).filter((i) => isClosed(b, i)).length;
-  let h = `<div class="page">${headHtml(b.name, `${esc(space(b.space_id)?.name)} · ${esc(b.description || '')}`, `<button class="btn primary" id="new">+ Nuevo</button>`)}
+  let h = `<div class="page">${headHtml(b.name, `${esc(space(b.space_id)?.name)} · ${esc(b.description || '')}`, `<button class="btn" id="bmenu" title="Opciones del tablero">⋯ Tablero</button><button class="btn primary" id="new">+ Nuevo</button>`)}
     <div class="toolbar">
       <input class="input" id="q" placeholder="Buscar en ${esc(b.name.toLowerCase())}…" value="${esc(f.q)}">
       <select class="input" id="fg"><option value="">Todas las fases</option>${b.groups.map((g) => `<option value="${esc(g.id)}" ${f.group === g.id ? 'selected' : ''}>${esc(g.title)}</option>`).join('')}</select>
@@ -753,6 +768,7 @@ function renderBoard(el, b) {
     col.ondrop = async (e) => { e.preventDefault(); col.classList.remove('drop'); const id = +e.dataTransfer.getData('text/plain'); await updateItem(id, { group_id: col.dataset.g }); };
   });
   el.querySelector('#cols').onclick = () => columnsPanel(b);
+  el.querySelector('#bmenu').onclick = (e) => boardMenu(b, e.currentTarget);
   el.querySelector('#addcol')?.addEventListener('click', () => addColumn(b));
   el.querySelectorAll('th.colh').forEach((th) => th.onclick = (e) => { if (e.target.classList.contains('rz')) return; columnMenu(b, th.dataset.colh, th); });
   el.querySelectorAll('.rz').forEach((rz) => rz.onmousedown = (e) => startResize(e, b, rz.dataset.rz, el));
@@ -760,6 +776,101 @@ function renderBoard(el, b) {
   const tw = el.querySelector('#tw'); if (tw) { tw.scrollLeft = S.hscroll?.[b.id] || 0; tw.onscroll = () => { (S.hscroll ||= {})[b.id] = tw.scrollLeft; }; }
 }
 
+
+/* ---------------- tableros: crear, renombrar, fases, eliminar ---------------- */
+const gid = () => 'g_' + Math.random().toString(36).slice(2, 9);
+const TEMPLATES = {
+  tareas: { label: 'Tareas del equipo', kind: 'tasks',
+    columns: [
+      { key: 'responsable', title: 'Responsable', type: 'people' },
+      { key: 'estado', title: 'Estado', type: 'status', done: ['Hecho'], options: [{ label: 'Pendiente', color: '#c4c4c4' }, { label: 'En curso', color: '#fdab3d' }, { label: 'Detenido', color: '#df2f4a' }, { label: 'Hecho', color: '#00c875' }] },
+      { key: 'prioridad', title: 'Prioridad', type: 'status', options: [{ label: 'Alta', color: '#df2f4a' }, { label: 'Media', color: '#fdab3d' }, { label: 'Baja', color: '#579bfc' }] },
+      { key: 'fecha_limite', title: 'Fecha límite', type: 'date' },
+      { key: 'notas', title: 'Notas', type: 'text' }],
+    groups: [{ title: 'Esta semana', color: '#579bfc' }, { title: 'Próximas', color: '#9d50dd' }, { title: 'Hecho', color: '#00c875', closed: true }] },
+  seguimiento: { label: 'Seguimiento de proyectos / operaciones', kind: 'generic',
+    columns: [
+      { key: 'responsable', title: 'Responsable', type: 'people' },
+      { key: 'estado', title: 'Estado', type: 'status', done: ['Cerrado'], options: [{ label: 'Nuevo', color: '#579bfc' }, { label: 'En curso', color: '#fdab3d' }, { label: 'Bloqueado', color: '#df2f4a' }, { label: 'Cerrado', color: '#00c875' }] },
+      { key: 'fecha', title: 'Fecha', type: 'date' },
+      { key: 'importe', title: 'Importe', type: 'number' },
+      { key: 'contacto', title: 'Contacto', type: 'text' },
+      { key: 'comentarios', title: 'Comentarios', type: 'long_text', hidden: true },
+      { key: 'documentos', title: 'Documentos', type: 'files', hidden: true }],
+    groups: [{ title: 'Nuevos', color: '#579bfc' }, { title: 'En curso', color: '#fdab3d' }, { title: 'Cerrados', color: '#00c875', closed: true }] },
+  blanco: { label: 'En blanco', kind: 'generic',
+    columns: [{ key: 'responsable', title: 'Responsable', type: 'people' }, { key: 'estado', title: 'Estado', type: 'status', done: ['Hecho'], options: [{ label: 'Pendiente', color: '#c4c4c4' }, { label: 'En curso', color: '#fdab3d' }, { label: 'Hecho', color: '#00c875' }] }],
+    groups: [{ title: 'Elementos', color: '#579bfc' }] },
+};
+const SUB_DEFAULT = [
+  { key: 'estado', title: 'Estado', type: 'status', done: ['Hecho'], options: [{ label: 'Pendiente', color: '#c4c4c4' }, { label: 'En curso', color: '#fdab3d' }, { label: 'Hecho', color: '#00c875' }] },
+  { key: 'responsable', title: 'Responsable', type: 'people' },
+  { key: 'fecha', title: 'Fecha', type: 'date' }];
+async function newBoard(spaceId) {
+  const v = await formModal(`Nuevo tablero en ${space(spaceId)?.name || ''}`, `
+    <label class="field"><span>Nombre del tablero</span><input name="name" required placeholder="p. ej. Aperturas 2027"></label>
+    <label class="field"><span>Descripción (opcional)</span><input name="description"></label>
+    <label class="field"><span>Plantilla de partida</span><select name="tpl">${Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join('')}</select></label>
+    <p class="msg" style="margin:0">Después puedes añadir, quitar o renombrar columnas y fases.</p>`, 'Crear tablero');
+  if (!v || !v.name.trim()) return;
+  const t = TEMPLATES[v.tpl];
+  const row = { space_id: spaceId, name: v.name.trim(), description: v.description?.trim() || null, kind: t.kind,
+    columns: t.columns, groups: t.groups.map((g) => ({ id: gid(), ...g, closed: !!g.closed })), sub_columns: SUB_DEFAULT,
+    sort: Math.max(0, ...S.boards.map((b) => b.sort || 0)) + 1 };
+  const { data, error } = await sb.from('boards').insert(row).select().single();
+  if (error) return err(error);
+  if (!board(data.id)) S.boards.push(data);
+  toast('Tablero creado'); go({ kind: 'board', id: data.id });
+}
+function boardMenu(b, anchor) {
+  document.querySelector('.colmenu')?.remove();
+  const m = document.createElement('div'); m.className = 'colmenu';
+  m.innerHTML = `<div class="cm-t">${esc(b.name)} <span>${esc(space(b.space_id)?.name || '')}</span></div>
+    <button data-a="rename">Renombrar y descripción</button>
+    <button data-a="groups">Editar fases (grupos)</button>
+    <button data-a="cols">Columnas</button>
+    ${S.me.role === 'admin' ? '<button data-a="del" class="danger">Eliminar tablero</button>' : ''}`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 230)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
+  const close = (e) => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', close); } };
+  setTimeout(() => document.addEventListener('mousedown', close));
+  m.onclick = async (e) => {
+    const a = e.target.dataset.a; if (!a) return; m.remove(); document.removeEventListener('mousedown', close);
+    if (a === 'cols') return columnsPanel(b);
+    if (a === 'groups') return editGroups(b);
+    if (a === 'rename') {
+      const v = await formModal('Tablero', `<label class="field"><span>Nombre</span><input name="name" required value="${esc(b.name)}"></label><label class="field"><span>Descripción</span><input name="description" value="${esc(b.description || '')}"></label>`);
+      if (!v) return; await saveBoard(b, { name: v.name.trim(), description: v.description.trim() || null }); renderMain();
+    }
+    if (a === 'del') {
+      const n = S.items.filter((i) => i.board_id === b.id).length;
+      if (!(await confirmBox(`¿Eliminar el tablero «${b.name}»?`, `Se borrarán sus ${n} elementos y subtareas, con comentarios e historial. No se puede deshacer.`))) return;
+      const { error } = await sb.from('boards').delete().eq('id', b.id); if (error) return err(error);
+      S.boards = S.boards.filter((x) => x.id !== b.id); S.items = S.items.filter((i) => i.board_id !== b.id);
+      toast('Tablero eliminado'); go({ kind: 'home' });
+    }
+  };
+}
+function editGroups(b) {
+  const r = document.getElementById('modal-root');
+  let gs = b.groups.map((g) => ({ ...g }));
+  const count = (id) => topItems(b.id).filter((i) => i.group_id === id).length;
+  const draw = () => {
+    r.innerHTML = `<div class="modal"><div class="box" style="width:min(560px,100%)"><h3>Fases de ${esc(b.name)}</h3>
+      <p class="msg" style="margin:0">Las fases marcadas como «cerrada» (finalizados, descartados…) se ocultan por defecto en la tabla.</p>
+      <div class="glist">${gs.map((g, i) => `<div class="grow-r"><input type="color" value="${esc(g.color || '#579bfc')}" data-gc="${i}" title="Color"><input class="input" value="${esc(g.title)}" data-gt="${i}"><label class="gcl"><input type="checkbox" data-gx="${i}" ${g.closed ? 'checked' : ''}> cerrada</label><button class="btn ghost sm" data-gu="${i}" ${i === 0 ? 'disabled' : ''} title="Subir">↑</button><button class="btn ghost sm danger" data-gd="${i}" title="${count(g.id) ? 'Tiene elementos: muévelos antes de borrarla' : 'Eliminar fase'}" ${count(g.id) ? 'disabled' : ''}>✕</button><span class="n">${count(g.id)}</span></div>`).join('')}</div>
+      <div style="display:flex;gap:8px;justify-content:space-between"><button class="btn" id="ga">+ Añadir fase</button><span><button class="btn" id="cx">Cancelar</button> <button class="btn primary" id="ok">Guardar</button></span></div></div></div>`;
+    r.querySelectorAll('[data-gt]').forEach((x) => x.oninput = () => { gs[+x.dataset.gt].title = x.value; });
+    r.querySelectorAll('[data-gc]').forEach((x) => x.oninput = () => { gs[+x.dataset.gc].color = x.value; });
+    r.querySelectorAll('[data-gx]').forEach((x) => x.onchange = () => { gs[+x.dataset.gx].closed = x.checked; });
+    r.querySelectorAll('[data-gu]').forEach((x) => x.onclick = () => { const i = +x.dataset.gu; [gs[i - 1], gs[i]] = [gs[i], gs[i - 1]]; draw(); });
+    r.querySelectorAll('[data-gd]').forEach((x) => x.onclick = () => { gs.splice(+x.dataset.gd, 1); draw(); });
+    r.querySelector('#ga').onclick = () => { gs.push({ id: gid(), title: 'Nueva fase', color: PALETTE[gs.length % PALETTE.length], closed: false }); draw(); r.querySelector('.glist .grow-r:last-child [data-gt]').select(); };
+    r.querySelector('#cx').onclick = () => { r.innerHTML = ''; };
+    r.querySelector('#ok').onclick = async () => { gs = gs.filter((g) => g.title.trim()); if (!gs.length) return toast('Debe quedar al menos una fase'); r.innerHTML = ''; await saveBoard(b, { groups: gs.map((g) => ({ ...g, title: g.title.trim() })) }); renderMain(); };
+  };
+  draw();
+}
 /* ---------------- columnas ---------------- */
 async function saveBoard(b, patch) {
   Object.assign(b, patch);
