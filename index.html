@@ -355,6 +355,10 @@
   .grow-r input[type=color] { width:32px; height:32px; border:1px solid var(--line); border-radius:8px; padding:2px; background:var(--panel); cursor:pointer; flex:none; }
   .grow-r .gcl { display:flex; align-items:center; gap:4px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
   .grow-r .n { font-size:12px; color:var(--muted); min-width:24px; text-align:right; }
+
+  .nav .mylink { display:grid; text-decoration:none; color:#fff; font-weight:700; font-size:14px; padding:9px 10px; margin:4px 0 6px; border-radius:10px; border:1px solid rgba(95,224,207,.35); background:rgba(95,224,207,.08); }
+  .nav .mylink span { font-size:11.5px; font-weight:500; color:rgba(255,255,255,.55); }
+  .nav .mylink:hover { background:rgba(95,224,207,.16); }
 </style>
 </head>
 <body>
@@ -382,10 +386,12 @@ function toast(t) { const d = document.createElement('div'); d.className = 'toas
 function err(e) { console.error(e); toast('Error: ' + (e?.message || e)); }
 
 /* ---------------- auth ---------------- */
+const nextUrl = () => { const n = new URLSearchParams(location.search).get('next'); return n === 'mi.html' ? 'mi.html' : null; };
 async function boot() {
   const { data } = await sb.auth.getSession();
   S.user = data.session?.user || null;
   if (!S.user) return renderLogin();
+  if (nextUrl()) return location.replace(nextUrl());
   await loadAll();
 }
 sb.auth.onAuthStateChange((ev, session) => {
@@ -431,7 +437,7 @@ function renderLogin(mode = 'login', msg = '', cls = '') {
       }
       const { data, error } = await sb.auth.signInWithPassword({ email, password: f.password });
       if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message);
-      S.user = data.user; await loadAll();
+      S.user = data.user; if (nextUrl()) return location.replace(nextUrl()); await loadAll();
     } catch (ex) { m.className = 'msg err'; m.textContent = ex.message; btn.disabled = false; }
   };
 }
@@ -532,6 +538,7 @@ function renderSide() {
   const v = S.view;
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
   let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Equipo</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
+    <a class="mylink" href="mi.html">Mi trabajo <span>correo · reuniones · tareas</span></a>
     <button data-go="home" aria-current="${cur('home')}">Resumen del equipo</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
