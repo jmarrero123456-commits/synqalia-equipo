@@ -3430,6 +3430,7 @@
   const sb = window.__sb;
   const { count } = await sb.from('personal_docs').select('id', { count: 'exact', head: true });
   if (count > 0 && location.hash !== '#importar') return;
+  if (location.hash !== '#importar') { const { data: me } = await sb.from('members').select('role').ilike('email', window.__sqUser.email).maybeSingle(); if (!me || me.role !== 'admin') return; }
   const box = document.createElement('div');
   box.className = 'card import-card';
   box.innerHTML = `<div class="row-between"><h2>Trae tus datos de synqaro</h2><button type="button" class="btn ghost" id="imp-x">Ahora no</button></div>
