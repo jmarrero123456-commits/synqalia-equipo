@@ -55,7 +55,7 @@
   .btn:disabled { opacity:.5; cursor:default; }
 
   /* shell */
-  .shell { display:grid; grid-template-columns:250px 1fr; height:100%; }
+  .shell { display:grid; grid-template-columns:250px 1fr; height:100vh; }
   .side { background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
   .side .brand { padding:16px 16px 10px; }
   .side .brand h1 { font-size:24px; }
@@ -212,7 +212,7 @@
   .wordmark .tagline { margin-top:4px; font-size:12px; font-weight:500; color:rgba(255,255,255,.6); }
 
   /* login */
-  .login { background:var(--glow); }
+  .login { background:var(--glow); min-height:100vh; }
   .login-card { background:transparent; border:0; padding:0; gap:22px; }
   .login-card .brand { justify-content:center; padding-bottom:4px; }
   .login-card .brand .wordmark h1 { font-size:34px; }
