@@ -806,6 +806,14 @@
   }
   #hoy-mail .item .detail { margin-top: 1px; }
   @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 8px 4px 7px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
+  /* Cabecera limpia: sin fecha, sin «al día», sin actualizar ni «Conectar Microsoft 365».
+     Solo aparece algo si hay un error de sincronización o estás sin conexión. */
+  .top #today-label, .top #btn-refresh, .top #olk-label { display: none !important; }
+  .top #ms-link:not(.err) { display: none !important; }
+  .top #sync-label:not(.err) { display: none !important; }
+  body.sq-offline .top #sync-label { display: block !important; }
+  .top .date:not(:has(#sync-label.err)) { display: none; }
+  body.sq-offline .top .date { display: block; }
   .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
   .summary.off { color: var(--muted); font-style: italic; }
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
