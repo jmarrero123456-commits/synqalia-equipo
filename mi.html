@@ -814,6 +814,11 @@
   body.sq-offline .top #sync-label { display: block !important; }
   .top .date:not(:has(#sync-label.err)) { display: none; }
   body.sq-offline .top .date { display: block; }
+  @media (max-width: 900px) {
+    /* en el móvil (y Fold abierto) la franja oscura vacía bajo la barra sobra */
+    body:not(.sq-offline) .app > .top:not(:has(#sync-label.err)):not(:has(#ms-link.err)) { display: none; }
+    body:not(.sq-offline) .app > .top:not(:has(#sync-label.err)):not(:has(#ms-link.err)) ~ .view { margin-top: 12px; }
+  }
   .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
   .summary.off { color: var(--muted); font-style: italic; }
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
