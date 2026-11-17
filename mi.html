@@ -2280,7 +2280,7 @@
     const linked = new Set(state.tasks.map((t) => t.ref).filter(Boolean));
     const r = state.replies[m.id];
     const dz = state.decisions[m.id];
-    const row = el('div', 'item');
+    const row = el('div', 'item mitem');
     row.appendChild(el('div', 'stripe ' + m.prioridad));
     const body = el('div');
     body.appendChild(el('div', 'title', m.reunion && m.reunion.titulo ? m.reunion.titulo : m.asunto));
