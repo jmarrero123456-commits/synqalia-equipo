@@ -895,7 +895,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118a">
+<link rel="stylesheet" href="synqalia.css?v=20261118c">
 <link rel="stylesheet" href="mensajes.css?v=20261118a">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -1055,7 +1055,7 @@
         <label class="tk-sel">Ordenar<select id="mail-sort"><option value="fecha" selected>Más recientes primero</option><option value="prioridad">Por prioridad</option></select></label>
         <label class="tk-sel tk-check"><input type="checkbox" id="mail-group"> Agrupar por persona</label>
       </div>
-      <div class="mail-split" id="mail-split"><div class="list inbox" id="mail-list"></div><aside class="mail-pane" id="mail-pane" aria-live="polite"></aside></div>
+      <div class="mail-split" id="mail-split"><div class="list inbox" id="mail-list"></div><div class="mail-resizer" id="mail-resizer" role="separator" aria-orientation="vertical" aria-label="Ancho de la lista de correos" tabindex="0" title="Arrastra para cambiar el ancho · doble clic para volver al ancho normal"></div><aside class="mail-pane" id="mail-pane" aria-live="polite"></aside></div>
     </section>
   </main>
 
@@ -2494,6 +2494,8 @@
     const locked = r.estado === 'en_outlook' || r.estado === 'enviada';
     ta.readOnly = locked;
     box.appendChild(ta);
+    const grow = () => { if (!ta.isConnected) return; ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 300), Math.round(window.innerHeight * 0.72)) + 'px'; };
+    ta.addEventListener('input', grow); requestAnimationFrame(grow);
     const status = el('span', 'status', locked ? (r.estado === 'enviada' ? 'Esta respuesta ya se envió.' : 'Está en tus Borradores de Outlook, dentro del hilo. Ábrela allí y pulsa Enviar.') : (m.cuerpo ? '' : 'Ojo: solo tengo la vista previa de este correo. La sugerencia será orientativa.'));
     const setStatus = (t, err) => { status.textContent = t; status.classList.toggle('err', !!err); };
 
@@ -2509,8 +2511,8 @@
         const actual = ta.value.trim();
         const prompt = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Cierra solo con «Un saludo,» y NO pongas su nombre ni firma debajo (Outlook añade su firma electrónica).\n\nCORREO AL QUE SE RESPONDE:\n' + mailContext(m) + '\n\n' + (actual ? 'BORRADOR ACTUAL:\n' + actual + '\n\nINSTRUCCIÓN DE JAIME PARA CAMBIARLO:\n' + instruction : (instruction ? 'INDICACIONES DE JAIME:\n' + instruction : 'Propón la respuesta más útil.')) + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en las indicaciones: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
         try {
-          const out = await sample(prompt, {onText: ({text}) => { ta.value = text; }});
-          ta.value = (out && out.text ? out.text : ta.value).trim();
+          const out = await sample(prompt, {onText: ({text}) => { ta.value = text; grow(); }});
+          ta.value = (out && out.text ? out.text : ta.value).trim(); grow();
           state.drafts[m.id] = ta.value;
           setStatus(/\[[^\]]+\]/.test(ta.value) ? 'Hecho. Completa lo que está entre [corchetes].' : 'Hecho. Revísala y márcala como lista.');
         } catch (e) {
@@ -2568,7 +2570,7 @@
           const useIt = el('button', 'btn primary', 'Usar esta versión y enviar a Borradores'); useIt.type = 'button';
           useIt.addEventListener('click', () => finish(String(out.texto).trim()));
           const editIt = el('button', 'btn', 'Editar esta versión'); editIt.type = 'button';
-          editIt.addEventListener('click', () => { ta.value = String(out.texto).trim(); state.drafts[m.id] = ta.value; review.hidden = true; setStatus('Versión pulida en el editor. Cámbiala y vuelve a pulsar «Enviar a Borradores de Outlook».'); ta.focus(); });
+          editIt.addEventListener('click', () => { ta.value = String(out.texto).trim(); grow(); state.drafts[m.id] = ta.value; review.hidden = true; setStatus('Versión pulida en el editor. Cámbiala y vuelve a pulsar «Enviar a Borradores de Outlook».'); ta.focus(); });
           const keep = el('button', 'btn ghost', 'Enviar la mía tal cual'); keep.type = 'button';
           keep.addEventListener('click', () => finish(t));
           rb.appendChild(useIt); rb.appendChild(editIt); rb.appendChild(keep);
@@ -2584,7 +2586,7 @@
         if (ta.value.trim()) await saveReply(m, {texto: ta.value.trim(), estado: 'borrador'});
         if (await write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Programado para mañana')) { delete state.drafts[m.id]; state.openReply = null; renderAll(); }
       });
-      btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(ready);
+      btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(replyOutlookBtn(m, ta, setStatus)); btns.appendChild(ready);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
       if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
       box.appendChild(el('div', 'section-label', 'Tareas de este correo'));
@@ -2593,6 +2595,7 @@
     } else {
       askBox.hidden = true;
       const bar = el('div', 'bar'); bar.appendChild(status);
+      bar.appendChild(replyOutlookBtn(m, null, setStatus));
       if (r.estado === 'en_outlook') { const sb = el('button', 'btn primary', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); bar.appendChild(sb); }
       box.appendChild(bar);
     }
@@ -3864,6 +3867,23 @@
     const o = state.olinks; const id = o && o.map && o.map[m.id];
     return id ? fix((o.base || 'https://outlook.cloud.microsoft/mail/deeplink/read/') + id) : null;
   }
+  // «Abrir en Outlook» desde la propuesta: abre el correo exacto y copia el texto propuesto para pegarlo en «Responder».
+  function replyOutlookBtn(m, ta, setStatus) {
+    const a = document.createElement('a'); a.className = 'btn ol-btn'; a.target = '_blank'; a.rel = 'noopener';
+    const url = mailLink(m);
+    a.textContent = 'Abrir en Outlook ↗';
+    a.href = url || 'https://outlook.cloud.microsoft/mail/inbox';
+    a.title = url ? 'Abre este correo en Outlook' + (ta ? ' y copia la propuesta para pegarla en «Responder»' : '') : 'Este correo aún no tiene enlace directo: abre Outlook (copio el asunto para buscarlo)';
+    a.addEventListener('click', () => {
+      const t = ta && ta.value.trim();
+      const q = String(m.asuntoOutlook || m.asunto || '').replace(/\s*\(\d+\)\s*$/, '');
+      try {
+        if (t) { navigator.clipboard.writeText(t); setStatus(url ? 'Propuesta copiada: en Outlook pulsa «Responder» y pégala (Ctrl+V).' : 'Propuesta copiada. Busca el correo en Outlook por el asunto «' + q + '» y pégala al responder.'); }
+        else if (!url) { navigator.clipboard.writeText(q); setStatus('Asunto copiado: pégalo en el buscador de Outlook.'); }
+      } catch (e) {}
+    });
+    return a;
+  }
   function outlookBtn(m) {
     const a = document.createElement('a'); a.className = 'btn ol-btn'; a.target = '_blank'; a.rel = 'noopener';
     const url = mailLink(m);
@@ -4236,5 +4256,6 @@
 <script src="notas.js" defer></script>
 <script src="graph-live.js?v=20261117d" defer></script>
 <script src="mensajes.js?v=20261118a" defer></script>
+<script src="correo.js?v=20261118a" defer></script>
 </body>
 </html>
