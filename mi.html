@@ -534,6 +534,20 @@
   .mt-pill.ok,.tl-link.ok{background:#e7f6ee;color:#137a4b;border-color:#bfe6cf}
   .tl-link.ok{padding:1px 6px;border-radius:6px}
   .inv-done-head{margin:14px 0 6px;font-weight:600}
+  .inv-rsvp.inv-done{opacity:.75}
+  .inv-rsvp.inv-done .title{text-decoration:none}
+  .mt-pill.wait{background:#e8f0ff;color:#2350a8;border-color:#c5d6f5}
+  .mt-pill.no{background:#fdeceb;color:#a3291f;border-color:#f3c6c1}
+  .rsvp-said{font-style:italic}
+  .rsvp-note{font-size:12px}
+  .rsvp-form{margin-top:10px;display:grid;gap:8px;max-width:560px}
+  .rsvp-form textarea{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line,#d8dde5);border-radius:8px;resize:vertical;min-height:58px;background:var(--card,#fff);color:inherit}
+  .rsvp-form textarea:disabled{opacity:.5}
+  .rsvp-opts{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+  .rsvp-opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .rsvp-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn.danger{background:#c0392b;border-color:#c0392b;color:#fff}
+  .actions .btn.on{outline:2px solid var(--accent,#5fe0cf);outline-offset:1px}
   .day-pick{position:relative;padding:0;display:inline-flex;align-items:center}
   .day-pick select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;color:inherit;padding:5px 30px 5px 12px;cursor:pointer;max-width:100%}
   .day-pick::after{content:"▾";position:absolute;right:12px;pointer-events:none;font-size:.85em}
@@ -2625,6 +2639,65 @@
     });
     renderAll();
   }
+  // Respuestas a convocatorias desde synqalia: cola `respuestas_reunion`. Con Microsoft 365 conectado salen al momento
+  // (función graph, acción «respond»); si no, las aplica en Outlook la actualización automática desde el PC.
+  const RSVP_TXT = {aceptar: 'Aceptada', provisional: 'Provisional', rechazar: 'Rechazada'};
+  const RSVP_BTN = {aceptar: 'Aceptar', provisional: 'Provisional', rechazar: 'Rechazar'};
+  function rsvpEntry(x) {
+    const idx = state.rsvpIdx || {}; const e = idx[invId(x.fecha, x.inicio, x.titulo)]; if (!e) return null;
+    const d = e.doc;
+    if (d.estado === 'enviada' || d.estado === 'cancelada') {
+      // si Outlook se ha leído después de responder y la reunión sigue sin responder, no se aplicó: vuelve a pendiente
+      const cap = state.invites && state.invites.capturado ? new Date(state.invites.capturado).getTime() : 0;
+      if (d.estado === 'enviada' && d.enviada && cap > new Date(d.enviada).getTime() + 60000) return null;
+    }
+    return e;
+  }
+  function indexRsvp(map) {
+    const idx = {};
+    Object.entries(map || {}).forEach(([docId, doc]) => { if (!doc) return; [docId].concat(doc.ids || []).forEach((id) => { idx[id] = {docId, doc}; }); });
+    state.rsvp = map || {}; state.rsvpIdx = idx;
+  }
+  async function sendRsvp(p, resp) {
+    const f = state.rsvpForm || {};
+    const serie = !!(p.mas && p.mas.length && f.serie !== false);
+    const all = serie ? [p].concat(p.mas) : [p];
+    const id = invId(p.fecha, p.inicio, p.titulo);
+    const avisar = f.avisar !== false;
+    const body = {respuesta: resp, comentario: avisar && f.texto && f.texto.trim() ? f.texto.trim() : null, serie, avisar,
+      fecha: p.fecha, inicio: p.inicio, fin: p.fin, titulo: p.titulo, organiza: p.organiza || '', gid: p.gid || null, enlace: p.enlace || null,
+      ids: all.map((x) => invId(x.fecha, x.inicio, x.titulo)), fechas: all.map((x) => x.fecha), estado: 'cola', creado: new Date().toISOString()};
+    const ok = await write(() => db.collection('respuestas_reunion').doc(id).set(body), RSVP_TXT[resp] + (serie ? ' (toda la serie)' : '') + ' · enviando a Outlook');
+    if (!ok) return;
+    state.rsvpOpen = null; state.rsvpForm = {}; renderAll();
+    try { if (window.__sb) await window.__sb.functions.invoke('graph', {body: {action: 'respond', id}}); } catch (e) { /* queda en cola para la actualización desde el PC */ }
+  }
+  function undoRsvp(e) { write(() => db.collection('respuestas_reunion').doc(e.docId).delete(), 'Respuesta anulada · vuelve a pendientes'); }
+  function rsvpForm(p, resp) {
+    const f = state.rsvpForm || (state.rsvpForm = {});
+    const box = el('div', 'rsvp-form');
+    const ta = document.createElement('textarea'); ta.rows = 2; ta.className = 'rsvp-msg';
+    ta.placeholder = 'Mensaje para ' + (firstName(p.organiza) || 'el organizador') + ' (opcional)';
+    ta.value = f.texto || ''; ta.addEventListener('input', () => { f.texto = ta.value; });
+    box.appendChild(ta);
+    const opts = el('div', 'rsvp-opts');
+    if (p.mas && p.mas.length) {
+      const l = el('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.checked = f.serie !== false;
+      c.addEventListener('change', () => { f.serie = c.checked; }); l.append(c, ' Toda la serie (' + (p.mas.length + 1) + ' fechas)'); opts.appendChild(l);
+    }
+    const l2 = el('label'); const c2 = document.createElement('input'); c2.type = 'checkbox'; c2.checked = f.avisar !== false;
+    c2.addEventListener('change', () => { f.avisar = c2.checked; ta.disabled = !c2.checked; }); ta.disabled = !c2.checked;
+    l2.append(c2, ' Enviar la respuesta al organizador'); opts.appendChild(l2);
+    box.appendChild(opts);
+    const btns = el('div', 'rsvp-btns');
+    const go = el('button', 'btn primary' + (resp === 'rechazar' ? ' danger' : ''), 'Enviar «' + RSVP_BTN[resp] + '»'); go.type = 'button';
+    go.addEventListener('click', () => { go.disabled = true; sendRsvp(p, resp); });
+    const no = el('button', 'btn ghost', 'Cancelar'); no.type = 'button';
+    no.addEventListener('click', () => { state.rsvpOpen = null; state.rsvpForm = {}; renderAll(); });
+    btns.append(go, no); box.appendChild(btns);
+    if (state.rsvpFocus !== p.key) { state.rsvpFocus = p.key; setTimeout(() => ta.focus(), 30); }
+    return box;
+  }
   function pendingInvites() {
     const raw = [];
     const inv = state.invites && Array.isArray(state.invites.items) ? state.invites : null;
@@ -2632,7 +2705,7 @@
     if (inv) {
       inv.items.forEach((e) => {
         if (!e.fecha || e.fecha < todayISO || (e.fecha === todayISO && (e.fin || '23:59') <= nowHM)) return;
-        raw.push({key: 'iv:' + e.fecha + ':' + e.inicio + ':' + normTxt(e.titulo).slice(0, 20), fecha: e.fecha, inicio: e.inicio, fin: e.fin, titulo: String(e.titulo || '').replace(/\s*\([^)]*\)\s*$/, ''), organiza: e.organiza || '', enlace: e.enlace || null, teams: e.teams});
+        raw.push({key: 'iv:' + e.fecha + ':' + e.inicio + ':' + normTxt(e.titulo).slice(0, 20), fecha: e.fecha, inicio: e.inicio, fin: e.fin, titulo: String(e.titulo || '').replace(/\s*\([^)]*\)\s*$/, ''), organiza: e.organiza || '', enlace: e.enlace || null, teams: e.teams, gid: e.gid || null});
       });
     } else {
       Object.keys(state.agenda).filter((d) => d >= todayISO).sort().forEach((d) => {
@@ -2652,47 +2725,64 @@
     // agrupa las reuniones periódicas: una fila por serie, con la próxima fecha
     const out = []; const bySerie = {};
     raw.forEach((p) => {
-      const k = normTxt(p.titulo) + '|' + normTxt(p.organiza);
+      const rv = rsvpEntry(p);
+      const k = normTxt(p.titulo) + '|' + normTxt(p.organiza) + (rv ? '|rv:' + rv.docId : '');
       if (bySerie[k]) { bySerie[k].mas.push(p); return; }
       p.mas = []; bySerie[k] = p; out.push(p);
     });
-    out.forEach((p) => { p.done = [p].concat(p.mas).every((x) => answeredLocally(x.fecha, x.inicio, x.titulo)); });
+    out.forEach((p) => { p.rv = rsvpEntry(p); p.done = [p].concat(p.mas).every((x) => answeredLocally(x.fecha, x.inicio, x.titulo) || rsvpEntry(x)); });
     return out;
   }
   const openInvites = () => pendingInvites().filter((p) => !p.done);
   function pendingCount(list) { return list.reduce((n, p) => n + 1 + (p.mas ? p.mas.length : 0), 0); }
   function inviteRow(p, compact) {
-    const row = el('div', 'item' + (p.done ? ' inv-done' : '')); row.appendChild(el('div', 'stripe ' + (p.done ? 'Baja' : 'Media')));
+    const rv = p.rv; const rd = rv ? rv.doc : null;
+    const row = el('div', 'item' + (p.done ? ' inv-done' : '') + (rd ? ' inv-rsvp' : '')); row.appendChild(el('div', 'stripe ' + (p.done ? 'Baja' : 'Media')));
     const body = el('div');
-    const bd = el('div', 'mt-badge'); bd.appendChild(el('span', 'mt-pill' + (p.done ? ' ok' : ''), p.done ? '✓ Respondida en Outlook' : 'Por confirmar')); bd.appendChild(el('span', 'mt-when', dayName(p.fecha).replace(/^./, (c) => c.toUpperCase()) + ' · ' + p.inicio + '–' + p.fin)); body.appendChild(bd);
+    const pillTxt = rd ? (rd.estado === 'enviada' ? '✓ ' + RSVP_TXT[rd.respuesta] : rd.estado === 'cancelada' ? 'Cancelada' : RSVP_TXT[rd.respuesta] + ' · enviando…') : p.done ? '✓ Respondida en Outlook' : 'Por confirmar';
+    const bd = el('div', 'mt-badge'); bd.appendChild(el('span', 'mt-pill' + (p.done ? ' ok' : '') + (rd && rd.estado === 'cola' ? ' wait' : '') + (rd && rd.respuesta === 'rechazar' && rd.estado !== 'cola' ? ' no' : ''), pillTxt)); bd.appendChild(el('span', 'mt-when', dayName(p.fecha).replace(/^./, (c) => c.toUpperCase()) + ' · ' + p.inicio + '–' + p.fin)); body.appendChild(bd);
     body.appendChild(el('div', 'title', p.titulo));
     if (p.organiza) body.appendChild(el('div', 'detail', 'Convoca ' + p.organiza));
-    if (p.mas && p.mas.length) {
+    if (rd) {
+      if (rd.comentario) body.appendChild(el('div', 'detail rsvp-said', '«' + rd.comentario + '»'));
+      const nota = rd.estado === 'enviada' ? (rd.nota || 'Respuesta enviada') : rd.estado === 'cancelada' ? (rd.nota || 'Reunión cancelada') : (rd.graphNota || 'Se envía a Outlook en la próxima actualización (cada hora, con tu PC encendido).');
+      body.appendChild(el('div', 'detail rsvp-note', nota + (rd.serie && p.mas && p.mas.length ? ' · ' + (p.mas.length + 1) + ' fechas de la serie' : '') + (!rd.avisar && rd.avisar !== undefined ? ' · sin avisar al organizador' : '')));
+    } else if (p.mas && p.mas.length) {
       const last = p.mas[p.mas.length - 1];
-      body.appendChild(el('div', 'detail mt-serie', 'Reunión periódica · ' + (p.mas.length + 1) + ' fechas sin responder hasta el ' + dayName(last.fecha).replace(/^[^ ]+ /, '') + '. En Outlook elige «Toda la serie» para contestarlas de una vez.'));
+      body.appendChild(el('div', 'detail mt-serie', 'Reunión periódica · ' + (p.mas.length + 1) + ' fechas sin responder hasta el ' + dayName(last.fecha).replace(/^[^ ]+ /, '') + '.'));
     }
     const agd = state.agenda[p.fecha];
-    if (agd) {
+    if (agd && !p.done) {
       const evs = (agd.eventos || []).filter((e) => e !== p.ev && !/sin confirmar/i.test(e.estado || '') && !(e.inicio === p.inicio && normTxt(e.titulo).startsWith(normTxt(p.titulo).slice(0, 12))));
       const clash = evs.filter((e) => overlaps(e, p));
       body.appendChild(el('div', 'detail' + (clash.length ? ' clash-text' : ''), clash.length ? 'Choca con ' + clash.map((c) => c.titulo).join(', ') : 'Tienes el hueco libre'));
     }
+    const open = !p.done && state.rsvpOpen && state.rsvpOpen.key === p.key ? state.rsvpOpen.resp : null;
+    if (open) body.appendChild(rsvpForm(p, open)); else if (state.rsvpFocus === p.key) state.rsvpFocus = null;
     row.appendChild(body);
     const act = el('div', 'actions');
-    const ol = document.createElement('a'); ol.className = 'btn primary'; ol.target = '_blank'; ol.rel = 'noopener';
-    ol.textContent = p.done ? 'Ver en Outlook ↗' : 'Aceptar en Outlook ↗';
-    if (p.done) ol.className = 'btn';
-    else ol.addEventListener('click', () => setTimeout(() => markAnswered(p, true), 400));
-    ol.href = p.enlace || ('https://outlook.cloud.microsoft/calendar/view/day/' + p.fecha.replace(/-/g, '/'));
-    ol.title = p.enlace ? 'Abre esta reunión en Outlook para aceptarla o rechazarla' : 'Abre ese día en tu calendario de Outlook';
-    act.appendChild(ol);
-    if (p.done) {
+    const olHref = p.enlace || ('https://outlook.cloud.microsoft/calendar/view/day/' + p.fecha.replace(/-/g, '/'));
+    const olLink = (cls, txt) => { const a = document.createElement('a'); a.className = cls; a.target = '_blank'; a.rel = 'noopener'; a.href = olHref; a.textContent = txt; a.title = p.enlace ? 'Abre esta reunión en Outlook' : 'Abre ese día en tu calendario de Outlook'; return a; };
+    if (rd) {
+      if (rd.estado === 'cola') { const u = el('button', 'btn ghost', 'Deshacer'); u.type = 'button'; u.title = 'Anula la respuesta antes de que llegue a Outlook'; u.addEventListener('click', () => undoRsvp(rv)); act.appendChild(u); }
+      act.appendChild(olLink('btn ghost', 'Outlook ↗'));
+    } else if (p.done) {
+      act.appendChild(olLink('btn', 'Ver en Outlook ↗'));
       const undo = el('button', 'btn ghost', 'Sigue pendiente'); undo.type = 'button'; undo.title = 'No llegué a contestarla: vuelve a la lista';
       undo.addEventListener('click', () => markAnswered(p, false)); act.appendChild(undo);
-    } else if (!compact) {
-      const day = el('button', 'btn', 'Ver ese día'); day.type = 'button';
-      day.addEventListener('click', () => { state.agendaDay = p.fecha; show('reuniones'); renderMeetings(); setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); });
-      act.appendChild(day);
+    } else {
+      ['aceptar', 'provisional', 'rechazar'].forEach((r) => {
+        const b = el('button', 'btn' + (r === 'aceptar' ? ' primary' : '') + (open === r ? ' on' : ''), RSVP_BTN[r]); b.type = 'button';
+        b.setAttribute('aria-pressed', String(open === r));
+        b.addEventListener('click', () => { if (open === r) { state.rsvpOpen = null; } else { state.rsvpOpen = {key: p.key, resp: r}; } renderAll(); });
+        act.appendChild(b);
+      });
+      if (!compact) {
+        const day = el('button', 'btn ghost', 'Ver ese día'); day.type = 'button';
+        day.addEventListener('click', () => { state.agendaDay = p.fecha; show('reuniones'); renderMeetings(); setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); });
+        act.appendChild(day);
+      }
+      act.appendChild(olLink('btn ghost', 'Outlook ↗'));
     }
     row.appendChild(act);
     return row;
@@ -2706,7 +2796,7 @@
     if (pend.length) pendBox.appendChild(el('p', 'note mt-sum', nTot + (nTot === 1 ? ' invitación' : ' invitaciones') + ' sin responder' + (nTot !== pend.length ? ' en ' + pend.length + (pend.length === 1 ? ' reunión' : ' reuniones') : '') + (state.invites && state.invites.capturado ? ' · revisado en Outlook ' + fmtStamp.format(new Date(state.invites.capturado)) : '')));
     pend.forEach((p) => pendBox.appendChild(inviteRow(p)));
     if (done.length) {
-      pendBox.appendChild(el('p', 'note inv-done-head', 'Ya contestadas en Outlook · desaparecen solas en la próxima lectura de tu calendario'));
+      pendBox.appendChild(el('p', 'note inv-done-head', 'Ya contestadas · desaparecen solas en la próxima lectura de tu calendario'));
       done.forEach((p) => pendBox.appendChild(inviteRow(p)));
     }
     $('#count-reuniones').textContent = pend.length ? String(pend.length) : '';
@@ -3717,6 +3807,7 @@
     db.collection('agenda').onSnapshot((snap) => { state.agenda = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); renderBrief(); settle(snap); }, fail);
     db.collection('equipo').onSnapshot((snap) => { state.team = snap.docs.map((d) => ({id: d.id, ...d.data()})); renderCatchups(); settle(snap); }, fail);
     db.collection('catchups').onSnapshot((snap) => { state.catchups = snap.docs.map((d) => ({id: d.id, ...d.data()})); renderCatchups(); renderMeetRoom(); renderMeetNotes(); renderMeetings(); settle(snap); }, fail);
+    db.collection('respuestas_reunion').onSnapshot((snap) => { indexRsvp(Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))); renderAll(); }, () => {});
     db.collection('respondidas').onSnapshot((snap) => { state.answered = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); }, () => {});
     db.doc('outlook/enlaces').onSnapshot((snap) => { state.olinks = snap.exists ? snap.data() : null; renderAll(); }, () => {});
     db.doc('invitaciones/pendientes').onSnapshot((snap) => { state.invites = snap.exists ? snap.data() : null; renderAll(); }, () => {});
