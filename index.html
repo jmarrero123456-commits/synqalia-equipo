@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  /* Layout: barra lateral con espacios y tableros + área de trabajo; ficha lateral para cada elemento. En móvil la barra lateral se pliega. */
+  /* Layout: barra lateral con grupos de trabajo y tableros + área de trabajo; ficha lateral para cada elemento. En móvil la barra lateral se pliega. */
   :root {
     --ink:#141a2e; --muted:#5d6680; --line:#dfe3ee; --panel:#fff; --bg:#f3f5fa; --soft:#f7f8fc;
     --accent:#2340d0; --accent-soft:#e6eafc; --bad:#c62f3b; --warn:#b16a00; --ok:#1f7a4c;
@@ -66,6 +66,8 @@
   .nav button { text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; color:var(--ink); }
   .nav button:hover { background:var(--soft); }
   .nav button[aria-current="true"] { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  .nav button.ng { margin-top:12px; border:1px dashed rgba(255,255,255,.22); justify-content:center; color:var(--muted); }
+  .nav button.ng:hover { color:var(--accent); border-color:var(--accent); }
   .nav .n { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .me { border-top:1px solid var(--line); padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
   .me .who { flex:1; min-width:0; } .me .who b { display:block; } .me .who span { color:var(--muted); overflow:hidden; text-overflow:ellipsis; display:block; white-space:nowrap; }
@@ -414,6 +416,7 @@
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import * as RS from './resumen.js?v=2';
 
 const SUPABASE_URL = 'https://bijxbyoahhbvvegvwrlu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_u7Zerof3GH6oB9XaNb-3lA_TmsJcYY6';
@@ -511,7 +514,7 @@ function renderLogin(mode = 'ms', msg = '', cls = '') {
 
 /* ---------------- data ---------------- */
 async function loadAll() {
-  $app.innerHTML = '<div class="loading">Cargando el espacio del equipo…</div>';
+  $app.innerHTML = '<div class="loading">Cargando los grupos de trabajo…</div>';
   try {
     const email = S.user.email.toLowerCase();
     const [mem, sp, bo] = await Promise.all([
@@ -524,7 +527,7 @@ async function loadAll() {
     S.me = S.members.find((m) => m.email.toLowerCase() === email);
     if (!S.me) { await sb.auth.signOut({ scope: 'local' }); S.user = null; return renderLogin('ms', `La cuenta ${email} no está dada de alta en synqalia. Pide a Jaime que te añada al equipo.`, 'err'); }
     const sm = await sb.from('space_members').select('*'); S.spaceMembers = sm.data || [];
-    await loadItems();
+    await Promise.all([loadItems(), RS.loadGoals(CTX())]);
     subscribe();
     route();
   } catch (e) { $app.innerHTML = `<div class="loading">No se ha podido cargar: ${esc(e.message)} <br><br><button class="btn" id="out">Salir</button></div>`; document.getElementById('out').onclick = () => sb.auth.signOut(); }
@@ -550,6 +553,8 @@ function subscribe() {
     S.boards = S.boards.filter((b) => b.id !== p.old.id); if (S.view.id === p.old.id) go({ kind: 'home' }); else scheduleRender();
   }).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'boards' }, (p) => {
     const b = board(p.new.id); if (b && !document.body.classList.contains('resizing')) { Object.assign(b, p.new); scheduleRender(); }
+  }).on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => {
+    RS.loadGoals(CTX()).then(scheduleRender);
   }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (p) => {
     const c = S.comments[p.new.item_id]; if (c && !c.find((x) => x.id === p.new.id)) { c.push(p.new); if (S.open === p.new.item_id) renderDrawer(); }
   }).subscribe();
@@ -607,17 +612,17 @@ function renderSide() {
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
   let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>Synq<span class="alia">alia</span></h1><div class="tagline">Una sola inteligencia</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
     <div class="sq-switch" role="navigation" aria-label="Zona de synqalia"><a href="mi.html">Mi trabajo</a><a href="./" aria-current="page">Equipo</a></div>
-    <button data-go="home" aria-current="${cur('home')}">Resumen del equipo</button>`;
+    <button data-go="home" aria-current="${cur('home')}">${S.me.role === 'admin' ? 'Todos los grupos' : 'Inicio'}</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
-    h += `<button data-space="${esc(s.id)}" aria-current="${cur('space', s.id)}">Panel de ${esc(s.name)}</button>`;
+    h += `<button data-space="${esc(s.id)}" aria-current="${cur('space', s.id)}">Resumen</button>`;
     for (const b of S.boards.filter((b) => b.space_id === s.id)) {
       const open = topItems(b.id).filter((i) => !isClosed(b, i)).length;
       h += `<button data-board="${b.id}" aria-current="${cur('board', b.id)}"><span>${esc(b.name)}</span><span class="n">${open}</span></button>`;
     }
     h += `<button class="nb" data-newboard="${esc(s.id)}">+ Nuevo tablero</button>`;
   }
-  if (S.me.role === 'admin') h += `<div class="sec">Administración</div><button data-go="team" aria-current="${cur('team')}">Equipo y accesos</button>`;
+  if (S.me.role === 'admin') h += `<button class="nb ng" id="newspace">+ Nuevo grupo de trabajo</button><div class="sec">Administración</div><button data-go="team" aria-current="${cur('team')}">Equipo y accesos</button>`;
   h += `</nav><div class="me">${avatar(S.me.email)}<div class="who"><b>${esc(S.me.name)}</b><span>${esc(S.me.email)}</span></div><button class="btn ghost sm" id="logout" title="Salir">Salir</button></div>`;
   el.innerHTML = h;
   el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go({ kind: b.dataset.go }));
@@ -626,6 +631,7 @@ function renderSide() {
   el.querySelector('#logout').onclick = () => sb.auth.signOut();
   el.querySelector('#sidex').onclick = () => toggleSide();
   el.querySelectorAll('[data-newboard]').forEach((b) => b.onclick = () => newBoard(b.dataset.newboard));
+  const ns = el.querySelector('#newspace'); if (ns) ns.onclick = newSpace;
 }
 function headHtml(title, sub, right = '') {
   return `<div class="band"><a class="mi-switch" href="mi.html" title="Volver a Mi trabajo (correo, reuniones, tareas)">← Mi trabajo</a><div class="head"><button class="btn menu-btn" id="menu" aria-label="Menú">☰</button><div class="grow"><h2>${esc(title)}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right}</div></div>`;
@@ -644,7 +650,7 @@ function renderMain() {
   const v = S.view;
   if (v.kind === 'board') renderBoard(el, board(v.id));
   else if (v.kind === 'team') renderTeam(el);
-  else if (v.kind === 'space') renderHome(el, v.id);
+  else if (v.kind === 'space') { if (space(v.id)) RS.renderResumen(el, v.id, CTX()); else { go({ kind: 'home' }); return; } }
   else renderHome(el);
   bindMenu(el);
   el.scrollTop = st;
@@ -724,15 +730,16 @@ function barsHtml(block) {
   if (!block.bars.length) return '<div class="empty">Sin datos</div>';
   return `<div class="bars">${block.bars.map((x) => `<div class="bar" data-b="${block.b.id}" ${x.g ? `data-g="${esc(x.g)}"` : ''} ${x.status ? `data-st="${esc(x.status)}"` : ''}><span>${esc(x.l)}</span><div class="track"><div class="fill" style="width:${(x.v / max) * 100}%;background:${x.c}"></div></div><span class="v">${x.v}</span></div>`).join('')}</div>`;
 }
-async function renderHome(el, onlySpace) {
+function renderHomeInto(el, sid) { return renderHome(el, sid, true); }
+async function renderHome(el, onlySpace, embed = false) {
   const spaces = onlySpace ? S.spaces.filter((s) => s.id === onlySpace) : S.spaces;
   const first = S.me.name.split(' ')[0];
-  let h = `<div class="page">${headHtml(onlySpace ? space(onlySpace)?.name : `Hola, ${first}`, onlySpace ? esc(space(onlySpace)?.description || '') : `Así va el trabajo de ${S.me.role === 'admin' ? 'tu equipo' : 'tu espacio'} hoy, ${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}.`)}`;
+  let h = embed ? '<div style="display:grid;gap:18px">' : `<div class="page">${headHtml(onlySpace ? space(onlySpace)?.name : `Hola, ${first}`, onlySpace ? esc(space(onlySpace)?.description || '') : `Así van ${S.me.role === 'admin' || S.spaces.length > 1 ? 'tus grupos de trabajo' : 'tu grupo de trabajo'} hoy, ${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}.`, S.me.role === 'admin' ? '<button class="btn sm" id="newspace2">+ Nuevo grupo de trabajo</button>' : '')}`;
   for (const s of spaces) {
     const st = spaceStats(s.id);
     const who = S.spaceMembers.filter((m) => m.space_id === s.id).map((m) => member(m.email)?.name.split(' ')[0]).filter(Boolean).join(', ');
     h += `<section style="display:grid;gap:12px">
-      ${onlySpace ? '' : `<div class="head"><div class="grow"><h2 style="font-size:26px">${esc(s.name)}</h2><p>${esc(who)}</p></div><button class="btn sm" data-space="${esc(s.id)}">Abrir panel</button></div>`}
+      ${onlySpace ? '' : `<div class="head"><div class="grow"><h2 style="font-size:26px">${esc(s.name)}</h2><p>${esc(who)}</p></div><button class="btn sm" data-space="${esc(s.id)}">Abrir resumen</button></div>${RS.goalsStrip(s.id, CTX())}`}
       <div class="kpis">${st.cards.map((c) => `<button class="kpi ${c.cls || ''}" data-b="${c.b}" ${c.f?.status ? `data-st="${esc(c.f.status)}"` : ''} ${c.f?.group ? `data-g="${esc(c.f.group)}"` : ''} ${c.f?.late ? 'data-late="1"' : ''}><b>${typeof c.n === 'number' ? c.n : esc(c.n || '0 €')}</b><span>${esc(c.l)}</span></button>`).join('')}</div>
       <div class="grid2">
         ${st.attention?.length ? `<div class="card"><h3>Requiere atención</h3><p class="sub">Vencidos, estancados, urgentes y llamadas pendientes</p><div class="rows">${st.attention.slice(0, onlySpace ? 40 : 8).map((a) => `<div class="r" data-open="${a.it.id}"><span class="t">${esc(a.it.name)}${a.parent ? ` <span class="tag muted">${esc(a.parent.name)}</span>` : ''}</span><span class="tag late">!</span><span class="d">${esc(a.why)}</span></div>`).join('')}</div>${st.attention.length > 8 && !onlySpace ? `<button class="btn sm" data-space="${esc(s.id)}">Ver las ${st.attention.length}</button>` : ''}</div>` : ''}
@@ -740,9 +747,11 @@ async function renderHome(el, onlySpace) {
         <div class="card"><h3>Actividad reciente</h3><p class="sub">Últimos cambios del equipo</p><div class="rows feed" id="feed-${esc(s.id)}"><div class="empty">Cargando…</div></div></div>
       </div></section>`;
   }
+  if (!spaces.length && !embed) h += `<div class="card"><h3>Aún no tienes ningún grupo de trabajo</h3><p class="sub">${S.me.role === 'admin' ? 'Crea el primero con «+ Nuevo grupo de trabajo».' : 'Pide a Jaime que te dé acceso al tuyo.'}</p></div>`;
   h += '</div>';
   el.innerHTML = h;
   el.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => { location.hash = 'space-' + b.dataset.space; });
+  const ns2 = el.querySelector('#newspace2'); if (ns2) ns2.onclick = newSpace;
   el.querySelectorAll('.kpi[data-b], .bar[data-b]').forEach((b) => b.onclick = () => {
     const id = +b.dataset.b; S.filters[id] = { ...(S.filters[id] || {}), q: '', person: null, group: b.dataset.g || null, status: b.dataset.st || null, late: !!b.dataset.late, closed: !!b.dataset.g && groupOf(board(id), b.dataset.g)?.closed };
     go({ kind: 'board', id });
@@ -1256,8 +1265,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.open &
 
 /* ---------------- team admin ---------------- */
 async function renderTeam(el) {
-  el.innerHTML = `<div class="page">${headHtml('Equipo y accesos', 'Quién entra, a qué espacio, y sus códigos de activación.', '<button class="btn primary" id="addm">+ Añadir persona</button>')}<div class="card" id="tm"><div class="empty">Cargando…</div></div>
-  <div class="card"><h3>Cómo dar acceso</h3><p class="sub">1. Da de alta a la persona aquí con el mismo email de su cuenta de Microsoft de Provalliance y asígnale sus espacios. 2. Envíale el enlace app.synqalia.com: entra con «Entrar con Microsoft» y acepta el acceso la primera vez. Solo pueden entrar cuentas de Provalliance dadas de alta aquí. (El acceso con contraseña y código de invitación sigue disponible como alternativa.)</p></div></div>`;
+  el.innerHTML = `<div class="page">${headHtml('Equipo y accesos', 'Quién entra, a qué grupo de trabajo, y sus códigos de activación.', '<button class="btn primary" id="addm">+ Añadir persona</button>')}<div class="card" id="tm"><div class="empty">Cargando…</div></div>
+  <div class="card"><h3>Cómo dar acceso</h3><p class="sub">1. Da de alta a la persona aquí con el mismo email de su cuenta de Microsoft de Provalliance y asígnale sus grupos de trabajo. 2. Envíale el enlace app.synqalia.com: entra con «Entrar con Microsoft» y acepta el acceso la primera vez. Solo pueden entrar cuentas de Provalliance dadas de alta aquí. (El acceso con contraseña y código de invitación sigue disponible como alternativa.)</p></div></div>`;
   bindMenu(el);
   el.querySelector('#addm').onclick = addMember;
   const { data, error } = await sb.rpc('admin_members');
@@ -1288,7 +1297,66 @@ async function addMember() {
   const { error } = await sb.from('members').insert({ email: email.trim().toLowerCase(), name, role: 'member', color: ['#c2410c', '#0f766e', '#9333ea', '#be185d', '#4d7c0f', '#0369a1'][S.members.length % 6] });
   if (error) return err(error);
   const mem = await sb.from('members').select('email,name,role,color,activated'); S.members = mem.data;
-  toast('Persona añadida. Marca a qué espacios tiene acceso.'); renderMain();
+  toast('Persona añadida. Marca a qué grupos de trabajo tiene acceso.'); renderMain();
+}
+
+/* ---------------- grupos de trabajo ---------------- */
+function CTX() { return { S, sb, esc, fmtE, fmtD, ago, board, space, member, topItems, groupOf, optColor, pill, avatar, headHtml, go, openItem, toast, err, saveBoard, renderMain, renderHomeInto }; }
+const MARCAS = [{ label: 'OMC', color: '#ff007f' }, { label: 'JLD', color: '#ffcb00' }, { label: 'LLONGUERAS', color: '#037f4c' }, { label: 'FP', color: '#007eb5' }, { label: 'TBC', color: '#cab641' }];
+const SPACE_TEMPLATES = {
+  expansion: { label: 'Expansión (leads + proyectos con canon y objetivo)', boards: [
+    { name: 'Leads', kind: 'leads', columns: [
+      { key: 'estado', title: 'Estado', type: 'status', done: ['Listo'], options: [{ label: 'Contactados', color: '#9d50dd' }, { label: 'Llamar de nuevo', color: '#579bfc' }, { label: 'Stand BY', color: '#784bd1' }, { label: 'Descartado', color: '#df2f4a' }, { label: 'Listo', color: '#00c875' }] },
+      { key: 'proxima_accion', title: 'Próxima acción', type: 'text' }, { key: 'fecha', title: 'Fecha', type: 'date' },
+      { key: 'origen', title: 'Origen', type: 'status', options: [{ label: 'Web', color: '#00c875' }, { label: 'Feria', color: '#ffcb00' }, { label: 'Contactos', color: '#cab641' }, { label: 'Portal de franquicias', color: '#579bfc' }] },
+      { key: 'marca', title: 'Marca', type: 'status', options: MARCAS }, { key: 'zona_de_interes', title: 'Zona de interés', type: 'text' },
+      { key: 'telefono', title: 'Teléfono', type: 'text' }, { key: 'email', title: 'Email', type: 'text' }, { key: 'capacidad_inversion', title: 'Capacidad inversión', type: 'text' }],
+      groups: [{ title: 'Pendiente de contactar', color: '#579bfc' }, { title: '1º filtro', color: '#a25ddc' }, { title: 'Seguimiento', color: '#cab641' }, { title: 'En curso', color: '#00c875' }, { title: 'Stand by', color: '#7f5347' }, { title: 'Firmados', color: '#037f4c', closed: true }, { title: 'Descartados', color: '#df2f4a', closed: true }] },
+    { name: 'Proyectos', kind: 'pipeline', columns: [
+      { key: 'tipo_de_operacion', title: 'Tipo de operación', type: 'status', options: [{ label: 'Apertura', color: '#00c875' }, { label: 'Traspaso', color: '#fdab3d' }, { label: 'Transformación', color: '#579bfc' }, { label: 'Adquisición', color: '#007eb5' }, { label: 'Renovación', color: '#037f4c' }] },
+      { key: 'marca', title: 'Marca', type: 'status', options: MARCAS }, { key: 'canon', title: 'Canon', type: 'number' },
+      { key: 'ubicacion', title: 'Ubicación', type: 'text' }, { key: 'contacto', title: 'Contacto', type: 'text' }, { key: 'fecha', title: 'Fecha', type: 'date' }, { key: 'comentarios', title: 'Comentarios', type: 'text' }],
+      groups: [{ title: 'Total proyectos', color: '#579bfc' }, { title: 'En negociación', color: '#a25ddc' }, { title: 'Firmado', color: '#00c875', closed: true }, { title: 'Descartados', color: '#df2f4a', closed: true }] }],
+    goal: (y) => ({ title: `Canon firmado ${y}`, metric: 'sum', value_key: 'canon', boardIdx: [1], year: y, target: 0 }) },
+  obras: { label: 'Obras y proyectos', boards: [{ name: 'Obras', tpl: 'seguimiento' }] },
+  tareas: { label: 'Tareas de equipo', boards: [{ name: 'Tareas', tpl: 'tareas' }] },
+  blanco: { label: 'En blanco (sin tableros)', boards: [] },
+};
+async function newSpace() {
+  if (S.me.role !== 'admin') return;
+  const people = S.members.filter((m) => m.role !== 'admin');
+  const v = await formModal('Nuevo grupo de trabajo', `
+    <label class="field"><span>Nombre</span><input name="name" required placeholder="p. ej. Marketing, Formación, Aperturas 2027"></label>
+    <label class="field"><span>Descripción (opcional)</span><input name="description"></label>
+    <label class="field"><span>Plantilla</span><select name="tpl">${Object.entries(SPACE_TEMPLATES).map(([k, t]) => `<option value="${k}">${esc(t.label)}</option>`).join('')}</select></label>
+    <div class="field"><span>Personas con acceso (tú entras siempre)</span><div style="display:flex;gap:12px;flex-wrap:wrap;font-size:14px">${people.map((m) => `<label><input type="checkbox" name="p_${esc(m.email)}"> ${esc(m.name)}</label>`).join('') || '<span class="sub">Da de alta personas en «Equipo y accesos».</span>'}</div></div>
+    <p class="msg" style="margin:0">Después podrás añadir tableros, cambiar columnas y fases, y poner objetivos desde su Resumen.</p>`, 'Crear grupo de trabajo');
+  if (!v || !v.name.trim()) return;
+  const name = v.name.trim();
+  let id = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'grupo';
+  for (let i = 2; S.spaces.some((x) => x.id === id); i++) id = id.replace(/-\d+$/, '') + '-' + i;
+  const t = SPACE_TEMPLATES[v.tpl];
+  try {
+    const { data: sp, error } = await sb.from('spaces').insert({ id, name, description: v.description?.trim() || null, icon: v.tpl, sort: Math.max(0, ...S.spaces.map((x) => x.sort || 0)) + 1, settings: { template: v.tpl } }).select().single();
+    if (error) throw error;
+    S.spaces.push(sp);
+    const emails = Object.keys(v).filter((k) => k.startsWith('p_')).map((k) => k.slice(2));
+    if (emails.length) { const { error: e2 } = await sb.from('space_members').insert(emails.map((email) => ({ space_id: id, email }))); if (e2) throw e2; S.spaceMembers.push(...emails.map((email) => ({ space_id: id, email }))); }
+    const made = [];
+    let sort = Math.max(0, ...S.boards.map((b) => b.sort || 0));
+    for (const bd of t.boards) {
+      const base = bd.tpl ? TEMPLATES[bd.tpl] : bd;
+      const row = { space_id: id, name: bd.name, kind: base.kind, columns: base.columns, groups: base.groups.map((g) => ({ id: gid(), ...g, closed: !!g.closed })), sub_columns: SUB_DEFAULT, sort: ++sort };
+      const { data, error: e3 } = await sb.from('boards').insert(row).select().single(); if (e3) throw e3;
+      if (!board(data.id)) S.boards.push(data); made.push(data);
+    }
+    if (t.goal && made.length) {
+      const g = t.goal(new Date().getFullYear());
+      const { error: e4 } = await sb.from('goals').insert({ space_id: id, title: g.title, metric: g.metric, value_key: g.value_key, board_ids: g.boardIdx.map((i) => made[i]?.id).filter(Boolean), year: g.year, target: g.target });
+      if (e4) throw e4; await RS.loadGoals(CTX());
+    }
+    toast('Grupo de trabajo creado'); location.hash = 'space-' + id;
+  } catch (e) { err(e); }
 }
 
 boot();
