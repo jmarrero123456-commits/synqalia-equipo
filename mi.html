@@ -441,6 +441,28 @@
   .tk-title { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
   .tk-count { font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
   .tk-count:empty { display: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nt-wide { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); color: var(--accent); font: 600 14px/1 var(--font-body); letter-spacing: .1px; cursor: pointer; transition: background .12s, border-color .12s; }
+  .nt-wide:hover { background: color-mix(in srgb, var(--accent) 13%, var(--panel)); border-color: var(--accent); }
+  .nt-wide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .nt-wide svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; transition: transform .15s; }
+  .nt-wide[aria-expanded="true"] { background: var(--panel); color: var(--muted); border-color: var(--line); }
+  .nt-wide[aria-expanded="true"] svg { transform: rotate(45deg); }
+  .nt-saved { display: block; margin-top: 6px; } .nt-saved:empty { display: none; }
+  #view-tareas .nt-panel { margin-top: 12px; }
+  .tk-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+  .tk-row .tk-quick { margin: 0; flex: 1 1 auto; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .tk-row .tk-quick::-webkit-scrollbar { display: none; }
+  .tk-row .qv { white-space: nowrap; }
+  .tk-row .tk-count { background: transparent; border: 0; padding: 0 2px; white-space: nowrap; }
+  .tk-filter { position: relative; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+  .tk-filter:hover { color: var(--ink); border-color: var(--muted); }
+  .tk-filter svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+  .tk-filter[aria-expanded="true"] { background: var(--navy-2, var(--ink)); border-color: var(--navy-2, var(--ink)); color: #fff; }
+  .tk-filter.on::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--panel); }
+  #tk-adv .tk-bar { margin: 0; } #tk-adv .tk-bar + .tk-bar { margin-top: 10px; }
+  #tk-adv { margin-bottom: 10px; }
+  @media (max-width: 560px) { .tk-row .tk-count { display: none; } }
   .nt-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px 8px 11px; font-weight: 700; }
   .nt-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; transition: transform .15s; }
   .btn.primary.nt-btn[aria-expanded="true"] { background: var(--panel) !important; color: var(--ink) !important; border-color: #c8ced9 !important; }
@@ -947,11 +969,9 @@
   <main id="view-tareas" class="view" hidden style="display:grid; gap:18px;">
 
     <section class="card">
-      <div class="tk-head">
-        <div class="tk-title"><h2>Mis tareas</h2><span class="tk-count" id="tk-count" aria-live="polite"></span></div>
-        <span class="note" id="nt-saved" aria-live="polite"></span>
-        <button type="button" class="btn primary nt-btn" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button>
-      </div>
+      <h2 class="sr-only">Mis tareas</h2>
+      <button type="button" class="nt-wide" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button>
+      <span class="note nt-saved" id="nt-saved" aria-live="polite"></span>
       <div class="nt-panel" id="nt-panel" hidden>
       <form id="task-form" class="form-grid">
         <div class="field" style="grid-column:1/-1"><label for="tf-titulo">Escríbela o díctala, todo en uno</label><div class="tf-voice"><input id="tf-titulo" required placeholder="Ej.: «comprar comida para Teddy con Davinia el viernes» · «llamar a Izaskun por la factura de LOIDA, urgente»"><div class="tf-ctl" id="tf-ctl" hidden><button type="button" class="tf-mic" id="tf-mic" aria-label="Dictar la tarea" title="Dictar la tarea"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><span class="tf-live" aria-hidden="true"><i></i><i></i><i></i><i></i></span><button type="button" class="tf-x" id="tf-x" aria-label="Cancelar el dictado" title="Cancelar (borra lo dictado)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button><button type="button" class="tf-ok" id="tf-ok" aria-label="Terminar el dictado" title="Listo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.5 12.5 4.2 4.2L18.5 8"/></svg></button></div></div></div>
@@ -963,20 +983,25 @@
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
-      <div class="tk-quick" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
-      <div class="tk-bar">
+      <div class="tk-row">
+        <div class="tk-quick" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
+        <span class="tk-count" id="tk-count" aria-live="polite"></span>
+        <button type="button" class="tk-filter" id="tk-more" aria-expanded="false" aria-controls="tk-adv" aria-label="Filtros" title="Filtros"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.2 7.4V18l-3.6 1.8v-7.4z"/></svg></button>
+      </div>
+      <div class="tk-adv" id="tk-adv" hidden>
+      <div class="tk-bar tk-bar1">
         <div class="tk-search"><input class="search" id="tk-q" type="search" autocomplete="off" placeholder="Buscar persona o tarea… (ej.: Davinia, Teddy, factura)" aria-label="Buscar en mis tareas"></div>
         <label class="tk-sel">Persona<select id="tk-person" aria-label="Filtrar por persona"><option value="">Todas</option></select></label>
         <div class="tk-mode" role="group" aria-label="Forma de ver las tareas"><button type="button" data-mode="lista" aria-pressed="true">☰ Lista</button><button type="button" data-mode="tabla" aria-pressed="false">▦ Tabla</button></div>
-        <button class="btn" type="button" id="tk-more" aria-expanded="false" aria-controls="tk-adv">Más filtros</button>
         <button class="btn ghost" type="button" id="tk-clear" hidden>Quitar filtros</button>
       </div>
-      <div class="tk-bar tk-adv" id="tk-adv" hidden>
+        <div class="tk-bar">
         <label class="tk-sel">Ver<select id="tk-estado"><option value="abiertas">Abiertas</option><option value="vencidas">Vencidas</option><option value="hoy">Para hoy (vencen hoy o antes)</option><option value="semana">Esta semana</option><option value="sinfecha">Sin fecha</option><option value="hechas">Hechas</option><option value="todas">Todas</option></select></label>
         <label class="tk-sel">Pendiente de<select id="tk-who"><option value="">Todos</option><option value="mia">Mí</option><option value="tercero">Otros (espero respuesta)</option><option value="vercon">Ver con alguien</option></select></label>
         <label class="tk-sel">Prioridad<select id="tk-prio"><option value="">Todas</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
         <label class="tk-sel">Empresa<select id="tk-emp"><option value="">Todas</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></label>
         <label class="tk-sel">Agrupar<select id="tk-group"><option value="persona">Por persona</option><option value="espera">Por quién lo tiene</option><option value="prioridad">Por prioridad</option><option value="fecha">Por fecha</option><option value="empresa">Por empresa</option><option value="">Sin agrupar</option></select></label>
+        </div>
       </div>
       <div class="list" id="task-list"></div>
     </section>
@@ -1773,12 +1798,8 @@
   const weekEndISO = (() => { const d = new Date(todayISO + 'T12:00:00'); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); return iso(d); })();
   const forToday = (t) => t.estado !== 'hecha' && (t.vence === todayISO || isLate(t));
   const QUICK = [
-    {k: 'yo', label: 'Mis tareas', set: {taskP: ME_GROUP}, test: (t) => t.estado !== 'hecha' && isMe(t.persona)},
     {k: 'hoy', label: 'Resolver hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
     {k: 'mias', label: 'Dependen de mí', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
-    {k: 'vercon', label: 'Ver con', set: {taskW: 'vercon'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'vercon'},
-    {k: 'reclamar', label: 'Reclamar hoy', set: {taskF: 'hoy', taskW: 'tercero'}, test: (t) => forToday(t) && espOf(t) === 'tercero', hot: true},
-    {k: 'alta', label: 'Prioridad alta', set: {taskPr: 'Alta'}, test: (t) => t.estado !== 'hecha' && t.prioridad === 'Alta'},
   ];
   const quickBase = {taskF: 'abiertas', taskW: '', taskPr: '', taskP: '', empF: '', taskQ: ''};
   function applyQuick(qv) {
@@ -1844,9 +1865,10 @@
     const filtered = !!(q || state.taskP || state.empF || state.taskW || state.taskPr || state.taskF !== 'abiertas');
     renderQuick();
     const advOn = state.taskF !== 'abiertas' || state.taskW || state.taskPr || state.empF || state.taskG !== 'persona';
-    const mb = $('#tk-more'); mb.replaceChildren(document.createTextNode('Más filtros')); if (advOn) { const dt = el('span', 'dot'); dt.title = 'Hay filtros puestos aquí'; mb.appendChild(dt); }
+    const isQuick = QUICK.some((qv) => { const st = Object.assign({}, quickBase, qv.set); return Object.keys(st).every((k) => (state[k] || '') === (st[k] || '')); });
+    $('#tk-more').classList.toggle('on', !!((filtered && !isQuick) || advOn && !isQuick || state.taskG !== 'persona')); $('#tk-more').title = $('#tk-more').classList.contains('on') ? 'Filtros (hay filtros puestos)' : 'Filtros';
     $('#tk-clear').hidden = !filtered;
-    $('#tk-count').textContent = (rows.length === 1 ? '1 tarea' : rows.length + ' tareas') + (others.length ? ' · ' + others.length + ' en manos de otros' : '');
+    $('#tk-count').textContent = rows.length === 1 ? '1 tarea' : rows.length + ' tareas';
     if (!rows.length && others.length) list.appendChild(el('div', 'empty', 'Nada de esto depende de ti ahora mismo 🎉 Abajo tienes lo que está en manos de otros.'));
     else if (!rows.length) list.appendChild(el('div', 'empty', q || state.taskP ? 'No hay tareas que coincidan. Prueba con otro nombre o pulsa «Quitar filtros».' : state.taskF === 'hechas' ? 'Aún no has marcado ninguna como hecha.' : 'Nada pendiente con este filtro.'));
     document.querySelectorAll('.tk-mode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.taskMode)));
