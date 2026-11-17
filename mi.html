@@ -447,6 +447,11 @@
   .nt-btn[aria-expanded="true"] svg { transform: rotate(45deg); }
   .nt-panel { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
   .nt-panel #task-form { margin-top: 0; }
+  @media (min-width: 701px) { #task-form.form-grid { grid-template-columns: 1.2fr 1.3fr 1fr 1fr 1fr; } }
+  .mc.asig { color: #5b3fc4; border-color: #cfc3f5; background: #f3efff; font-weight: 700; }
+  :root[data-theme="dark"] .mc.asig { color: #c9b8ff; background: #2a2245; border-color: #4a3d7a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mc.asig { color: #c9b8ff; background: #2a2245; border-color: #4a3d7a; } }
+  .item.asignada { box-shadow: inset 3px 0 0 #7c5cf0; }
   #nt-saved { color: var(--ok); font-weight: 600; }
   /* Catch-ups · diseño fino */
   .cu-layout:not([hidden]) { display: grid; gap: 18px; align-items: start; }
@@ -909,11 +914,12 @@
       <div class="nt-panel" id="nt-panel" hidden>
       <form id="task-form" class="form-grid">
         <div class="field" style="grid-column:1/-1"><label for="tf-titulo">Escríbela o díctala, todo en uno</label><div class="tf-voice"><input id="tf-titulo" required placeholder="Ej.: «comprar comida para Teddy con Davinia el viernes» · «llamar a Izaskun por la factura de LOIDA, urgente»"><div class="tf-ctl" id="tf-ctl" hidden><button type="button" class="tf-mic" id="tf-mic" aria-label="Dictar la tarea" title="Dictar la tarea"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><span class="tf-live" aria-hidden="true"><i></i><i></i><i></i><i></i></span><button type="button" class="tf-x" id="tf-x" aria-label="Cancelar el dictado" title="Cancelar (borra lo dictado)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button><button type="button" class="tf-ok" id="tf-ok" aria-label="Terminar el dictado" title="Listo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.5 12.5 4.2 4.2L18.5 8"/></svg></button></div></div></div>
+        <div class="field"><label for="tf-asig">Asignar a</label><select id="tf-asig"><option value="">Nadie (la hago yo)</option></select></div>
         <div class="field"><label for="tf-persona">Persona</label><input id="tf-persona" list="tf-personas" placeholder="La detecto sola"><datalist id="tf-personas"></datalist></div>
         <div class="field"><label for="tf-empresa">Empresa</label><select id="tf-empresa"><option value="">La detecto sola</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></div>
         <div class="field"><label for="tf-prio">Prioridad</label><select id="tf-prio"><option value="">La detecto sola</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
         <div class="field"><label for="tf-vence">Fecha límite</label><input id="tf-vence" type="date"></div>
-        <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Si rellenas alguna, mando la tuya.</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
+        <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
       <div class="tk-quick" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
@@ -1260,7 +1266,7 @@
   $('#today-label').textContent = fmtLong.format(now).replace(/^./, (c) => c.toUpperCase());
 
   const PRIO = {Alta: 0, Media: 1, Baja: 2};
-  const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: '', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'abiertas', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}};
+  const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: '', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'abiertas', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}, members: []};
   const RLABEL = {borrador: 'Borrador en synqalia', lista: 'En cola → Borradores de Outlook', cola_borrador: 'En cola → Borradores de Outlook', en_outlook: 'En Borradores de Outlook', enviada: 'Enviada', error: 'Revisar'};
   let db = null, sample = null, assets = null;
 
@@ -1326,6 +1332,7 @@
   async function addTask(t) {
     const id = newId();
     const body = {titulo: String(t.titulo || '').slice(0, 300), detalle: String(t.detalle || '').slice(0, 1000), empresa: t.empresa || 'Provalliance', prioridad: PRIO[t.prioridad] != null ? t.prioridad : 'Media', vence: /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : null, estado: 'pendiente', origen: t.origen || 'manual', ref: t.ref || null, persona: t.persona || null, creada: new Date().toISOString(), hecha: null};
+    if (t.extra) Object.assign(body, t.extra);
     if (t.espera) body.espera = t.espera;
     else if (body.persona && !isMe(body.persona) && /\b(ver|verlo|hablar|hablarlo|comentar|comentarlo|tratar|tratarlo|revisar|revisarlo)\s+con\b/i.test(body.titulo + ' ' + body.detalle)) { body.espera = 'vercon'; body.verCon = body.persona; }
     return (await write(() => db.collection('tareas').doc(id).set(body), 'Tarea guardada')) ? id : false;
@@ -1333,7 +1340,7 @@
 
   // ---------- render tareas ----------
   function taskItem(t, compact) {
-    const row = el('div', 'item' + (t.estado === 'hecha' ? ' done' : ''));
+    const row = el('div', 'item' + (t.estado === 'hecha' ? ' done' : '') + (t.asignadaPor ? ' asignada' : ''));
     const chk = el('button', 'check'); chk.type = 'button'; chk.setAttribute('role', 'checkbox');
     chk.setAttribute('aria-checked', String(t.estado === 'hecha')); chk.setAttribute('aria-label', 'Marcar como hecha: ' + t.titulo);
     chk.addEventListener('click', () => {
@@ -1346,6 +1353,8 @@
     body.appendChild(ttl);
     if (t.detalle && !compact) body.appendChild(el('div', 'detail', t.detalle));
     const av = Array.isArray(t.avances) ? t.avances : [];
+    const avA = t.asignadaA && Array.isArray(t.asigAvances) ? t.asigAvances : [];
+    if (avA.length) { const last = avA[avA.length - 1]; const lp = el('div', 'last-prog'); lp.appendChild(el('b', null, 'Avance de ' + firstName(t.asignadaA.nombre) + ' (' + agoLabel(last.fecha) + '): ')); lp.appendChild(document.createTextNode(String(last.texto).length > 140 ? String(last.texto).slice(0, 140) + '…' : last.texto)); body.appendChild(lp); }
     if (av.length) { const last = av[av.length - 1]; const lp = el('div', 'last-prog'); lp.appendChild(el('b', null, 'Último avance (' + agoLabel(last.fecha) + '): ')); lp.appendChild(document.createTextNode(String(last.texto).length > 140 ? String(last.texto).slice(0, 140) + '…' : last.texto)); body.appendChild(lp); }
     const meta = el('div', 'meta tmeta');
     const ICON = {
@@ -1359,6 +1368,10 @@
     const chip = (cls, icon, text, tag) => { const c = el(tag || 'span', 'mc ' + cls); if (icon) { const i = el('span', 'mi'); i.innerHTML = ICON[icon]; c.appendChild(i); } c.appendChild(el('span', null, text)); return c; };
     const other = otherPerson(t);
     const open = t.estado !== 'hecha';
+    // 0. Tarea asignada: quién la encargó / a quién se la encargaste
+    if (t.asignadaPor) { const c = chip('asig', 'flag', 'Te la asigna ' + firstName(t.asignadaPor.nombre) + ' · ' + agoLabel(t.asignadaPor.fecha)); c.title = 'Creada por ' + t.asignadaPor.nombre + ' y asignada a ti'; meta.appendChild(c); }
+    if (t.asignadaA && t.asigEstado === 'quitada') meta.appendChild(chip('late', 'user', firstName(t.asignadaA.nombre) + ' la ha quitado de su lista'));
+    else if (t.asignadaA && !open) meta.appendChild(chip('asig', 'me', 'Hecha por ' + firstName(t.asignadaA.nombre)));
     // 1. De quién depende (pulsable)
     if (open) {
       const w3 = espOf(t) === 'tercero';
@@ -1369,7 +1382,7 @@
         vc.addEventListener('click', (e) => { e.stopPropagation(); vc.replaceWith(verConForm(t)); const f = document.getElementById('vc-in-' + t.id); if (f) { f.focus(); f.select(); } });
         meta.appendChild(vc);
       } else {
-      const wt = chip(w3 ? 'wait' : 'mine', w3 ? 'wait' : 'me', w3 ? 'Esperando a ' + (waitWho(t) || 'respuesta') : 'Me toca a mí', 'button'); wt.type = 'button';
+      const wt = chip(w3 ? 'wait' : 'mine', w3 ? 'wait' : 'me', w3 ? (t.asignadaA ? 'Asignada a ' + firstName(t.asignadaA.nombre) : 'Esperando a ' + (waitWho(t) || 'respuesta')) : 'Me toca a mí', 'button'); wt.type = 'button';
       wt.title = w3 ? 'Pulsa si ahora vuelve a depender de ti' : 'Pulsa para pasar la pelota a otra persona (sale de tu lista)';
       if (w3) wt.addEventListener('click', () => write(() => db.collection('tareas').doc(t.id).update({espera: 'mia'}), 'Ahora depende de ti'));
       else wt.addEventListener('click', (e) => { e.stopPropagation(); wt.replaceWith(passForm(t)); const f = document.getElementById('ps-in-' + t.id); if (f) { f.focus(); f.select(); } });
@@ -1378,7 +1391,7 @@
     }
     // 2. Con quién
     if (other && (!open || espOf(t) === 'mia' || (espOf(t) === 'vercon' && t.verCon && !sameName(t.verCon, other)) || (espOf(t) === 'tercero' && t.esperaA && !sameName(t.esperaA, other)))) meta.appendChild(chip('who', 'user', other));
-    else if (isMe(t.persona) && espOf(t) === 'mia') meta.appendChild(chip('who', 'user', 'Yo'));
+    else if (isMe(t.persona) && espOf(t) === 'mia' && !t.asignadaPor) meta.appendChild(chip('who', 'user', 'Yo'));
     // 3. Próxima fecha
     if (open && t.vence) {
       const la = lastAvance(t);
@@ -1453,8 +1466,8 @@
       const del = el('button', 'btn ghost', 'Borrar'); del.type = 'button';
       let armed = false;
       del.addEventListener('click', () => {
-        if (!armed) { armed = true; del.textContent = '¿Seguro?'; setTimeout(() => { armed = false; del.textContent = 'Borrar'; }, 3000); return; }
-        write(() => db.collection('tareas').doc(t.id).delete(), 'Tarea borrada');
+        if (!armed) { armed = true; del.textContent = t.asignadaA ? '¿Seguro? Se le quita también a ' + firstName(t.asignadaA.nombre) : t.asignadaPor ? '¿Seguro? ' + firstName(t.asignadaPor.nombre) + ' verá que la has quitado' : '¿Seguro?'; setTimeout(() => { armed = false; del.textContent = 'Borrar'; }, 3000); return; }
+        write(() => db.collection('tareas').doc(t.id).delete(), t.asignadaA ? 'Tarea borrada (también de ' + firstName(t.asignadaA.nombre) + ')' : 'Tarea borrada');
       });
       act.appendChild(del);
     }
@@ -1857,7 +1870,7 @@
   /* ---------- Nueva tarea: dictar con el micrófono (Chrome / Edge / Samsung Internet) ----------
      Pulsar el micro empieza a escuchar y va escribiendo en el campo; ✓ termina y deja el texto, ✕ (o Esc) cancela y lo borra.
      Lo dictado se suma a lo que ya hubiera escrito. No se envía sola: se revisa y se pulsa «Añadir tarea». */
-  const TF_HELP = 'Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Si rellenas alguna, mando la tuya.';
+  const TF_HELP = 'Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».';
   const tfMic = { rec: null, want: false, base: '', fin: '', int: '', idle: 0 };
   function tfMicPaint(on) { $('.tf-voice').classList.toggle('listening', on); }
   /* cancel = true (botón X o Esc): se descarta lo dictado y queda lo que hubiera escrito antes */
@@ -1924,18 +1937,63 @@
     if (sample) {
       st.textContent = 'Organizando la tarea…';
       try {
-        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null}. Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw);
+        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null; "asignar": true si la nota pide asignar o encargar la tarea a esa persona para que la haga ella (dice «asigna», «asignar», «asígnale», «asignada a», «encárgale», «que se encargue»…), si no false}. Si la tarea se asigna, el título es lo que tiene que hacer esa persona (ej.: «asigna a Izaskun cerrar el salón el viernes por la mañana» → titulo «Cerrar el salón el viernes por la mañana», persona Izaskun, asignar true). Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw);
         if (out && out.titulo) p = out;
       } catch (err) { /* se guarda tal cual */ }
     } else {
       const hit = people.find((n) => raw.toLowerCase().includes(n.split(' ')[0].toLowerCase()));
       if (hit) p.persona = hit;
     }
-    const persona = $('#tf-persona').value.trim() || (p.persona && !isMe(p.persona) ? p.persona : null);
-    const ok = await addTask({titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: $('#tf-vence').value || p.vence || null, origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''});
+    let persona = $('#tf-persona').value.trim() || (p.persona && !isMe(p.persona) ? p.persona : null);
+    // ¿A quién se asigna? Lo elegido en «Asignar a» manda; si no, lo que diga la nota («asigna a…»)
+    const pick = $('#tf-asig').value;
+    let to = pick ? state.members.find((m) => m.email === pick) : null;
+    let aviso = '';
+    if (!to && (p.asignar === true || (!sample && /\basign/i.test(raw))) && persona) {
+      to = memberFor(persona);
+      if (!to) aviso = firstName(persona) + ' aún no tiene synqalia: la guardo en tu lista con ' + firstName(persona) + ' (no se le ha enviado).';
+    }
+    if (to) persona = to.name;
+    const data = {titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: $('#tf-vence').value || p.vence || null, origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''};
+    if (to) { data.espera = 'tercero'; data.extra = {esperaA: to.name, asignadaA: {email: to.email, nombre: to.name, fecha: new Date().toISOString()}}; }
+    const ok = await addTask(data);
+    if (ok && to) {
+      st.textContent = 'Enviándosela a ' + firstName(to.name) + '…';
+      const res = await sendAssigned(ok, to, data);
+      if (!res.ok) aviso = 'No se ha podido enviar a ' + firstName(to.name) + ' (' + res.error + '). Queda en tu lista; prueba otra vez desde «Editar».';
+      else aviso = res.pendiente ? firstName(to.name) + ' la verá en su synqalia la primera vez que entre.' : '';
+    }
     btn.disabled = false;
-    if (ok) { st.textContent = 'Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Si rellenas alguna, mando la tuya.'; ntOpen(false); $('#nt-saved').textContent = 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.'; ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; }
+    if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
   });
+
+  // ---------- tareas asignadas (a y desde otras personas de synqalia) ----------
+  function memberFor(name) {
+    const n = String(name || '').trim(); if (!n) return null;
+    const exact = state.members.filter((m) => sameName(m.name, n)); if (exact.length === 1) return exact[0];
+    const byFirst = state.members.filter((m) => normTxt(firstName(m.name)) === normTxt(firstName(n))); return byFirst.length === 1 ? byFirst[0] : null;
+  }
+  async function sendAssigned(id, to, data) {
+    const sbx = window.__sb; if (!sbx) return {ok: false, error: 'sin conexión'};
+    try {
+      const { data: r, error } = await sbx.rpc('assign_task', { p_to_email: to.email, p_id: id, p_data: {titulo: data.titulo, detalle: data.detalle, empresa: data.empresa, prioridad: data.prioridad, vence: data.vence} });
+      if (error) throw error;
+      return {ok: true, pendiente: r === 'pendiente'};
+    } catch (e) {
+      await write(() => db.collection('tareas').doc(id).update({asignadaA: null, espera: 'mia', esperaA: null}), null);
+      return {ok: false, error: /miembro|synqalia/.test(String(e.message)) ? String(e.message) : 'error de conexión'};
+    }
+  }
+  async function loadMembers() {
+    const sbx = window.__sb; if (!sbx) return;
+    try {
+      const me = String((window.__sqUser && window.__sqUser.email) || '').toLowerCase();
+      const { data } = await sbx.from('members').select('email,name').order('name');
+      state.members = (data || []).filter((m) => m.email && m.email.toLowerCase() !== me).map((m) => ({email: m.email.toLowerCase(), name: m.name || m.email.split('@')[0]}));
+      const sel = $('#tf-asig'); sel.replaceChildren(new Option('Nadie (la hago yo)', ''), ...state.members.map((m) => new Option(m.name, m.email)));
+      sbx.rpc('claim_assigned_tasks').then(() => {}, () => {}); // tareas que te asignaron antes de tu primera entrada
+    } catch (e) { /* sin lista de personas: se puede seguir creando tareas propias */ }
+  }
 
   // ---------- render correo ----------
   const DLABEL = {aceptar: 'Aceptar', rechazar: 'Rechazar', proponer: 'Proponer otra hora', reorganizar: 'Reorganizar agenda'};
@@ -3885,6 +3943,7 @@
     assets = await claude.use('assets').catch(() => null);
     db = await claude.use('db').catch(() => null);
     if (!db) { setSync('Inicia sesión en synqalia para ver tus datos.', true); return; }
+    loadMembers();
     let pending = 8;
     const timer = setTimeout(() => setSync('Tus datos tardan en llegar. Comprueba la conexión.', true), 10000);
     const settle = (snap) => { if (snap && snap.metadata && !snap.metadata.fromCache) { pending = Math.max(0, pending - 1); if (!pending) { clearTimeout(timer); setSync('Al día'); } } };
