@@ -548,6 +548,8 @@
   .rsvp-btns{display:flex;gap:8px;flex-wrap:wrap}
   .btn.danger{background:#c0392b;border-color:#c0392b;color:#fff}
   .actions .btn.on{outline:2px solid var(--accent,#5fe0cf);outline-offset:1px}
+  #meet-pending .item, #hoy-meet .item{grid-template-columns:auto minmax(0,1fr)}
+  #meet-pending .item > .actions, #hoy-meet .item > .actions{grid-column:2 / -1;justify-content:flex-start}
   .day-pick{position:relative;padding:0;display:inline-flex;align-items:center}
   .day-pick select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;color:inherit;padding:5px 30px 5px 12px;cursor:pointer;max-width:100%}
   .day-pick::after{content:"▾";position:absolute;right:12px;pointer-events:none;font-size:.85em}
@@ -852,7 +854,7 @@
     <section class="card mt-room" id="meet-room" hidden></section>
     <section class="card">
       <div class="row-between"><h2>Pendientes de confirmar</h2><a class="btn ghost" href="https://outlook.cloud.microsoft/calendar/view/week" target="_blank" rel="noopener">Abrir calendario de Outlook ↗</a></div>
-      <p class="note">Son las reuniones futuras que tienes sin responder en tu calendario. Pulsa «Aceptar en Outlook» y se abre esa reunión en Outlook. Al volver, synqalia la deja en gris como «Respondida en Outlook» y la quita del todo en la siguiente lectura de tu calendario (cada hora, de 7 a 19 h). Si al final no la contestaste, pulsa «Sigue pendiente» (o volverá sola en la siguiente lectura).</p>
+      <p class="note">Son las reuniones futuras que tienes sin responder en tu calendario. Contesta aquí mismo con «Aceptar», «Provisional» o «Rechazar»: puedes añadir un mensaje para quien convoca y, si es periódica, responder a toda la serie. La respuesta llega a Outlook sola (al momento cuando Microsoft 365 esté conectado; hasta entonces, en la actualización de cada hora con tu PC encendido) y mientras tanto puedes deshacerla.</p>
       <p class="hint" id="meet-hint" hidden></p>
       <div class="list" id="meet-pending"></div>
     </section>
