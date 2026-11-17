@@ -142,7 +142,7 @@ body:has(.login) .sq-bar { display: none; }
 .item.mrow:first-child { border-top: 0; }
 .item.mrow > .stripe { grid-row: 1 / span 4; border-radius: 0; }
 .item.mrow.dec:not(.open) { background: color-mix(in srgb, var(--gold-2, #5fe0cf) 7%, var(--panel)); }
-.mline { grid-column: 2; display: grid; grid-template-columns: minmax(120px, 210px) minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 42px; cursor: pointer; font-size: 13.5px; }
+.mline { grid-column: 2; display: grid; grid-template-columns: clamp(130px, 17%, 210px) minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 42px; cursor: pointer; font-size: 13.5px; }
 .mline:hover .mfrom, .mline:hover b { color: var(--accent, #2b4fd8); }
 .mfrom { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -156,7 +156,7 @@ body:has(.login) .sq-bar { display: none; }
 .item.mrow.open > div:nth-child(3) .title { display: none; }
 .item.mrow.open .actions { justify-content: flex-start; margin-top: 10px; }
 .item.mrow.open > .composer { margin-top: 12px; }
-@media (max-width: 640px) {
+@media (max-width: 1100px) {
   .mline { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "from date" "sub sub"; gap: 2px 10px; padding: 9px 0; }
   .mfrom { grid-area: from; } .mdate { grid-area: date; } .msub { grid-area: sub; }
 }
@@ -174,3 +174,11 @@ body:has(.login) .sq-bar { display: none; }
   #view-correo .mail-bar .tk-sel select { width: 100%; min-width: 0; }
   #view-correo .mail-bar .tk-check { display: none; }
 }
+
+/* Correos en Hoy y Reuniones: el texto usa todo el ancho y los botones van debajo,
+   en vez de dejar el texto en una columna estrecha y un hueco vacío bajo los botones */
+.item.mitem:not(.mrow) { grid-template-columns: 4px minmax(0, 1fr); }
+.item.mitem:not(.mrow) > .stripe { grid-row: 1 / span 3; }
+.item.mitem:not(.mrow) > .actions { grid-column: 2; justify-content: flex-start; }
+.item.mitem:not(.mrow) > .actions:empty { display: none; }
+.item.mitem:not(.mrow) > .composer { grid-column: 2; }
