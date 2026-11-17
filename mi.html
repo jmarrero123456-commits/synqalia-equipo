@@ -790,6 +790,10 @@
   #hoy-mail .item > .actions .btn { padding: 5px 10px; font-size: 12.5px; min-height: 0; }
   #hoy-mail .item > .actions { flex-wrap: nowrap; }
   .sg-btn .sg-s { display: none; }
+  #hoy-mail .hoy-row { cursor: pointer; border-radius: 8px; }
+  #hoy-mail .hoy-row:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  #hoy-mail .hoy-row { padding: 9px 0; }
+  .dec-dot { display: inline-block; margin-left: 7px; vertical-align: 1px; font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; color: #8a5a00; background: #fff1d6; border: 1px solid #f0d59c; }
   .xrow .title { cursor: pointer; }
   .xrow .title::after { content: '▾'; display: inline-block; margin-left: 6px; font-size: 11px; color: var(--muted); transition: transform .15s; }
   .xrow.xp .title::after { transform: rotate(180deg); }
@@ -883,7 +887,7 @@
     </section>
 
     <section class="card">
-      <div class="row-between"><h2>Correo · decisión tuya</h2><button class="btn ghost" data-go="correo" type="button">Ir a Correo</button></div>
+      <div class="row-between"><h2>Correo</h2><button class="btn ghost" data-go="correo" type="button">Ir a Correo</button></div>
       <div class="list" id="hoy-mail"></div>
       <span class="note" id="hoy-mail-more"></span>
     </section>
@@ -896,7 +900,7 @@
       <div class="list" id="hoy-meet"></div>
     </section>
 
-    <section class="card">
+    <section class="card" hidden>
       <div class="row-between"><h2>Tareas · lo primero</h2><button class="btn ghost" data-go="tareas" type="button">Ir a Tareas</button></div>
       <div class="list" id="hoy-top"></div>
     </section>
@@ -2628,14 +2632,13 @@
       const clash = evs.filter((e) => !sameSlot(e, m.reunion) && overlaps(e, m.reunion));
       body.appendChild(el('div', 'detail' + (clash.length ? ' clash-text' : ''), clash.length ? 'Choca con ' + clash.map((c) => c.titulo).join(', ') : 'Hueco libre en tu agenda'));
     }
-    if (o.compact && !isMeeting(m)) {
-      // Hoy: tocar el título despliega/recoge lo que esperan de ti y los botones
-      const xs = (state.hoyXp ||= {});
-      if (m.accion) body.appendChild(el('div', 'detail hx', m.accion));
-      row.classList.add('xrow'); if (xs[m.id]) row.classList.add('xp');
-      const tt = body.querySelector('.title'); tt.setAttribute('role', 'button'); tt.tabIndex = 0; tt.setAttribute('aria-expanded', String(!!xs[m.id]));
-      const tog = () => { xs[m.id] = !xs[m.id]; row.classList.toggle('xp', xs[m.id]); tt.setAttribute('aria-expanded', String(xs[m.id])); };
-      tt.addEventListener('click', tog); tt.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+    if (o.hoy) {
+      // Hoy: sin botones; tocar el correo lo abre en Correo
+      if (isDecision(m)) { row.classList.add('dec-mine'); const dl = body.querySelector('.detail'); if (dl) dl.appendChild(el('span', 'dec-dot', 'Decisión tuya')); }
+      row.appendChild(body); row.classList.add('hoy-row'); row.tabIndex = 0; row.setAttribute('role', 'button');
+      const go = () => { state.openReply = m.id; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); };
+      row.addEventListener('click', go); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      return row;
     }
     row.appendChild(body);
     const act = el('div', 'actions');
@@ -3005,10 +3008,11 @@
 
   function renderHoy() {
     const mbox = $('#hoy-mail'); mbox.replaceChildren();
-    const mine = state.mails.filter((m) => isDecision(m) && isPending(m)).sort(sortMails);
-    if (!mine.length) mbox.appendChild(el('div', 'empty', 'Nada pendiente de ti en el correo.'));
-    mine.slice(0, 5).forEach((m) => mbox.appendChild(mailRow(m, {compact: true})));
-    $('#hoy-mail-more').textContent = mine.length > 5 ? 'y ' + (mine.length - 5) + ' más en Correo' : '';
+    const pendM = state.mails.filter((m) => isPending(m) && !isMeeting(m));
+    const mine = pendM.filter(isDecision).sort(sortMails).concat(pendM.filter((m) => !isDecision(m)).sort(sortMails));
+    if (!mine.length) mbox.appendChild(el('div', 'empty', 'Nada pendiente en el correo.'));
+    mine.slice(0, 8).forEach((m) => mbox.appendChild(mailRow(m, {compact: true, hoy: true})));
+    $('#hoy-mail-more').textContent = mine.length > 8 ? 'y ' + (mine.length - 8) + ' más en Correo' : '';
     const rbox = $('#hoy-meet'); rbox.replaceChildren();
     const pend = openInvites();
     pend.slice(0, 4).forEach((p) => rbox.appendChild(inviteRow(p, true)));
