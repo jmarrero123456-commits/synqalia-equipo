@@ -752,7 +752,7 @@
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261117f">
+<link rel="stylesheet" href="synqalia.css?v=20261117g">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -2142,13 +2142,19 @@
       const no = el('button', 'btn ghost', '✕'); no.type = 'button'; no.title = 'Descartar'; no.setAttribute('aria-label', 'Descartar esta tarea');
       ok.addEventListener('click', async () => {
         const titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
-        ok.disabled = true;
+        if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
+        row.classList.remove('needdate');
+        ok.disabled = true; t.titulo = titulo; t.vence = di.value;
         const id = await addTask({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id});
-        if (id) { row.classList.add('done'); row.replaceChildren(el('span', 'tsug-ok', '✓ ' + titulo + ' · ' + (di.value === todayISO ? 'hoy' : dayName(di.value)))); t.creada = true; }
+        if (id) { t.creada = true; doneRow(row, t); refreshAll(); }
         else ok.disabled = false;
       });
-      no.addEventListener('click', () => { t.descartada = true; row.remove(); });
+      no.addEventListener('click', () => { t.descartada = true; row.classList.add('done', 'gone'); row.replaceChildren(el('span', 'tsug-gone', 'Descartada: ' + (ti.value.trim() || 'tarea'))); refreshAll(); });
+      di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); });
+      ti.addEventListener('input', () => { t.titulo = ti.value; });
       ti.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
+      if (t.creada) { list.appendChild(row); doneRow(row, t); return row; }
+      if (t.descartada) { row.classList.add('done', 'gone'); row.appendChild(el('span', 'tsug-gone', 'Descartada: ' + (t.titulo || 'tarea'))); list.appendChild(row); return row; }
       row.appendChild(ti); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
       const btns = el('div', 'tsug-btns'); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
       list.appendChild(row); return row;
@@ -2158,9 +2164,10 @@
     const add = el('button', 'btn ghost', '+ Añadir una'); add.type = 'button';
     const all = el('button', 'btn', 'Crear todas'); all.type = 'button'; all.hidden = true;
     const refreshAll = () => { all.hidden = list.querySelectorAll('.tsug-row:not(.done)').length < 2; };
-    add.addEventListener('click', () => { const r = addRow({titulo: '', vence: todayISO}); r.querySelector('input').focus(); refreshAll(); });
+    add.addEventListener('click', () => { const t = {titulo: '', vence: todayISO}; (st[m.id] = st[m.id] || []).push(t); const r = addRow(t); r.querySelector('input').focus(); refreshAll(); });
     all.addEventListener('click', async () => { all.disabled = true; for (const b of [...list.querySelectorAll('.tsug-row:not(.done) .btn.primary')]) { b.click(); await new Promise((r) => setTimeout(r, 250)); } all.disabled = false; refreshAll(); });
-    const fill = (arr) => { list.replaceChildren(); arr.filter((t) => !t.descartada && !t.creada).forEach(addRow); refreshAll(); };
+    const doneRow = (row, t) => { row.className = 'tsug-row done'; row.replaceChildren(el('span', 'tsug-ok', '✓ Creada: ' + t.titulo + ' · ' + (t.vence === todayISO ? 'hoy' : dayName(t.vence)))); };
+    const fill = (arr) => { list.replaceChildren(); arr.forEach(addRow); refreshAll(); };
     sug.addEventListener('click', async () => {
       if (!sample) { setStatus('La IA no está conectada ahora mismo.', true); return; }
       sug.disabled = true; sug.textContent = 'Pensando…';
@@ -2175,7 +2182,7 @@
     });
     bar.appendChild(sug); bar.appendChild(add); bar.appendChild(all);
     wrap.appendChild(bar); wrap.appendChild(list);
-    wrap._addRow = (x) => { const r = addRow(x); refreshAll(); r.scrollIntoView({block: 'center', behavior: 'smooth'}); const inp = r.querySelector('input'); inp.focus(); inp.select(); };
+    wrap._addRow = (x) => { (st[m.id] = st[m.id] || []).push(x); const r = addRow(x); refreshAll(); r.scrollIntoView({block: 'center', behavior: 'smooth'}); const inp = r.querySelector('input'); inp.focus(); inp.select(); };
     if (st[m.id]) { fill(st[m.id]); sug.textContent = '✨ Volver a sugerir'; }
     return wrap;
   }
@@ -2529,7 +2536,8 @@
   function renderMailPane(rows) {
     const pane = $('#mail-pane'); if (!pane) return;
     const m = rows.find((x) => x.id === state.openReply);
-    pane.replaceChildren();
+    const keepTop = m && pane.dataset.mid === m.id ? pane.scrollTop : 0;
+    pane.replaceChildren(); pane.dataset.mid = m ? m.id : '';
     if (!m) { pane.appendChild(el('div', 'empty', rows.length ? 'Elige un correo de la lista para leerlo aquí.' : '')); return; }
     const head = el('div', 'pane-head');
     head.appendChild(el('h3', 'pane-subj', m.asunto || '(sin asunto)'));
@@ -2541,7 +2549,7 @@
     pane.appendChild(full);
     const mb = full.querySelector('.mail-body');
     if (mb && m.cuerpo) { const tv = threadView(m.cuerpo); mb.replaceWith(tv); }
-    pane.scrollTop = 0;
+    pane.scrollTop = keepTop;
   }
   function renderMail() {
     const split = splitMQ.matches;

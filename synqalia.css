@@ -291,3 +291,6 @@ body:has(.login) .sq-bar { display: none; }
 
 /* recuadro «¿Qué quieres contestar?» más ligero (sin fondo azul) */
 .composer .ask { background: var(--panel); border-color: var(--line); border-left: 3px solid var(--accent, #2b4fd8); border-radius: 12px; padding: 14px 16px; }
+.tsug-row.needdate input[type=date] { border-color: var(--bad, #c0392b); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad, #c0392b) 25%, transparent); }
+.tsug-row.needdate .tsug-when::after { content: 'Pon una fecha para crearla'; color: var(--bad, #c0392b); font-size: 12px; font-weight: 600; }
+.tsug-row.gone { background: transparent; opacity: .6; } .tsug-gone { font-size: 13.5px; text-decoration: line-through; color: var(--muted); }
