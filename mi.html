@@ -778,9 +778,9 @@
   .stats.mini .stat.key.hot { background: color-mix(in srgb, var(--bad) 8%, var(--panel)); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
   .stats.mini .stat.key.hot b { color: var(--bad); }
   /* número a la izquierda y texto a la derecha, centrados en el recuadro */
-  .stats.mini .stat { display: flex; align-items: center; justify-content: center; gap: 7px; text-align: left; padding: 9px 8px; min-height: 52px; background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--bg) 40%, var(--panel))); }
+  .stats.mini .stat { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; padding: 9px 6px 8px; min-height: 58px; background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--bg) 40%, var(--panel))); }
   .stats.mini .stat b { flex: none; }
-  .stats.mini .stat span { color: var(--muted); }
+  .stats.mini .stat span { color: var(--muted); text-wrap: balance; }
   .stats.mini .stat:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
   .stats.mini .stat.key.hot { background: linear-gradient(180deg, color-mix(in srgb, var(--bad) 9%, var(--panel)), color-mix(in srgb, var(--bad) 4%, var(--panel))); }
   .stats.mini .stat.key.hot span { color: color-mix(in srgb, var(--bad) 70%, var(--ink)); }
@@ -788,8 +788,20 @@
   #hoy-mail .item { padding: 10px 0; gap: 6px 10px; }
   #hoy-mail .item.mitem > .actions, #hoy-mail .item > .actions { justify-content: flex-end; gap: 6px; }
   #hoy-mail .item > .actions .btn { padding: 5px 10px; font-size: 12.5px; min-height: 0; }
+  #hoy-mail .item > .actions { flex-wrap: nowrap; }
+  .sg-btn .sg-s { display: none; }
+  .xrow .title { cursor: pointer; }
+  .xrow .title::after { content: '▾'; display: inline-block; margin-left: 6px; font-size: 11px; color: var(--muted); transition: transform .15s; }
+  .xrow.xp .title::after { transform: rotate(180deg); }
+  .xrow:not(.xp) .hx { display: none; }
+  .xrow .hx { color: var(--ink); margin-top: 5px; }
+  @media (max-width: 560px) {
+    #hoy-mail .xrow:not(.xp) > .actions { display: none; }
+    #hoy-mail .xrow .sg-l { display: none; } #hoy-mail .xrow .sg-s { display: inline; }
+    #hoy-mail .item > .actions .btn { padding: 5px 9px; }
+  }
   #hoy-mail .item .detail { margin-top: 1px; }
-  @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 8px 5px; gap: 5px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
+  @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 8px 4px 7px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
   .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
   .summary.off { color: var(--muted); font-style: italic; }
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
@@ -2616,6 +2628,15 @@
       const clash = evs.filter((e) => !sameSlot(e, m.reunion) && overlaps(e, m.reunion));
       body.appendChild(el('div', 'detail' + (clash.length ? ' clash-text' : ''), clash.length ? 'Choca con ' + clash.map((c) => c.titulo).join(', ') : 'Hueco libre en tu agenda'));
     }
+    if (o.compact && !isMeeting(m)) {
+      // Hoy: tocar el título despliega/recoge lo que esperan de ti y los botones
+      const xs = (state.hoyXp ||= {});
+      if (m.accion) body.appendChild(el('div', 'detail hx', m.accion));
+      row.classList.add('xrow'); if (xs[m.id]) row.classList.add('xp');
+      const tt = body.querySelector('.title'); tt.setAttribute('role', 'button'); tt.tabIndex = 0; tt.setAttribute('aria-expanded', String(!!xs[m.id]));
+      const tog = () => { xs[m.id] = !xs[m.id]; row.classList.toggle('xp', xs[m.id]); tt.setAttribute('aria-expanded', String(xs[m.id])); };
+      tt.addEventListener('click', tog); tt.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+    }
     row.appendChild(body);
     const act = el('div', 'actions');
     const open = state.openReply === m.id && !o.compact && !o.split;
@@ -2624,7 +2645,7 @@
       const go = el('button', 'btn', 'Abrir'); go.type = 'button';
       go.addEventListener('click', () => { state.openReply = m.id; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); });
       act.appendChild(go); act.appendChild(outlookBtn(m)); }
-      if (!isMeeting(m) && !handled(m)) { const sg = el('button', 'btn', '✨ Sugerir respuesta'); sg.type = 'button'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); }); act.appendChild(sg); }
+      if (!isMeeting(m) && !handled(m)) { const sg = el('button', 'btn sg-btn'); sg.type = 'button'; sg.innerHTML = '✨ Sugerir <span class="sg-l">respuesta</span><span class="sg-s">resp.</span>'; sg.title = 'Sugerir respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); }); act.appendChild(sg); }
     } else if (isMeeting(m) && !meetingDone(m)) {
       meetingButtons(m, act);
     } else if (isMeeting(m)) {
