@@ -112,6 +112,12 @@
   @media (max-width:560px) { .toolbar.tb-main .tb-seg { display:none; } .tb-seg-more { display:flex; } .toolbar.tb-main { gap:6px; } }
   .page { grid-template-columns:minmax(0,1fr); }
   .page > * { min-width:0; }
+  .shell { grid-template-columns:250px minmax(0,1fr); }
+  .card, .kpi, .grid2 > *, .r > *, .bar > *, .kc, .feed .r > * { min-width:0; overflow-wrap:anywhere; }
+  .grid2 { grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr)); }
+  .r > .tag { align-self:start; justify-self:end; overflow-wrap:normal; }
+  .kpis { grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr)); }
+  @media (max-width:860px) { .shell { grid-template-columns:minmax(0,1fr); } .main { overflow-x:hidden; } html, body { overflow-x:hidden; max-width:100vw; } }
   .toolbar.tb-more .input { min-width:0; }
   @media (max-width:860px) {
     .band .head { flex-wrap:nowrap; align-items:center; }
