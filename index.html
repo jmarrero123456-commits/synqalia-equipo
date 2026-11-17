@@ -77,6 +77,13 @@
   .head p { margin:4px 0 0; color:var(--muted); font-size:14px; }
   .head .grow { flex:1; min-width:200px; }
   .menu-btn { display:none; }
+  .mi-switch { display:none; }
+  .side-backdrop { display:none; }
+  @media (max-width: 860px) {
+    .mi-switch { display:inline-flex; align-items:center; gap:4px; margin:0 0 12px; padding:7px 13px; border-radius:999px; border:1px solid rgba(95,224,207,.45); background:rgba(95,224,207,.12); color:#fff; font-weight:700; font-size:13px; text-decoration:none; }
+    .mi-switch:active { background:rgba(95,224,207,.24); }
+    .side-backdrop.open { display:block; position:fixed; inset:0; z-index:29; background:rgba(5,10,20,.45); }
+  }
   @media (max-width: 860px) {
     .shell { grid-template-columns:1fr; }
     .side { position:fixed; inset:0 auto 0 0; width:270px; z-index:30; transform:translateX(-100%); transition:transform .2s; box-shadow:0 0 40px rgba(0,0,0,.2); }
@@ -555,7 +562,7 @@ window.addEventListener('hashchange', () => { if (S.user) route(); });
 
 function renderShell() {
   $app.innerHTML = `<div class="shell ${S.sideCollapsed ? 'collapsed' : ''}">
-    <aside class="side ${S.sideOpen ? 'open' : ''}" id="side"></aside>
+    <aside class="side ${S.sideOpen ? 'open' : ''}" id="side"></aside><div class="side-backdrop ${S.sideOpen ? 'open' : ''}" id="side-bd"></div>
     <main class="main" id="main"></main>
   </div><div id="drawer-root"></div><div id="modal-root"></div>`;
   renderSide(); renderMain(); if (S.open) renderDrawer();
@@ -587,10 +594,10 @@ function renderSide() {
   el.querySelectorAll('[data-newboard]').forEach((b) => b.onclick = () => newBoard(b.dataset.newboard));
 }
 function headHtml(title, sub, right = '') {
-  return `<div class="band"><div class="head"><button class="btn menu-btn" id="menu">☰</button><div class="grow"><h2>${esc(title)}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right}</div></div>`;
+  return `<div class="band"><a class="mi-switch" href="mi.html" title="Volver a Mi trabajo (correo, reuniones, tareas)">← Mi trabajo</a><div class="head"><button class="btn menu-btn" id="menu" aria-label="Menú">☰</button><div class="grow"><h2>${esc(title)}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right}</div></div>`;
 }
 function toggleSide() {
-  if (innerWidth <= 860) { S.sideOpen = !S.sideOpen; document.getElementById('side').classList.toggle('open', S.sideOpen); return; }
+  if (innerWidth <= 860) { S.sideOpen = !S.sideOpen; document.getElementById('side').classList.toggle('open', S.sideOpen); const bd = document.getElementById('side-bd'); if (bd) { bd.classList.toggle('open', S.sideOpen); bd.onclick = () => { if (S.sideOpen) toggleSide(); }; } return; }
   S.sideCollapsed = !S.sideCollapsed; try { localStorage.setItem('sq-side', S.sideCollapsed ? '1' : ''); } catch {}
   document.querySelector('.shell').classList.toggle('collapsed', S.sideCollapsed);
 }

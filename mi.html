@@ -709,6 +709,31 @@
   .ms-pop button { font: 600 13px var(--font-body); border-radius: 9px; padding: 8px 12px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; } .ms-pop button.pri { background: #2b4fd8; border-color: #2b4fd8; color: #fff; }
   .team-link:hover { background: rgba(255,255,255,.16); }
   .import-card { border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line)); }
+
+  /* Móvil (Z Fold cerrado ~360-420px): cabecera con su propia franja, logo bien dentro */
+  @media (max-width: 560px) {
+    .app::before { display: none; }
+    .app { padding-top: 0; }
+    .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand btns" "date date"; align-items: center; row-gap: 12px; column-gap: 10px;
+      margin: 0 -12px; padding: calc(18px + env(safe-area-inset-top, 0px)) 16px 16px; border-radius: 0 0 22px 22px;
+      background: radial-gradient(500px 200px at 85% -30%, rgba(95,224,207,.16), transparent 60%), radial-gradient(400px 180px at 0% -40%, rgba(43,79,216,.22), transparent 60%), linear-gradient(180deg, var(--navy-2), var(--navy));
+      box-shadow: 0 10px 24px rgba(13,27,51,.18); }
+    .brand { grid-area: brand; min-width: 0; gap: 8px 10px; }
+    .top svg.mark { width: 36px; height: 36px; }
+    .wordmark h1 { font-size: 23px; }
+    .brand .team-link, .brand .ms-link { order: 5; margin-left: 0; padding: 6px 11px; font-size: 12px; }
+    .brand::after { content: ""; order: 4; flex-basis: 100%; height: 0; }
+    .top .date { display: contents; }
+    .top .date-row { display: contents; }
+    .top .date-row #today-label { grid-area: date; justify-self: start; max-width: none; font-size: 13px; color: rgba(255,255,255,.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top .date-row .refresh-btn { grid-area: btns; align-self: start; }
+    .top .date-row .refresh-btn + .refresh-btn { margin-right: 0; }
+    .top .date-row .refresh-btn:not(:last-child) { margin-right: 42px; }
+    .top #sync-label { grid-area: date; justify-self: end; text-align: right; }
+    .top .olk { display: none; }
+    .refresh-btn { width: 34px; height: 34px; }
+    .stats { margin-top: 2px; }
+  }
 </style>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
