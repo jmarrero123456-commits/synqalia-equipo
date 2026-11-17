@@ -37,16 +37,16 @@
   };
   const COLORS = ['#2340d0', '#7a3fd1', '#c4307a', '#d9772b', '#1f8a5b', '#0f8fa6', '#5d6680'];
   const DEFAULT_BOOKS = [
-    { id: 'lb-pensamientos', nombre: 'Pensamientos', color: '#7a3fd1', secciones: ['General', 'Personal'], orden: 1 },
-    { id: 'lb-trabajo', nombre: 'Trabajo', color: '#2340d0', secciones: ['General', 'Reuniones', 'Equipo'], orden: 2 },
-    { id: 'lb-ideas', nombre: 'Ideas y proyectos', color: '#d9772b', secciones: ['General', 'synqalia', 'Zottelo'], orden: 3 },
+    { id: 'lb-pensamientos', tipo: 'diario', nombre: 'Pensamientos', color: '#7a3fd1', secciones: ['General', 'Personal'], orden: 1 },
+    { id: 'lb-trabajo', tipo: 'reuniones', nombre: 'Reuniones', color: '#2340d0', secciones: ['Comité', 'Catch-up', 'Proveedores', 'Franquiciados'], orden: 2 },
+    { id: 'lb-ideas', tipo: 'libre', nombre: 'Ideas y proyectos', color: '#d9772b', secciones: ['General', 'synqalia', 'Zottelo'], orden: 3 },
   ];
   const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const fmtD = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
   const newId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const nowIso = () => new Date().toISOString();
 
-  const S = { books: new Map(), notes: new Map(), book: 'all', sec: '', q: '', note: null, readMode: true, db: null, ai: null, ready: false };
+  const S = { books: new Map(), notes: new Map(), book: (() => { try { return localStorage.getItem('sq-lb-book') || null; } catch (e) { return null; } })(), sec: '', q: '', note: null, readMode: true, db: null, ai: null, ready: false };
 
   /* ---------- datos ---------- */
   const booksSorted = () => [...S.books.values()].sort((a, b) => (a.orden || 99) - (b.orden || 99) || a.nombre.localeCompare(b.nombre));
@@ -290,7 +290,7 @@
     const ta = h('textarea', { placeholder: mode === 'dictar' ? 'Habla y lo escribo aquí…' : mode === 'pegar' ? 'Pega aquí el texto…' : 'Escribe lo que tengas en la cabeza…', 'aria-label': 'Texto de la nota' });
     const live = h('div', { class: 'lb-live' });
     const sel = h('select', { 'aria-label': 'Libreta' }, h('option', { value: 'auto', text: S.ai ? 'Que la IA elija la libreta' : 'Libreta…' }), ...booksSorted().map((b) => h('option', { value: b.id, text: b.nombre })));
-    if (S.book !== 'all' && S.book !== 'arch') sel.value = S.book; else if (!S.ai) sel.value = (booksSorted()[0] || {}).id || 'auto';
+    if (inBook()) { sel.value = S.book; sel.hidden = true; } else if (!S.ai) sel.value = (booksSorted()[0] || {}).id || 'auto';
     let rec = null;
     const micB = h('button', { type: 'button', class: 'btn', html: ic(I.mic) + '<span>Dictar</span>' });
     const setMic = (on) => { micB.classList.toggle('rec', on); micB.lastChild.textContent = on ? 'Parar' : 'Dictar'; };
@@ -302,17 +302,17 @@
     const go = async (order) => {
       const raw = ta.value.trim(); if (!raw) { ta.focus(); return; }
       if (rec) { rec.stop(); rec = null; setMic(false); }
-      const book = sel.value === 'auto' ? (S.book !== 'all' && S.book !== 'arch' ? S.book : (booksSorted()[0] || {}).id) : sel.value;
+      const book = sel.value === 'auto' ? (booksSorted()[0] || {}).id : sel.value;
       const n = newNote({ libreta: book, cuerpo: raw, origen: mode === 'dictar' ? 'dictado' : mode === 'pegar' ? 'pegado' : 'teclado' });
       if (order && S.ai) {
         st.textContent = 'Ordenando con IA…'; modal.querySelectorAll('button').forEach((b) => (b.disabled = true));
         try { applyOrganized(n, await organize(raw, { keepBook: sel.value !== 'auto' }), raw); } catch (e) { toast('No se pudo ordenar; la guardo tal cual'); }
       } else if (!n.titulo) n.titulo = raw.split('\n')[0].slice(0, 60);
-      await saveNote(n); close(); S.book = 'all'; S.sec = ''; openNote(n.id);
+      await saveNote(n); close(); if (!inBook()) S.book = n.libreta; openNote(n.id);
       if (order && n.original) toast('Nota ordenada', 'Ver original', () => { n.cuerpo = n.original; saveNote(n); renderAll(); });
     };
     modal.append(h('div', { class: 'lb-sheet', role: 'dialog', 'aria-label': 'Nueva nota' },
-      h('h3', { text: 'Nueva nota' }), ta, live,
+      h('h3', { text: inBook() ? 'Nueva nota en ' + S.books.get(S.book).nombre : 'Nueva nota' }), ta, live,
       h('div', { class: 'row' }, micB, pasteB, sel),
       st,
       h('div', { class: 'row end' }, h('button', { type: 'button', class: 'btn ghost', text: 'Cancelar', onclick: close }), h('button', { type: 'button', class: 'btn', text: 'Guardar tal cual', onclick: () => go(false) }), S.ai ? h('button', { type: 'button', class: 'btn primary', html: 'Guardar y ordenar', onclick: () => go(true) }) : null)));
@@ -323,7 +323,7 @@
   }
   function applyOrganized(n, o, raw) {
     if (!o) return;
-    n.original = raw; if (o.titulo) n.titulo = String(o.titulo).slice(0, 90); if (o.cuerpo) n.cuerpo = String(o.cuerpo).trim();
+    n.original = raw; if (o.titulo && !(n.dia && tipoOf(bookOf(n)) === 'diario')) n.titulo = String(o.titulo).slice(0, 90); if (o.cuerpo) n.cuerpo = String(o.cuerpo).trim();
     if (o.libreta && S.books.has(o.libreta)) n.libreta = o.libreta;
     const b = bookOf(n); if (o.seccion && b && (b.secciones || []).includes(o.seccion)) n.seccion = o.seccion;
     if (Array.isArray(o.etiquetas)) n.etiquetas = o.etiquetas.slice(0, 4).map(String);
@@ -338,107 +338,171 @@
   }
 
   /* ---------- libretas ---------- */
+  const TIPOS = {
+    libre: { label: 'Libre', desc: 'Notas sueltas, cada una con su título', btn: 'Nueva nota', secs: 'General' },
+    diario: { label: 'Diario', desc: 'Una hoja por día: «Hoja de hoy» abre la del día', btn: 'Hoja de hoy', secs: 'General' },
+    reuniones: { label: 'Reuniones', desc: 'Una hoja por reunión con plantilla; las secciones son los tipos de reunión', btn: 'Nueva reunión', secs: 'Comité, Catch-up, Proveedores, Franquiciados' },
+  };
+  const tipoOf = (b) => (b && TIPOS[b.tipo] ? b.tipo : 'libre');
+  const inBook = () => S.books.has(S.book);
+  const dayKey = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const longDay = (key) => { const [y, m, d] = key.split('-').map(Number); return new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(y, m - 1, d)).replace(/^./, (c) => c.toUpperCase()); };
   function editBook(b) {
-    const isNew = !b; b = b ? { ...b, secciones: [...(b.secciones || [])] } : { id: newId('lb-'), nombre: '', color: COLORS[S.books.size % COLORS.length], secciones: ['General'], orden: S.books.size + 1 };
+    const isNew = !b; b = b ? { ...b, secciones: [...(b.secciones || [])] } : { id: newId('lb-'), nombre: '', tipo: 'libre', color: COLORS[S.books.size % COLORS.length], secciones: ['General'], orden: S.books.size + 1 };
+    if (!b.tipo) b.tipo = 'libre';
     const modal = h('div', { class: 'lb-modal' });
-    const name = h('input', { type: 'text', value: b.nombre, placeholder: 'Ej.: Pensamientos, Lecturas, Familia…', 'aria-label': 'Nombre de la libreta' });
-    const secs = h('input', { type: 'text', value: b.secciones.join(', '), placeholder: 'General, Ideas, …', 'aria-label': 'Secciones' });
+    const name = h('input', { type: 'text', value: b.nombre, placeholder: 'Ej.: Diario, Comités, Ideas, Familia…', 'aria-label': 'Nombre de la libreta' });
+    let secsTouched = !isNew;
+    const secs = h('input', { type: 'text', value: b.secciones.join(', '), placeholder: 'General, Ideas, …', 'aria-label': 'Secciones', oninput: () => { secsTouched = true; } });
+    const secsL = h('label', { text: '' });
+    const setTipo = (t) => { b.tipo = t; tipos.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.t === t))); secsL.textContent = t === 'reuniones' ? 'Tipos de reunión (separados por comas)' : 'Secciones (separadas por comas), como las pestañas de OneNote'; if (!secsTouched) secs.value = TIPOS[t].secs; };
+    const tipos = h('div', { class: 'lb-tipos' }, ...Object.entries(TIPOS).map(([t, v]) => h('button', { type: 'button', 'data-t': t, onclick: () => setTipo(t) }, h('b', { text: v.label }), h('span', { text: v.desc }))));
     const cols = h('div', { class: 'lb-colors' }, ...COLORS.map((c) => h('button', { type: 'button', style: 'background:' + c, 'aria-label': 'Color', 'aria-pressed': String(c === b.color), onclick: (e) => { b.color = c; cols.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === e.currentTarget))); } })));
     const count = [...S.notes.values()].filter((n) => n.libreta === b.id).length;
     const close = () => modal.remove();
     const del = !isNew ? h('button', { type: 'button', class: 'btn ghost', style: 'color:var(--bad);margin-right:auto', text: 'Eliminar libreta', onclick: async () => {
       if (count) { alert('Esta libreta tiene ' + count + ' notas. Muévelas a otra libreta antes de eliminarla.'); return; }
       if (!confirm('¿Eliminar la libreta «' + b.nombre + '»?')) return;
-      S.books.delete(b.id); await S.db.collection('lb_libretas').doc(b.id).delete(); if (S.book === b.id) S.book = 'all'; close(); renderAll();
+      S.books.delete(b.id); await S.db.collection('lb_libretas').doc(b.id).delete(); if (S.book === b.id) goBook(null); close(); renderAll();
     } }) : null;
     modal.append(h('div', { class: 'lb-sheet', role: 'dialog', 'aria-label': 'Libreta' },
-      h('h3', { text: isNew ? 'Nueva libreta' : 'Editar libreta' }),
+      h('h3', { text: isNew ? 'Crear libreta' : 'Editar libreta' }),
       h('div', { class: 'field' }, h('label', { text: 'Nombre' }), name),
-      h('div', { class: 'field' }, h('label', { text: 'Secciones (separadas por comas), como las pestañas de OneNote' }), secs),
+      h('div', { class: 'field' }, h('label', { text: 'Tipo de libreta' }), tipos),
+      h('div', { class: 'field' }, secsL, secs),
       h('div', { class: 'field' }, h('label', { text: 'Color' }), cols),
-      h('div', { class: 'row end' }, del, h('button', { type: 'button', class: 'btn ghost', text: 'Cancelar', onclick: close }), h('button', { type: 'button', class: 'btn primary', text: 'Guardar', onclick: async () => {
+      h('div', { class: 'row end' }, del, h('button', { type: 'button', class: 'btn ghost', text: 'Cancelar', onclick: close }), h('button', { type: 'button', class: 'btn primary', text: isNew ? 'Crear libreta' : 'Guardar', onclick: async () => {
         b.nombre = name.value.trim(); if (!b.nombre) { name.focus(); return; }
         const list = secs.value.split(',').map((s) => s.trim()).filter(Boolean); b.secciones = list.length ? [...new Set(list)] : ['General'];
-        await saveBook(b); S.book = b.id; S.sec = ''; close(); renderAll();
+        await saveBook(b); close(); goBook(b.id);
       } }))));
+    setTipo(b.tipo);
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-    document.body.append(modal); name.focus();
+    document.body.append(modal); if (isNew) name.focus();
+  }
+
+  /* ---------- nueva hoja según el tipo de libreta ---------- */
+  function newPage(b) {
+    const t = tipoOf(b);
+    if (t === 'diario') {
+      const key = dayKey();
+      const ex = [...S.notes.values()].find((n) => n.libreta === b.id && n.dia === key && !n.archivada);
+      if (ex) { openNote(ex.id, true); return; }
+      const n = newNote({ libreta: b.id, dia: key, titulo: longDay(key), seccion: S.sec || (b.secciones || ['General'])[0], origen: 'diario' });
+      saveNote(n); openNote(n.id, true); return;
+    }
+    if (t === 'reuniones') {
+      const modal = h('div', { class: 'lb-modal' });
+      const tipo = h('select', { 'aria-label': 'Tipo de reunión' }, ...(b.secciones || ['General']).map((s) => h('option', { value: s, text: s, selected: s === S.sec })));
+      const tema = h('input', { type: 'text', placeholder: 'Ej.: Comité mensual, Kérastase, Olga…', 'aria-label': 'Tema o con quién' });
+      const fecha = h('input', { type: 'date', value: dayKey(), 'aria-label': 'Fecha' }); fecha.className = 'lb-date';
+      const quien = h('input', { type: 'text', placeholder: 'Opcional', 'aria-label': 'Asistentes' });
+      const close = () => modal.remove();
+      const create = () => {
+        const f = fecha.value || dayKey(); const [y, m, d] = f.split('-').map(Number);
+        const fd = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d));
+        const n = newNote({ libreta: b.id, seccion: tipo.value, dia: f, origen: 'reunión', titulo: (tema.value.trim() || tipo.value) + ' · ' + fd,
+          cuerpo: 'Fecha: ' + d + '/' + m + '/' + y + '\nAsistentes: ' + quien.value.trim() + '\n\n## Temas\n- \n\n## Acuerdos\n- \n\n## Tareas\n[ ] ' });
+        saveNote(n); close(); openNote(n.id, true);
+      };
+      modal.append(h('div', { class: 'lb-sheet', role: 'dialog', 'aria-label': 'Nueva reunión' },
+        h('h3', { text: 'Nueva reunión en ' + b.nombre }),
+        h('div', { class: 'field' }, h('label', { text: 'Tipo de reunión' }), tipo),
+        h('div', { class: 'field' }, h('label', { text: 'Tema o con quién' }), tema),
+        h('div', { class: 'row' }, h('div', { class: 'field', style: 'flex:1' }, h('label', { text: 'Fecha' }), fecha), h('div', { class: 'field', style: 'flex:2' }, h('label', { text: 'Asistentes' }), quien)),
+        h('div', { class: 'row end' }, h('button', { type: 'button', class: 'btn ghost', text: 'Cancelar', onclick: close }), h('button', { type: 'button', class: 'btn primary', text: 'Crear hoja', onclick: create }))));
+      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+      modal.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') create(); if (e.key === 'Escape') close(); });
+      document.body.append(modal); tema.focus(); return;
+    }
+    const n = newNote({ libreta: b.id, origen: 'teclado' }); saveNote(n); openNote(n.id, true);
   }
 
   /* ---------- pintado ---------- */
   root.innerHTML = '';
   const layoutEl = h('div', { class: 'lb' });
-  const rail = h('nav', { class: 'lb-pane lb-rail', 'aria-label': 'Libretas' });
-  const list = h('section', { class: 'lb-pane lb-list', 'aria-label': 'Notas' });
+  const list = h('section', { class: 'lb-pane lb-list', 'aria-label': 'Libretas y notas' });
   const page = h('section', { class: 'lb-pane lb-page', 'aria-label': 'Nota' });
-  layoutEl.append(rail, list, page); root.append(layoutEl);
+  layoutEl.append(list, page); root.append(layoutEl);
   const search = h('input', { class: 'lb-search', type: 'search', placeholder: 'Buscar en todas las notas…', 'aria-label': 'Buscar notas' });
-  search.addEventListener('input', () => { S.q = search.value.trim().toLowerCase(); renderList(); });
-  const listHead = h('div', { class: 'lb-list-head' });
-  const chips = h('div', { class: 'lb-chips' });
-  const capBar = h('div', { class: 'lb-cap' },
-    h('button', { type: 'button', html: ic(I.mic) + 'Dictar', onclick: () => capture('dictar') }),
-    h('button', { type: 'button', html: ic(I.paste) + 'Pegar', onclick: () => capture('pegar') }),
-    h('button', { type: 'button', html: ic(I.key) + 'Escribir', onclick: () => capture('teclado') }),
-    h('button', { type: 'button', html: ic(I.pen) + 'A mano', onclick: () => capture('mano') }));
+  search.addEventListener('input', () => { S.q = search.value.trim().toLowerCase(); renderItems(); });
   const items = h('div', { class: 'lb-items' });
-  list.append(listHead, chips, capBar, search, items);
+  function goBook(id) { S.book = id; S.sec = ''; S.q = ''; search.value = ''; try { localStorage.setItem('sq-lb-book', id || ''); } catch (e) {} renderAll(); }
 
   function visibleNotes() {
     let arr = [...S.notes.values()];
-    if (S.q) return arr.filter((n) => (n.titulo + ' ' + (n.cuerpo || '') + ' ' + (n.textoMano || '') + ' ' + (n.etiquetas || []).join(' ')).toLowerCase().includes(S.q)).sort((a, b) => String(b.editada).localeCompare(String(a.editada)));
     if (S.book === 'arch') arr = arr.filter((n) => n.archivada);
-    else { arr = arr.filter((n) => !n.archivada); if (S.book !== 'all') arr = arr.filter((n) => n.libreta === S.book && (!S.sec || n.seccion === S.sec)); }
-    return arr.sort((a, b) => (b.fijada ? 1 : 0) - (a.fijada ? 1 : 0) || String(b.editada).localeCompare(String(a.editada)));
+    else { arr = arr.filter((n) => !n.archivada); if (inBook()) arr = arr.filter((n) => n.libreta === S.book && (!S.sec || n.seccion === S.sec)); }
+    if (S.q) arr = arr.filter((n) => (n.titulo + ' ' + (n.cuerpo || '') + ' ' + (n.textoMano || '') + ' ' + (n.etiquetas || []).join(' ')).toLowerCase().includes(S.q));
+    const b = S.books.get(S.book), byDay = b && tipoOf(b) !== 'libre';
+    return arr.sort((x, y) => (y.fijada ? 1 : 0) - (x.fijada ? 1 : 0) || (byDay ? String(y.dia || '').localeCompare(String(x.dia || '')) : 0) || String(y.editada).localeCompare(String(x.editada)));
   }
-  function renderRail() {
-    rail.innerHTML = ''; rail.append(h('h3', { text: 'Libretas' }));
+  function renderNav() {
+    list.innerHTML = '';
     const active = [...S.notes.values()].filter((n) => !n.archivada);
-    const bk = (id, label, color, count) => h('button', { type: 'button', class: 'lb-bk', 'aria-current': String(S.book === id && !S.sec), onclick: () => { S.book = id; S.sec = ''; S.q = ''; search.value = ''; renderAll(); } }, color ? h('span', { class: 'sw', style: 'background:' + color }) : h('span', { class: 'sw', style: 'background:var(--line)' }), label, h('span', { class: 'n', text: count || '' }));
-    rail.append(bk('all', 'Todas las notas', null, active.length));
-    booksSorted().forEach((b) => {
-      const own = active.filter((n) => n.libreta === b.id);
-      const row = bk(b.id, b.nombre, b.color, own.length);
-      row.addEventListener('dblclick', () => editBook(b)); row.title = 'Doble clic para editar';
-      rail.append(row);
-      if (S.book === b.id) {
-        (b.secciones || []).forEach((s) => rail.append(h('button', { type: 'button', class: 'lb-bk sec', 'aria-current': String(S.sec === s), onclick: () => { S.sec = s; renderAll(); } }, s, h('span', { class: 'n', text: own.filter((n) => n.seccion === s).length || '' }))));
-        rail.append(h('button', { type: 'button', class: 'lb-bk sec', text: 'Editar libreta…', onclick: () => editBook(b) }));
+    if (!S.book) {
+      // nivel 1: libretas
+      list.append(h('div', { class: 'lb-list-head' }, h('h2', { text: 'Mis libretas' })));
+      const grid = h('div', { class: 'lb-books' });
+      grid.append(h('button', { type: 'button', class: 'lb-bcard lb-bnew', onclick: () => editBook() }, h('span', { class: 'plus', html: ic(I.plus) }), h('b', { text: 'Crear libreta' }), h('span', { class: 'ty', text: 'Libre, diario o reuniones' })));
+      booksSorted().forEach((b) => {
+        const own = active.filter((n) => n.libreta === b.id);
+        const last = own.reduce((m, n) => (String(n.editada) > m ? String(n.editada) : m), '');
+        grid.append(h('button', { type: 'button', class: 'lb-bcard', style: '--c:' + b.color, onclick: () => goBook(b.id) },
+          h('b', { text: b.nombre }), h('span', { class: 'ty', text: TIPOS[tipoOf(b)].label + ' · ' + own.length + (own.length === 1 ? ' nota' : ' notas') }),
+          h('span', { class: 'ty', text: last ? 'Última: ' + fmtD.format(new Date(last)) : 'Vacía' })));
+      });
+      list.append(grid);
+      const nArch = [...S.notes.values()].filter((n) => n.archivada).length;
+      list.append(h('div', { class: 'lb-links' },
+        h('button', { type: 'button', class: 'lb-chip', onclick: () => goBook('all') }, 'Todas las notas · ' + active.length),
+        h('button', { type: 'button', class: 'lb-chip', onclick: () => goBook('arch') }, 'Archivo · ' + nArch)));
+      list.append(search, items);
+      search.placeholder = 'Buscar en todas las notas…';
+      renderItems(); return;
+    }
+    // nivel 2: dentro de una libreta
+    const b = S.books.get(S.book);
+    if (S.book !== 'all' && S.book !== 'arch' && !b) { S.book = null; return renderNav(); }
+    list.append(h('button', { type: 'button', class: 'btn ghost lb-up', html: ic(I.back) + ' Libretas', onclick: () => { S.note = null; goBook(null); } }));
+    const head = h('div', { class: 'lb-list-head' }, b ? h('span', { class: 'lb-dot', style: 'background:' + b.color }) : null, h('h2', { text: b ? b.nombre : S.book === 'all' ? 'Todas las notas' : 'Archivo' }));
+    if (b) head.append(h('button', { type: 'button', class: 'btn ghost', title: 'Editar libreta', 'aria-label': 'Editar libreta', html: ic(I.more), onclick: () => editBook(b) }));
+    list.append(head);
+    if (b) {
+      const t = tipoOf(b);
+      const todayDone = t === 'diario' && [...S.notes.values()].some((n) => n.libreta === b.id && n.dia === dayKey() && !n.archivada);
+      list.append(h('div', { class: 'lb-desc', text: TIPOS[t].label + ' · ' + TIPOS[t].desc }));
+      list.append(h('button', { type: 'button', class: 'btn primary lb-newbtn', html: ic(t === 'diario' ? I.page : I.plus) + (todayDone ? 'Abrir hoja de hoy' : TIPOS[t].btn), onclick: () => newPage(b) }));
+      list.append(h('div', { class: 'lb-cap' },
+        h('button', { type: 'button', html: ic(I.mic) + 'Dictar', onclick: () => capture('dictar') }),
+        h('button', { type: 'button', html: ic(I.paste) + 'Pegar', onclick: () => capture('pegar') }),
+        h('button', { type: 'button', html: ic(I.pen) + 'A mano', onclick: () => capture('mano') })));
+      if ((b.secciones || []).length > 1) {
+        const chip = (s, label) => h('button', { type: 'button', class: 'lb-chip', 'aria-pressed': String(S.sec === s), onclick: () => { S.sec = s; renderAll(); } }, label);
+        list.append(h('div', { class: 'lb-chips' }, chip('', 'Todas'), ...(b.secciones || []).map((s) => chip(s, s))));
       }
-    });
-    rail.append(h('button', { type: 'button', class: 'lb-bk lb-addbk', html: ic(I.plus) + ' Nueva libreta', onclick: () => editBook() }));
-    rail.append(h('div', { class: 'lb-sep' }));
-    rail.append(bk('arch', 'Archivo', '#98a1bb', [...S.notes.values()].filter((n) => n.archivada).length));
+    }
+    search.placeholder = b ? 'Buscar en ' + b.nombre + '…' : 'Buscar…';
+    list.append(search, items); renderItems();
   }
-  function renderChips() {
-    chips.innerHTML = '';
-    const chip = (id, label, color, sec) => h('button', { type: 'button', class: 'lb-chip', 'aria-pressed': String(sec != null ? S.sec === sec : S.book === id && !S.sec), onclick: () => { if (sec != null) S.sec = S.sec === sec ? '' : sec; else { S.book = id; S.sec = ''; } renderAll(); } }, color ? h('i', { style: 'background:' + color }) : null, label);
-    chips.append(chip('all', 'Todas'));
-    booksSorted().forEach((b) => chips.append(chip(b.id, b.nombre, b.color)));
-    chips.append(chip('arch', 'Archivo', '#98a1bb'), h('button', { type: 'button', class: 'lb-chip', text: '+ Libreta', onclick: () => editBook() }));
-    const b = S.books.get(S.book);
-    if (b && (b.secciones || []).length > 1) { const row2 = h('div', { class: 'lb-chips', style: 'display:flex' }); (b.secciones || []).forEach((s) => row2.append(chip(null, s, null, s))); row2.append(h('button', { type: 'button', class: 'lb-chip', text: 'Editar', onclick: () => editBook(b) })); chips.after(row2); chips._row2 && chips._row2.remove(); chips._row2 = row2; }
-    else if (chips._row2) { chips._row2.remove(); chips._row2 = null; }
-    if (getComputedStyle(chips).display === 'none' && chips._row2) chips._row2.style.display = 'none';
-  }
-  function renderList() {
-    const b = S.books.get(S.book);
-    listHead.innerHTML = ''; listHead.append(h('h2', { text: S.q ? 'Resultados' : S.book === 'all' ? 'Todas las notas' : S.book === 'arch' ? 'Archivo' : (b ? b.nombre + (S.sec ? ' · ' + S.sec : '') : 'Notas') }));
-    if (b) listHead.append(h('button', { type: 'button', class: 'btn ghost', title: 'Editar libreta', 'aria-label': 'Editar libreta', html: ic(I.more), onclick: () => editBook(b) }));
+  function renderItems() {
     items.innerHTML = '';
-    const arr = visibleNotes();
     if (!S.ready) { items.append(h('div', { class: 'lb-empty', text: 'Cargando tus libretas…' })); return; }
-    if (!arr.length) { items.append(h('div', { class: 'lb-empty', text: S.q ? 'Nada coincide con la búsqueda.' : S.book === 'arch' ? 'No hay notas archivadas.' : 'Aún no hay notas aquí. Dicta, pega, escribe o toma una nota a mano.' })); return; }
+    if (!S.book && !S.q) return;
+    const arr = visibleNotes();
+    if (!arr.length) { items.append(h('div', { class: 'lb-empty', text: S.q ? 'Nada coincide con la búsqueda.' : S.book === 'arch' ? 'No hay notas archivadas.' : 'Esta libreta está vacía. Pulsa el botón de arriba para crear la primera hoja.' })); return; }
+    const b = S.books.get(S.book), t = tipoOf(b);
     let lastG = '';
     arr.forEach((n) => {
-      const g = n.fijada && S.book !== 'arch' && !S.q ? 'Fijadas' : (() => { const d = new Date(n.editada), t = new Date(); const days = Math.floor((new Date(t.toDateString()) - new Date(d.toDateString())) / 864e5); return days <= 0 ? 'Hoy' : days === 1 ? 'Ayer' : days < 7 ? 'Esta semana' : d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase()); })();
+      const ref = new Date(t !== 'libre' && n.dia ? n.dia + 'T12:00' : n.editada);
+      const g = n.fijada && !S.q ? 'Fijadas' : t !== 'libre' && b ? ref.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase()) : (() => { const days = Math.floor((new Date(new Date().toDateString()) - new Date(ref.toDateString())) / 864e5); return days <= 0 ? 'Hoy' : days === 1 ? 'Ayer' : days < 7 ? 'Esta semana' : ref.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase()); })();
       if (g !== lastG) { items.append(h('div', { class: 'lb-group', text: g })); lastG = g; }
       const bk = bookOf(n);
       const kind = n.tinta && n.tinta.trazos && n.tinta.trazos.length ? '✍️ ' : n.origen === 'dictado' ? '🎙 ' : '';
       items.append(h('button', { type: 'button', class: 'lb-it', style: '--c:' + colorOf(n), 'aria-current': String(S.note === n.id), onclick: () => openNote(n.id) },
         h('b', {}, n.fijada ? h('span', { class: 'pin', text: '★' }) : null, h('span', { text: kind + (n.titulo || 'Sin título') })),
         plain(n) ? h('span', { class: 'sn', text: plain(n).slice(0, 180) }) : null,
-        h('span', { class: 'mt' }, h('span', { text: fmt.format(new Date(n.editada)) }), S.book === 'all' || S.q ? h('span', { text: (bk ? bk.nombre : '') + (n.seccion ? ' · ' + n.seccion : '') }) : n.seccion && !S.sec ? h('span', { text: n.seccion }) : null)));
+        h('span', { class: 'mt' }, h('span', { text: fmt.format(new Date(n.editada)) }), !inBook() ? h('span', { text: (bk ? bk.nombre : '') + (n.seccion ? ' · ' + n.seccion : '') }) : n.seccion && !S.sec && (bk.secciones || []).length > 1 ? h('span', { text: n.seccion }) : null)));
     });
   }
   let dict = null;
@@ -449,16 +513,16 @@
     page.innerHTML = '';
     if (!n) { page.append(h('div', { class: 'lb-blank', html: '<svg viewBox="0 0 24 24">' + I.book + '</svg><div>Elige una nota o crea una nueva.<br>Puedes dictarla, pegarla, escribirla o hacerla a mano.</div>' })); return; }
     const top = h('div', { class: 'lb-page-top' },
-      h('button', { type: 'button', class: 'btn ghost lb-back', html: ic(I.back) + ' Notas', onclick: () => { S.note = null; renderAll(); window.scrollTo(0, 0); } }));
+      h('button', { type: 'button', class: 'btn ghost lb-back', html: ic(I.back) + ' ' + ((bookOf(n) || {}).nombre || 'Notas'), onclick: () => { S.note = null; renderAll(); window.scrollTo(0, 0); } }));
     const title = h('input', { class: 'lb-title', value: n.titulo || '', placeholder: 'Título', 'aria-label': 'Título' });
     title.addEventListener('input', () => { n.titulo = title.value; saveLater(n); });
-    title.addEventListener('blur', () => renderList());
+    title.addEventListener('blur', () => renderItems());
     const bookSel = h('select', { 'aria-label': 'Libreta' }, ...booksSorted().map((b) => h('option', { value: b.id, text: b.nombre, selected: b.id === n.libreta })));
     const secSel = h('select', { 'aria-label': 'Sección' });
     const fillSecs = () => { const b = bookOf(n); secSel.innerHTML = ''; ((b && b.secciones) || ['General']).forEach((s) => secSel.append(h('option', { value: s, text: s, selected: s === n.seccion }))); if (b && !(b.secciones || []).includes(n.seccion)) n.seccion = (b.secciones || ['General'])[0]; };
     fillSecs();
-    bookSel.onchange = () => { n.libreta = bookSel.value; fillSecs(); n.seccion = secSel.value; saveNote(n); renderList(); renderRail(); };
-    secSel.onchange = () => { n.seccion = secSel.value; saveNote(n); renderList(); renderRail(); };
+    bookSel.onchange = () => { n.libreta = bookSel.value; fillSecs(); n.seccion = secSel.value; saveNote(n); renderNav(); };
+    secSel.onchange = () => { n.seccion = secSel.value; saveNote(n); renderNav(); };
     const meta = h('div', { class: 'lb-meta' }, bookSel, secSel, h('span', { text: 'Creada ' + fmtD.format(new Date(n.creada)) + (n.origen ? ' · ' + n.origen : '') }), h('span', { id: 'lb-status', class: 'lb-status', style: 'margin-left:auto' }));
 
     // texto
@@ -520,8 +584,8 @@
     swap(false);
     if (!hasText() && !(n.tinta && n.tinta.trazos && n.tinta.trazos.length) && !n.titulo) setTimeout(() => title.focus(), 30);
   }
-  function openNote(id) { S.note = id; S.readMode = true; const n = S.notes.get(id); if (n && !n.archivada && S.book === 'arch') S.book = 'all'; renderAll(); if (innerWidth < 700) window.scrollTo(0, 0); }
-  function renderAll() { renderRail(); renderChips(); renderList(); renderPage(); }
+  function openNote(id, edit) { S.note = id; S.readMode = !edit; const n = S.notes.get(id); if (n && !n.archivada && S.book === 'arch') S.book = 'all'; renderAll(); if (innerWidth < 700) window.scrollTo(0, 0); }
+  function renderAll() { renderNav(); renderPage(); }
   renderAll();
 
   /* ---------- arranque ---------- */
@@ -536,7 +600,7 @@
     S.ready = true; renderAll();
     // cambios desde otro dispositivo
     const editing = () => { const a = document.activeElement; return a && page.contains(a) && /TEXTAREA|INPUT/.test(a.tagName); };
-    S.db.collection('lb_libretas').onSnapshot((s) => { S.books = new Map(s.docs.map((d) => [d.id, d.data()])); if (!S.books.size) return; renderRail(); renderChips(); });
+    S.db.collection('lb_libretas').onSnapshot((s) => { S.books = new Map(s.docs.map((d) => [d.id, d.data()])); if (!S.books.size) return; renderNav(); });
     S.db.collection('lb_notas').onSnapshot((s) => {
       const m = new Map(s.docs.map((d) => [d.id, d.data()]));
       const cur = S.note && S.notes.get(S.note), remote = S.note && m.get(S.note);
@@ -546,7 +610,7 @@
         if (newer && !editing() && !dict && !document.querySelector('.lb-inkx')) repaint = true; else m.set(S.note, cur);
       }
       S.notes = m; if (repaint && !S.notes.get(S.note)) S.note = null;
-      renderRail(); renderList(); if (repaint) renderPage();
+      renderNav(); if (repaint) renderPage();
     });
   })().catch((e) => { items.innerHTML = ''; items.append(h('div', { class: 'lb-empty', text: 'No se pudieron cargar las notas: ' + (e.message || e) })); });
 })();

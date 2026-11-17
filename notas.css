@@ -1,6 +1,6 @@
 /* synqalia · Notas (libretas tipo OneNote) */
 #view-notas { max-width: none !important; }
-.lb { display: grid; grid-template-columns: 220px 300px minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 140px); }
+.lb { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 140px); }
 .lb-pane { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow, none); min-width: 0; }
 .lb-rail { padding: 12px 8px; display: grid; gap: 2px; position: sticky; top: 12px; }
 .lb-rail h3 { margin: 4px 10px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
@@ -18,7 +18,7 @@
 .lb-list-head { display: flex; align-items: center; gap: 8px; }
 .lb-list-head h2 { margin: 0; font-size: 17px; font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-search { border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 8px 10px; width: 100%; }
-.lb-chips { display: none; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.lb-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .lb-chips::-webkit-scrollbar { display: none; }
 .lb-chip { flex: none; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .lb-chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -108,11 +108,7 @@
 .lb-inkmsg { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #0d1b33; color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; z-index: 75; pointer-events: none; }
 
 /* Fold abierto, iPad vertical: dos columnas */
-@media (max-width: 1100px) {
-  .lb { grid-template-columns: 290px minmax(0, 1fr); }
-  .lb-rail { display: none; }
-  .lb-chips { display: flex; }
-}
+@media (max-width: 1100px) { .lb { grid-template-columns: 300px minmax(0, 1fr); } }
 /* móvil (Fold cerrado): una columna, como una app */
 @media (max-width: 700px) {
   .lb { grid-template-columns: minmax(0, 1fr); min-height: 0; }
@@ -128,3 +124,29 @@
   .lb-tools .btn .lb-tl { display: none; }
 }
 @media (max-width: 380px) { .lb-cap button { font-size: 10.5px; } }
+
+/* nivel 1: libretas · nivel 2: hojas */
+.lb-books { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.lb-bcard { position: relative; text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 14px 12px 12px 16px; cursor: pointer; display: grid; gap: 3px; min-height: 104px; align-content: end; overflow: hidden; }
+.lb-bcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c, var(--accent)); }
+.lb-bcard::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 34px; background: linear-gradient(90deg, color-mix(in srgb, var(--c, var(--accent)) 18%, transparent), transparent); }
+.lb-bcard:hover { border-color: var(--c, var(--accent)); }
+.lb-bcard b { font-size: 15px; font-weight: 800; line-height: 1.2; }
+.lb-bcard .ty { font-size: 11.5px; color: var(--muted); }
+.lb-bnew { border-style: dashed; border-width: 2px; background: transparent; align-content: center; justify-items: center; text-align: center; color: var(--accent); }
+.lb-bnew::before, .lb-bnew::after { display: none; }
+.lb-bnew .plus svg { width: 26px; height: 26px; }
+.lb-links { display: flex; gap: 6px; flex-wrap: wrap; }
+.lb-up { justify-self: start; display: inline-flex; gap: 4px; align-items: center; padding-left: 0; }
+.lb-up svg { width: 18px; height: 18px; }
+.lb-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.lb-newbtn { display: flex !important; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px !important; font-size: 15px !important; border-radius: 11px !important; }
+.lb-newbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lb-cap.lb-cap { grid-template-columns: repeat(3, 1fr); }
+.lb-tipos { display: grid; gap: 6px; }
+.lb-tipos button { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; cursor: pointer; display: grid; gap: 2px; }
+.lb-tipos button b { font-size: 14px; } .lb-tipos button span { font-size: 12px; color: var(--muted); }
+.lb-tipos button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.lb-sheet .field { display: grid; gap: 4px; } .lb-sheet .field label { font-size: 12px; color: var(--muted); }
+.lb-sheet .field select, .lb-sheet .lb-date { border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 9px 11px; width: 100%; }
+.lb-desc { font-size: 12.5px; color: var(--muted); margin-top: -4px; }
