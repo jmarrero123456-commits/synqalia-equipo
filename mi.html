@@ -936,12 +936,18 @@
   const blobMap = {};
   window.blobUrl = (id) => blobMap[id] || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
-  (async () => {
-    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-    sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-    window.__sb = sb;
-    const { data } = await sb.auth.getSession();
-    if (!data.session) { location.replace('./?next=mi.html'); return; }
+  /* Sin conexión: si no se puede comprobar la sesión, synqalia arranca en modo offline (Notas funciona con la copia del móvil)
+     y vuelve a conectar sola cuando hay red. Solo se manda a «Entrar» si hay red y de verdad no hay sesión. */
+  const netErr = (e) => !navigator.onLine || (e && (e.name === 'AuthRetryableFetchError' || e.status === 0 || /fetch|network|load failed/i.test(String(e.message || e))));
+  const goOffline = () => { window.__sqOffline = true; document.body.classList.add('sq-offline'); const l = document.getElementById('sync-label'); if (l) l.textContent = 'Sin conexión · trabajando en el móvil'; addEventListener('online', () => setTimeout(init, 800), { once: true }); };
+  async function init() {
+    let data, error;
+    try {
+      if (!sb) { const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'); sb = createClient(SUPABASE_URL, SUPABASE_KEY); window.__sb = sb; }
+      ({ data, error } = await sb.auth.getSession());
+    } catch (e) { goOffline(); return; }
+    if (!data.session) { if (netErr(error)) { goOffline(); return; } location.replace('./?next=mi.html'); return; }
+    window.__sqOffline = false; document.body.classList.remove('sq-offline');
     uid = data.session.user.id;
     window.__sqUser = data.session.user;
     (() => { const b = document.getElementById('sq-collapse'); if (!b) return; const set = (c) => { document.body.classList.toggle('sq-mini', c); b.textContent = c ? '»' : '«'; b.title = b.ariaLabel = c ? 'Desplegar el menú' : 'Recoger el menú'; try { localStorage.setItem('sq-mini', c ? '1' : ''); } catch (e) {} };
@@ -952,7 +958,8 @@
       me.querySelector('b').textContent = n; me.querySelector('.who span').textContent = e; me.querySelector('.sq-out').onclick = () => sb.auth.signOut(); })();
     sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') location.replace('./'); });
     readyResolve();
-  })();
+  }
+  init();
 
   /* ---------- db: colecciones y documentos con instantáneas en vivo ---------- */
   const cache = {};          // col -> Map(id -> data)
@@ -975,7 +982,7 @@
         data.forEach((r) => m.set(r.id, r.data)); if (data.length < 1000) break;
       }
       cache[col] = m; ensureChannel();
-    })();
+    })().catch((e) => { delete loaded[col]; throw e; }); // sin red: se reintenta la próxima vez
     return loaded[col];
   }
   function ensureChannel() {
@@ -1190,7 +1197,7 @@
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
   $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
-  show(location.hash.slice(1) || 'hoy');
+  show(location.hash.slice(1) || (navigator.onLine ? 'hoy' : 'notas'));
 
   // ---------- helpers ----------
   const sortTasks = (a, b) => (PRIO[a.prioridad] ?? 1) - (PRIO[b.prioridad] ?? 1) || String(a.vence || '9999').localeCompare(String(b.vence || '9999')) || String(b.creada || '').localeCompare(String(a.creada || ''));

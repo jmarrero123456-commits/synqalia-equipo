@@ -48,12 +48,71 @@
 
   const S = { books: new Map(), notes: new Map(), book: (() => { try { return localStorage.getItem('sq-lb-book') || null; } catch (e) { return null; } })(), sec: '', q: '', note: null, readMode: true, db: null, ai: null, ready: false };
 
-  /* ---------- datos ---------- */
+  /* ---------- datos: primero en el dispositivo (IndexedDB), luego en la nube ----------
+     Todo se guarda al instante en el móvil/PC y funciona sin conexión. Los cambios pendientes se suben
+     solos al volver la red; si la misma nota cambió en otro dispositivo, gana la edición más reciente. */
   const booksSorted = () => [...S.books.values()].sort((a, b) => (a.orden || 99) - (b.orden || 99) || a.nombre.localeCompare(b.nombre));
   const bookOf = (n) => S.books.get(n && n.libreta) || null;
   const colorOf = (n) => (bookOf(n) || {}).color || '#5d6680';
-  async function saveNote(n) { n.editada = nowIso(); S.notes.set(n.id, n); try { await S.db.collection('lb_notas').doc(n.id).set(n); status('Guardado'); } catch (e) { status('No se pudo guardar: ' + e.message, true); } }
-  async function saveBook(b) { S.books.set(b.id, b); await S.db.collection('lb_libretas').doc(b.id).set(b); }
+  const userId = (() => { try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) { const v = JSON.parse(localStorage.getItem(k)); const u = v && (v.user || (v.currentSession && v.currentSession.user)); if (u && u.id) return u.id; } } } catch (e) {} return 'anon'; })();
+  const idb = (() => {
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open('synqalia-notas-' + userId, 1); r.onupgradeneeded = () => r.result.createObjectStore('docs'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+    const run = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('docs', mode); const q = fn(t.objectStore('docs')); t.oncomplete = () => res(q && 'result' in q ? q.result : undefined); t.onerror = () => rej(t.error); }); };
+    return { all: () => run('readonly', (s) => s.getAll()), put: (rec) => { const { busy, ...clean } = rec; return run('readwrite', (s) => s.put(clean, rec.col + '/' + rec.id)); }, del: (col, id) => run('readwrite', (s) => s.delete(col + '/' + id)) };
+  })();
+  const recs = new Map(); // "col/id" -> {col, id, data, dirty, del, synced}
+  const keyOf = (col, id) => col + '/' + id;
+  const pending = () => [...recs.values()].filter((r) => r.dirty).length;
+  const online = () => navigator.onLine && !!S.db && !window.__sqOffline;
+  function setSync() {
+    const el = document.querySelector('.lb-sync'); if (!el) return;
+    const p = pending();
+    el.className = 'lb-sync ' + (online() ? (p ? 'up' : 'ok') : 'off');
+    el.textContent = online() ? (p ? 'Subiendo ' + p + (p === 1 ? ' cambio…' : ' cambios…') : 'Sincronizado') : 'Sin conexión · guardando en este dispositivo' + (p ? ' (' + p + ' pendientes de subir)' : '');
+  }
+  async function localPut(col, data, opts = {}) {
+    const r = recs.get(keyOf(col, data.id)) || { col, id: data.id, synced: false };
+    Object.assign(r, { data: JSON.parse(JSON.stringify(data)), dirty: !(opts.clean || opts.placeholder), del: false }); if (opts.clean) r.synced = true;
+    recs.set(keyOf(col, data.id), r);
+    try { await idb.put(r); } catch (e) { console.warn('IndexedDB', e); }
+    return r;
+  }
+  async function push(r) {
+    if (!online() || !r.dirty || r.busy) return false;
+    r.busy = true; const ver = r.data && r.data.editada;
+    try {
+      if (r.del) { await S.db.collection(r.col).doc(r.id).delete(); recs.delete(keyOf(r.col, r.id)); await idb.del(r.col, r.id); }
+      else { await S.db.collection(r.col).doc(r.id).set(r.data); if (!r.data || r.data.editada === ver) { r.dirty = false; r.synced = true; await idb.put(r); } }
+      return true;
+    } catch (e) { return false; } finally { r.busy = false; setSync(); if (r.dirty && online()) setTimeout(() => push(r), 400); }
+  }
+  let flushing = false;
+  async function flush() { if (flushing || !online()) return setSync(); flushing = true; try { for (const r of [...recs.values()]) if (r.dirty) await push(r); } finally { flushing = false; setSync(); } }
+  async function saveNote(n) {
+    n.editada = nowIso(); S.notes.set(n.id, n);
+    const r = await localPut('lb_notas', n); status(online() ? 'Guardando…' : 'Guardado en este dispositivo'); setSync();
+    if (await push(r)) status('Guardado'); else if (online()) status('Guardado en este dispositivo; se subirá luego');
+  }
+  async function saveBook(b) { b.editada = nowIso(); S.books.set(b.id, b); const r = await localPut('lb_libretas', b); setSync(); push(r); }
+  async function removeDoc(col, id) {
+    (col === 'lb_notas' ? S.notes : S.books).delete(id);
+    const r = recs.get(keyOf(col, id)) || { col, id, synced: true };
+    if (!r.synced) { recs.delete(keyOf(col, id)); await idb.del(col, id).catch(() => {}); return; }
+    Object.assign(r, { del: true, dirty: true, data: null }); recs.set(keyOf(col, id), r); await idb.put(r).catch(() => {}); setSync(); push(r);
+  }
+  // aplica lo que llega de la nube sin pisar cambios locales pendientes más recientes
+  async function applyRemote(col, docs) {
+    const seen = new Set(); const target = col === 'lb_notas' ? S.notes : S.books;
+    for (const d of docs) {
+      const data = d.data(); if (!data) continue; seen.add(d.id);
+      const r = recs.get(keyOf(col, d.id));
+      if (r && r.dirty) { if (r.del || String(data.editada || '') <= String((r.data && r.data.editada) || '')) continue; }
+      if (r && !r.dirty && r.data && JSON.stringify(r.data) === JSON.stringify(data)) { r.synced = true; continue; }
+      target.set(d.id, data); await localPut(col, { ...data, id: d.id }, { clean: true });
+    }
+    for (const r of [...recs.values()]) if (r.col === col && !seen.has(r.id) && r.synced && !r.dirty) { recs.delete(keyOf(col, r.id)); target.delete(r.id); await idb.del(col, r.id).catch(() => {}); }
+  }
   const saveLater = (() => { const t = {}; return (n, ms = 900) => { status('Guardando…'); clearTimeout(t[n.id]); t[n.id] = setTimeout(() => saveNote(n), ms); }; })();
 
   function status(msg, bad) { const s = $('#lb-status'); if (s) { s.textContent = msg; s.style.color = bad ? 'var(--bad)' : ''; } }
@@ -66,6 +125,7 @@
 
   /* ---------- IA ---------- */
   async function aiJson(prompt, images) {
+    if (!navigator.onLine) throw new Error('Sin conexión: la IA estará disponible cuando vuelva la red');
     if (!S.ai) throw new Error('La IA no está disponible ahora');
     let out = await S.ai.json(prompt, images ? { images } : undefined);
     if (typeof out === 'string') { const m = out.match(/\{[\s\S]*\}/); out = m ? JSON.parse(m[0]) : { cuerpo: out }; }
@@ -304,7 +364,8 @@
       if (rec) { rec.stop(); rec = null; setMic(false); }
       const book = sel.value === 'auto' ? (booksSorted()[0] || {}).id : sel.value;
       const n = newNote({ libreta: book, cuerpo: raw, origen: mode === 'dictar' ? 'dictado' : mode === 'pegar' ? 'pegado' : 'teclado' });
-      if (order && S.ai) {
+      if (order && S.ai && !navigator.onLine) toast('Sin conexión: guardada tal cual. Pulsa «Ordenar con IA» cuando vuelva la red');
+      if (order && S.ai && navigator.onLine) {
         st.textContent = 'Ordenando con IA…'; modal.querySelectorAll('button').forEach((b) => (b.disabled = true));
         try { applyOrganized(n, await organize(raw, { keepBook: sel.value !== 'auto' }), raw); } catch (e) { toast('No se pudo ordenar; la guardo tal cual'); }
       } else if (!n.titulo) n.titulo = raw.split('\n')[0].slice(0, 60);
@@ -363,7 +424,7 @@
     const del = !isNew ? h('button', { type: 'button', class: 'btn ghost', style: 'color:var(--bad);margin-right:auto', text: 'Eliminar libreta', onclick: async () => {
       if (count) { alert('Esta libreta tiene ' + count + ' notas. Muévelas a otra libreta antes de eliminarla.'); return; }
       if (!confirm('¿Eliminar la libreta «' + b.nombre + '»?')) return;
-      S.books.delete(b.id); await S.db.collection('lb_libretas').doc(b.id).delete(); if (S.book === b.id) goBook(null); close(); renderAll();
+      await removeDoc('lb_libretas', b.id); if (S.book === b.id) goBook(null); close(); renderAll();
     } }) : null;
     modal.append(h('div', { class: 'lb-sheet', role: 'dialog', 'aria-label': 'Libreta' },
       h('h3', { text: isNew ? 'Crear libreta' : 'Editar libreta' }),
@@ -438,7 +499,7 @@
     return arr.sort((x, y) => (y.fijada ? 1 : 0) - (x.fijada ? 1 : 0) || (byDay ? String(y.dia || '').localeCompare(String(x.dia || '')) : 0) || String(y.editada).localeCompare(String(x.editada)));
   }
   function renderNav() {
-    list.innerHTML = '';
+    list.innerHTML = ''; list.append(h('div', { class: 'lb-sync' })); setTimeout(setSync, 0);
     const active = [...S.notes.values()].filter((n) => !n.archivada);
     if (!S.book) {
       // nivel 1: libretas
@@ -568,7 +629,7 @@
       else if (a === 'arch') { n.archivada = !n.archivada; await saveNote(n); toast(n.archivada ? 'Nota archivada' : 'Nota recuperada del archivo', 'Deshacer', () => { n.archivada = !n.archivada; saveNote(n); renderAll(); }); if (n.archivada && S.book !== 'arch') S.note = null; renderAll(); }
       else if (a === 'copy') { try { await navigator.clipboard.writeText((n.titulo ? n.titulo + '\n\n' : '') + (n.cuerpo || n.textoMano || '')); toast('Texto copiado'); } catch (e) { toast('No se pudo copiar'); } }
       else if (a === 'dup') { const c = { ...JSON.parse(JSON.stringify(n)), id: newId('n'), titulo: (n.titulo || 'Nota') + ' (copia)', fijada: false, creada: nowIso() }; await saveNote(c); openNote(c.id); }
-      else if (a === 'del') { if (!confirm('¿Eliminar esta nota? No se puede deshacer.')) return; S.notes.delete(n.id); S.note = null; renderAll(); try { await S.db.collection('lb_notas').doc(n.id).delete(); } catch (e) { toast('No se pudo eliminar: ' + e.message); } }
+      else if (a === 'del') { if (!confirm('¿Eliminar esta nota? No se puede deshacer.')) return; S.note = null; await removeDoc('lb_notas', n.id); renderAll(); }
     };
     const tools = h('div', { class: 'lb-tools' }, modeB, micB, inkB, ordB, menu);
 
@@ -588,29 +649,46 @@
   function renderAll() { renderNav(); renderPage(); }
   renderAll();
 
-  /* ---------- arranque ---------- */
+  /* ---------- arranque: primero lo del dispositivo, luego la nube ---------- */
+  const editing = () => { const a = document.activeElement; return a && page.contains(a) && /TEXTAREA|INPUT/.test(a.tagName); };
+  function refreshFromRemote(prevNote) {
+    const cur = prevNote, now = S.note && S.notes.get(S.note);
+    let repaint = !!S.note && !now;
+    if (cur && now && now !== cur) {
+      if (String(now.editada || '') > String(cur.editada || '') && !editing() && !dict && !document.querySelector('.lb-inkx')) repaint = true;
+      else S.notes.set(cur.id, cur);
+    }
+    if (repaint && !S.notes.get(S.note)) S.note = null;
+    renderNav(); if (repaint) renderPage(); setSync();
+  }
+  async function connect(db) {
+    S.db = db; setSync();
+    const [bs, ns] = await Promise.all([db.collection('lb_libretas').get(), db.collection('lb_notas').get()]);
+    const prev = S.note && S.notes.get(S.note);
+    await applyRemote('lb_libretas', bs.docs); await applyRemote('lb_notas', ns.docs);
+    for (const r of recs.values()) if (!r.synced && !r.dirty && !r.del) r.dirty = true; // libretas creadas sin conexión la primera vez
+    if (!S.books.size) for (const b of DEFAULT_BOOKS) await saveBook({ ...b });
+    refreshFromRemote(prev); await flush();
+    if (S.subscribed) return; S.subscribed = true;
+    db.collection('lb_libretas').onSnapshot(async (s) => { await applyRemote('lb_libretas', s.docs); renderNav(); });
+    db.collection('lb_notas').onSnapshot(async (s) => { const prev2 = S.note && S.notes.get(S.note); await applyRemote('lb_notas', s.docs); refreshFromRemote(prev2); });
+  }
   (async () => {
+    // 1) copia del dispositivo: abre al instante y sin conexión
+    try { for (const r of (await idb.all()) || []) { delete r.busy; recs.set(keyOf(r.col, r.id), r); if (!r.del && r.data) (r.col === 'lb_notas' ? S.notes : S.books).set(r.id, r.data); } } catch (e) { console.warn('IndexedDB', e); }
+    if (S.books.size || !navigator.onLine) {
+      if (!S.books.size) for (const b of DEFAULT_BOOKS) { S.books.set(b.id, { ...b }); await localPut('lb_libretas', { ...b, editada: '' }, { placeholder: true }); }
+      S.ready = true; renderAll();
+    }
+    setSync();
+    addEventListener('online', () => { setSync(); setTimeout(flush, 1500); });
+    addEventListener('offline', () => setSync());
+    // 2) la nube, en cuanto haya sesión y red (si arranca sin red, entra sola al volver)
     const use = () => (window.claude && window.claude.use ? Promise.resolve() : new Promise((r) => setTimeout(r, 200)).then(use));
     await use();
-    S.db = await window.claude.use('db');
     window.claude.use('sample').then((s) => { S.ai = s; if (S.note) renderPage(); }).catch(() => {});
-    const bs = await S.db.collection('lb_libretas').get();
-    if (bs.empty) { for (const b of DEFAULT_BOOKS) await saveBook({ ...b }); } else bs.docs.forEach((d) => S.books.set(d.id, d.data()));
-    const ns = await S.db.collection('lb_notas').get(); ns.docs.forEach((d) => S.notes.set(d.id, d.data()));
-    S.ready = true; renderAll();
-    // cambios desde otro dispositivo
-    const editing = () => { const a = document.activeElement; return a && page.contains(a) && /TEXTAREA|INPUT/.test(a.tagName); };
-    S.db.collection('lb_libretas').onSnapshot((s) => { S.books = new Map(s.docs.map((d) => [d.id, d.data()])); if (!S.books.size) return; renderNav(); });
-    S.db.collection('lb_notas').onSnapshot((s) => {
-      const m = new Map(s.docs.map((d) => [d.id, d.data()]));
-      const cur = S.note && S.notes.get(S.note), remote = S.note && m.get(S.note);
-      let repaint = !!S.note && !remote;
-      if (cur && remote) {
-        const newer = String(remote.editada || '') > String(cur.editada || '');
-        if (newer && !editing() && !dict && !document.querySelector('.lb-inkx')) repaint = true; else m.set(S.note, cur);
-      }
-      S.notes = m; if (repaint && !S.notes.get(S.note)) S.note = null;
-      renderNav(); if (repaint) renderPage();
-    });
-  })().catch((e) => { items.innerHTML = ''; items.append(h('div', { class: 'lb-empty', text: 'No se pudieron cargar las notas: ' + (e.message || e) })); });
+    const db = await window.claude.use('db');
+    const tryConnect = async () => { try { await connect(db); S.ready = true; renderAll(); } catch (e) { S.db = null; setSync(); addEventListener('online', () => setTimeout(tryConnect, 1500), { once: true }); if (navigator.onLine) setTimeout(tryConnect, 15000); } };
+    await tryConnect();
+  })().catch((e) => { if (!S.ready) { items.innerHTML = ''; items.append(h('div', { class: 'lb-empty', text: 'No se pudieron cargar las notas: ' + (e.message || e) })); } setSync(); });
 })();
