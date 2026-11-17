@@ -183,3 +183,44 @@ body:has(.login) .sq-bar { display: none; }
 .item.mitem:not(.mrow) > .actions:empty { display: none; }
 .item.mitem:not(.mrow) > .composer { grid-column: 2; }
 @media (min-width: 861px) { body.sq-mini .sq-side .tabs .rec-tab { position: absolute; top: 6px; left: 10px; margin: 0; } }
+
+/* ---------- Mensajes (Teams; más canales después) ---------- */
+.app > main#view-mensajes { max-width: none; }
+.msg-bar { margin: 12px 0; }
+.msg-bar .tk-search { width: 100%; max-width: 420px; }
+.mav { position: relative; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 10px; border-radius: 50%; vertical-align: middle;
+  background: color-mix(in srgb, #4b53bc 16%, var(--panel)); color: #3d44a6; font-size: 11px; font-weight: 800; flex: none; }
+.mav .ch { position: absolute; right: -2px; bottom: -2px; width: 11px; height: 11px; border-radius: 3px; border: 2px solid var(--panel); background: #4b53bc; }
+.mav .ch-whatsapp { background: #25d366; border-radius: 50%; }
+.msg .mfrom { display: flex; align-items: center; }
+.msg.unread .mfrom, .msg.unread .msub b { font-weight: 800; }
+.msg:not(.unread) .msub b { font-weight: 500; }
+.mnew { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; margin-right: 8px; vertical-align: 1px;
+  background: color-mix(in srgb, #4b53bc 16%, transparent); color: #3d44a6; }
+.msg .msgbody { grid-column: 2; }
+.msg:not(.open) .msgbody { display: none; }
+.msg .msgbody p { margin: 4px 0; font-size: 14px; } .msg .msgbody .ult { color: var(--muted); }
+.msg .msgbody .actions { justify-content: flex-start; margin-top: 10px; }
+@media (max-width: 1100px) { .msg .mfrom .mav { width: 24px; height: 24px; font-size: 10px; margin-right: 8px; } }
+
+/* ---------- Barra inferior del móvil: Correo · Mensajes · Tareas · Más ---------- */
+.tab-mas { display: none !important; }
+.sq-more[hidden] { display: none; }
+@media (max-width: 860px) and (min-width: 561px) { .app .tabs { overflow-x: auto; scrollbar-width: none; } }
+@media (max-width: 560px) {
+  .app .tabs { grid-template-columns: repeat(4, 1fr) !important; }
+  .app .tabs #tab-hoy, .app .tabs #tab-reuniones, .app .tabs #tab-catchups, .app .tabs #tab-notas { display: none !important; }
+  .tab-mas { display: flex !important; }
+  .tab-mas.on { color: #fff; background: rgba(255,255,255,.08); } .tab-mas.on .ti { color: var(--gold-2); }
+  .tab-mas .ti svg { fill: currentColor; stroke: none; }
+  .sq-more { position: fixed; inset: 0; z-index: 70; background: rgba(8,12,20,.35); }
+  .sq-more-panel { position: absolute; right: 10px; left: 10px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px;
+    border-radius: 16px; background: var(--navy); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+  .sq-more-panel button { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 14px; border: 0; border-radius: 12px; background: rgba(255,255,255,.06);
+    color: #fff; font: 700 14px var(--font-body); text-align: left; cursor: pointer; }
+  .sq-more-panel button:active { background: rgba(255,255,255,.14); }
+  .sq-more-panel .count:empty { display: none; }
+  .sq-more-panel .count { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--gold-2); color: #062b27; }
+}
+.msg-bar .tk-search { font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink, inherit); }
+.msg-bar .tk-search:focus { outline: 2px solid color-mix(in srgb, var(--accent, #2b4fd8) 40%, transparent); outline-offset: 1px; }

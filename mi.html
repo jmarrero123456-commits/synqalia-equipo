@@ -749,7 +749,7 @@
   }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css">
+<link rel="stylesheet" href="synqalia.css?v=20261117c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -757,22 +757,32 @@
 <script>if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
 </head>
 <body class="sq-has-bar">
-<header class="sq-bar"><a class="sq-logo" href="mi.html" aria-label="synqalia"><svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg><span>synq<b>alia</b></span></a><nav class="sq-switch sq-switch-bar" aria-label="Zona de synqalia"><a href="mi.html" aria-current="page">Mi trabajo</a><a href="./">Equipo</a></nav></header>
+<header class="sq-bar"><a class="sq-logo" href="mi.html" aria-label="synqalia"><svg class="mark" width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg><span>synq<b>alia</b></span></a><nav class="sq-switch sq-switch-bar" aria-label="Zona de synqalia"><a href="mi.html" aria-current="page">Mi trabajo</a><a href="./">Equipo</a></nav></header>
 <div class="app">
   <aside class="sq-side" aria-label="Navegación">
-    <div class="sq-brand"><svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg><div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Una sola inteligencia</div></div></div>
+    <div class="sq-brand"><svg class="mark" width="36" height="36" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg><div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Una sola inteligencia</div></div></div>
     <nav class="sq-switch" aria-label="Zona de synqalia"><a href="mi.html" aria-current="page">Mi trabajo</a><a href="./">Equipo</a></nav>
     <div class="sq-sec"><span>Mi trabajo</span><button type="button" class="sq-collapse" id="sq-collapse" aria-label="Recoger el menú" title="Recoger el menú">«</button></div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
     <button role="tab" id="tab-hoy" data-view="hoy" aria-selected="true"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg></span><span class="tlab">Hoy</span></button>
     <button role="tab" id="tab-correo" data-view="correo" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg></span><span class="tlab">Correo</span><span class="count" id="count-correo"></span></button>
+    <button role="tab" id="tab-mensajes" data-view="mensajes" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/></svg></span><span class="tlab">Mensajes</span><span class="count" id="count-mensajes"></span></button>
     <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="rec-tab" id="rec-tab-reuniones" hidden></span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
     <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="rec-tab" id="rec-tab-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
     <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
-  </nav>
+    <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="count" id="count-mas"></span></button>
+    </nav>
     <div class="sq-me" id="sq-me"></div>
   </aside>
+  <div class="sq-more" id="sq-more" hidden>
+    <div class="sq-more-panel" role="menu" aria-label="Más secciones">
+      <button type="button" role="menuitem" data-go="hoy">Hoy</button>
+      <button type="button" role="menuitem" data-go="reuniones">Reuniones <span class="count" id="more-c-reuniones"></span></button>
+      <button type="button" role="menuitem" data-go="catchups">Catch-ups</button>
+      <button type="button" role="menuitem" data-go="notas">Notas</button>
+    </div>
+  </div>
   <header class="top">
     <div class="brand">
       <svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="19" r="12" fill="none" stroke="currentColor" stroke-width="4.8"/><path d="M32 19v15" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/><circle class="mark-dot" cx="32" cy="42.5" r="4.3"/></svg>
@@ -919,6 +929,18 @@
   </main>
 
   <!-- NOTAS (libretas) -->
+  <main id="view-mensajes" class="view" hidden style="display:grid; gap:18px;">
+    <section class="card">
+      <div class="row-between"><span class="note">Conversaciones de Teams sincronizadas · WhatsApp, próximamente</span><span class="note" id="msg-updated"></span></div>
+      <div class="chips" id="msg-filter" role="group" aria-label="Filtrar mensajes">
+        <button class="chip" type="button" data-f="todas" aria-pressed="true">Todas <span class="count" id="msg-c-todas"></span></button>
+        <button class="chip" type="button" data-f="sinleer" aria-pressed="false">Sin leer <span class="count" id="msg-c-sinleer"></span></button>
+        <button class="chip chip-dec" type="button" data-f="pide" aria-pressed="false">Te piden algo <span class="count" id="msg-c-pide"></span></button>
+      </div>
+      <div class="mail-bar msg-bar"><input class="tk-search" id="msg-search" type="search" placeholder="Buscar persona o mensaje" aria-label="Buscar en mensajes"></div>
+      <div class="list inbox" id="msg-list"><p class="note">Cargando conversaciones…</p></div>
+    </section>
+  </main>
   <main id="view-notas" class="view" hidden></main>
 </div>
 
@@ -1183,18 +1205,23 @@
   let db = null, sample = null, assets = null;
 
   // ---------- vistas ----------
-  const VIEWS = ['hoy', 'correo', 'reuniones', 'tareas', 'catchups', 'notas'];
+  const VIEWS = ['hoy', 'correo', 'mensajes', 'reuniones', 'tareas', 'catchups', 'notas'];
   function show(view) {
     if (view === 'captura') view = 'catchups';
     if (!VIEWS.includes(view)) view = 'hoy';
     state.view = view;
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas'}[view];
+    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas', mensajes: 'Mensajes'}[view];
+    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['hoy', 'reuniones', 'catchups', 'notas'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
   }
-  $$('.tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+  $$('.tabs button[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+  { const mb = $('#tab-mas'), sh = $('#sq-more');
+    if (mb && sh) { mb.addEventListener('click', (e) => { e.stopPropagation(); sh.hidden = !sh.hidden; mb.setAttribute('aria-expanded', String(!sh.hidden)); });
+      sh.addEventListener('click', (e) => { if (e.target === sh) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } }); } }
   $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || (navigator.onLine ? 'hoy' : 'notas'));
@@ -3664,5 +3691,6 @@
 </script>
 <script src="notas.js" defer></script>
 <script src="graph-live.js" defer></script>
+<script src="mensajes.js?v=20261117c" defer></script>
 </body>
 </html>
