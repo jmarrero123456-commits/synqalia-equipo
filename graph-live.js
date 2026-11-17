@@ -51,7 +51,11 @@
   }
 
   /* ---------- datos (teams y agenda) con cambios en vivo ---------- */
-  const data = { teams: new Map(), agenda: new Map() };
+  const data = { teams: new Map(), agenda: new Map(), teams_visto: new Map() };
+  // Misma regla que Mensajes (mensajes.js): abierta en synqalia desde su último mensaje = vista
+  const normV = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+  const firmaV = (d) => [d.fecha || '', d.hora || '', normV(d.ultimo)].join('|');
+  const sinLeer = (id, d) => d && (d.noLeido === true || d.noLeido === 'true') && data.teams_visto.get(id)?.firma !== firmaV(d);
   async function load(col) {
     const { data: rows } = await sb.from('personal_docs').select('id,data').eq('owner', uid).eq('col', col);
     data[col] = new Map((rows || []).map((r) => [r.id, r.data]));
@@ -60,7 +64,7 @@
     const row = p.eventType === 'DELETE' ? p.old : p.new;
     if (!row || !data[row.col]) return;
     if (p.eventType === 'DELETE') data[row.col].delete(row.id); else data[row.col].set(row.id, row.data);
-    if (row.col === 'teams') paintTeams();
+    if (row.col === 'teams' || row.col === 'teams_visto') paintTeams();
     if (row.col === 'agenda') addJoin();
   }).subscribe();
 
@@ -76,7 +80,7 @@
     if (!st?.connected) { card.hidden = true; return; }
     card.hidden = false;
     const list = card.querySelector('.list');
-    const items = [...data.teams.entries()].filter(([, d]) => d && d.noLeido)
+    const items = [...data.teams.entries()].filter(([id, d]) => sinLeer(id, d))
       .sort((a, b) => (b[1].pide ? 1 : 0) - (a[1].pide ? 1 : 0) || String(b[1].fecha || b[1].capturado || '').localeCompare(String(a[1].fecha || a[1].capturado || '')));
     if (!items.length) { list.innerHTML = `<p class="note">Nada pendiente en Teams.</p>`; return; }
     list.innerHTML = items.slice(0, 8).map(([, d]) => {
@@ -126,7 +130,7 @@
   }).observe(document.body, { childList: true });
 
   /* ---------- arranque ---------- */
-  await Promise.all([load('teams'), load('agenda'), status()]);
+  await Promise.all([load('teams'), load('teams_visto'), load('agenda'), status()]);
   paintLive(); addJoin();
   quick('abrir');
   document.addEventListener('visibilitychange', () => { if (!document.hidden) quick('volver'); });
