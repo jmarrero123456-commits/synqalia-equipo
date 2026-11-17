@@ -365,7 +365,9 @@
   table.grid { table-layout:fixed; min-width:100%; }
   table.grid td { max-width:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   table.grid td.name { min-width:0; max-width:none; }
-  table.grid th { overflow:visible; text-overflow:ellipsis; }
+  table.grid th { overflow:visible; white-space:normal; vertical-align:bottom; line-height:1.25; }
+  /* el título de la columna nunca invade la de al lado: se parte en dos líneas y, si no cabe, termina en «…» */
+  table.grid th .thl { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; hyphens:auto; padding-right:4px; }
   th.colh { cursor:pointer; user-select:none; }
   th.colh:hover { color:var(--ink); background:color-mix(in srgb, var(--accent) 7%, var(--panel)); }
   th .rz { position:absolute; top:0; right:-3px; width:8px; height:100%; cursor:col-resize; z-index:3; }
@@ -1065,7 +1067,7 @@ function tableHtml(b, its, cols) {
   const nw = b.settings?.name_width || 290;
   const tw = nw + cols.reduce((a, c) => a + colW(c), 0) + 56;
   let h = `<div class="tablewrap" id="tw"><table class="grid" style="width:${tw}px"><colgroup><col data-c="__name" style="width:${nw}px">${cols.map((c) => `<col data-c="${esc(c.key)}" style="width:${colW(c)}px">`).join('')}<col style="width:56px"></colgroup>
-    <thead><tr><th class="name">Nombre<span class="rz" data-rz="__name" title="Arrastra para cambiar el ancho"></span></th>${cols.map((c) => `<th class="colh" data-colh="${esc(c.key)}" title="Pulsa para opciones de la columna">${esc(c.title)}<span class="rz" data-rz="${esc(c.key)}" title="Arrastra para cambiar el ancho"></span></th>`).join('')}<th class="addcol"><button class="btn ghost sm" id="addcol" title="Añadir columna">+</button></th></tr></thead><tbody>`;
+    <thead><tr><th class="name"><span class="thl">Nombre</span><span class="rz" data-rz="__name" title="Arrastra para cambiar el ancho"></span></th>${cols.map((c) => `<th class="colh" data-colh="${esc(c.key)}" title="${esc(c.title)} · pulsa para opciones de la columna"><span class="thl">${esc(c.title)}</span><span class="rz" data-rz="${esc(c.key)}" title="Arrastra para cambiar el ancho"></span></th>`).join('')}<th class="addcol"><button class="btn ghost sm" id="addcol" title="Añadir columna">+</button></th></tr></thead><tbody>`;
   for (const g of groups) {
     const gi = its.filter((i) => i.group_id === g.id);
     const col = S.collapsed[b.id + ':' + g.id];
