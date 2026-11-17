@@ -399,6 +399,7 @@
   .nav .mylink span { font-size:11.5px; font-weight:500; color:rgba(255,255,255,.55); }
   .nav .mylink:hover { background:rgba(95,224,207,.16); }
 </style>
+<link rel="stylesheet" href="synqalia.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -601,8 +602,8 @@ function renderSide() {
   const el = document.getElementById('side'); if (!el) return;
   const v = S.view;
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
-  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Equipo</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
-    <a class="mylink" href="mi.html">Mi trabajo <span>correo · reuniones · tareas</span></a>
+  let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>synq<span class="alia">alia</span></h1><div class="tagline">Una sola inteligencia</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
+    <div class="sq-switch" role="navigation" aria-label="Zona de synqalia"><a href="mi.html">Mi trabajo</a><a href="./" aria-current="page">Equipo</a></div>
     <button data-go="home" aria-current="${cur('home')}">Resumen del equipo</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
