@@ -666,8 +666,8 @@ function spaceStats(spaceId) {
       out.cards.push(
         { n: open.length, l: 'Obras abiertas', b: b.id },
         { n: open.filter((i) => i.data.estado === 'Estancado').length, l: 'Obras estancadas', cls: 'alert', b: b.id, f: { status: 'Estancado' } },
-        { n: subs.filter((s) => s.data.estado === 'En curso').length, l: 'Partidas en curso', b: b.id },
-        { n: subs.filter((s) => s.data.estado === 'Pte iniciar').length, l: 'Partidas pendientes de iniciar', cls: 'warnk', b: b.id },
+        { n: subs.filter((s) => s.data.estado === 'En curso').length, l: 'Partidas en curso', b: b.id, f: { status: 'En curso' } },
+        { n: subs.filter((s) => s.data.estado === 'Pte iniciar').length, l: 'Partidas pendientes de iniciar', cls: 'warnk', b: b.id, f: { status: 'Pte iniciar' } },
         { n: lateSubs.length, l: 'Partidas con entrega vencida', cls: lateSubs.length ? 'alert' : '', b: b.id, f: { late: true } },
         { n: fmtE(budget), l: 'Presupuesto obras abiertas', b: b.id },
         { n: fmtE(pending), l: 'Pendiente de pago', cls: pending ? 'warnk' : '', b: b.id },
@@ -684,7 +684,7 @@ function spaceStats(spaceId) {
       const st = b.columns.find((c) => c.key === 'estado');
       out.cards.push(
         { n: open.length, l: 'Leads activos', b: b.id },
-        { n: its.filter((i) => groupOf(b, i.group_id)?.title.match(/pendiente de contactar/i)).length, l: 'Pendientes de contactar', cls: 'warnk', b: b.id },
+        { n: its.filter((i) => groupOf(b, i.group_id)?.title.match(/pendiente de contactar/i)).length, l: 'Pendientes de contactar', cls: 'warnk', b: b.id, f: { group: b.groups.find((g) => /pendiente de contactar/i.test(g.title))?.id } },
         { n: its.filter((i) => i.data.estado === 'Llamar de nuevo').length, l: 'Llamar de nuevo', cls: 'warnk', b: b.id, f: { status: 'Llamar de nuevo' } },
       );
       out.blocks.push({ title: 'Embudo de leads', b, bars: groupBars(b, its) });
@@ -697,16 +697,16 @@ function spaceStats(spaceId) {
       const sig = its.filter((i) => groupOf(b, i.group_id)?.title.match(/firmad/i));
       out.cards.push(
         { n: open.length, l: 'Proyectos abiertos', b: b.id },
-        { n: neg.length, l: 'En negociación', b: b.id },
-        { n: sig.length, l: 'Firmados', b: b.id },
+        { n: neg.length, l: 'En negociación', b: b.id, f: { group: b.groups.find((g) => /negociaci/i.test(g.title))?.id } },
+        { n: sig.length, l: 'Firmados', b: b.id, f: { group: b.groups.find((g) => /firmad/i.test(g.title))?.id } },
         { n: fmtE(sig.reduce((a, i) => a + (+i.data.canon || 0), 0)), l: 'Canon firmado', b: b.id },
       );
       out.blocks.push({ title: 'Proyectos por fase', b, bars: groupBars(b, its) });
       out.blocks.push({ title: 'Proyectos abiertos por tipo de operación', b, bars: statusBars(b, open, b.columns.find((c) => c.key === 'tipo_de_operacion')) });
     } else if (b.kind === 'tasks') {
       const pr = b.columns.find((c) => c.type === 'status');
-      const urg = its.filter((i) => /urgente/i.test(i.data.prioridad || ''));
-      if (urg.length) out.cards.push({ n: urg.length, l: `Urgentes · ${b.name}`, cls: 'alert', b: b.id });
+      const urg = open.filter((i) => /urgente/i.test(i.data.prioridad || ''));
+      if (urg.length) out.cards.push({ n: urg.length, l: `Urgentes · ${b.name}`, cls: 'alert', b: b.id, f: { status: urg[0].data.prioridad } });
       out.attention = (out.attention || []).concat(urg.map((i) => ({ it: i, why: `Urgente${i.data.proyecto_asociado ? ' · ' + i.data.proyecto_asociado : ''}` })));
     } else {
       out.cards.push({ n: open.length, l: `${b.name} · abiertos`, b: b.id });
@@ -733,7 +733,7 @@ async function renderHome(el, onlySpace) {
     const who = S.spaceMembers.filter((m) => m.space_id === s.id).map((m) => member(m.email)?.name.split(' ')[0]).filter(Boolean).join(', ');
     h += `<section style="display:grid;gap:12px">
       ${onlySpace ? '' : `<div class="head"><div class="grow"><h2 style="font-size:26px">${esc(s.name)}</h2><p>${esc(who)}</p></div><button class="btn sm" data-space="${esc(s.id)}">Abrir panel</button></div>`}
-      <div class="kpis">${st.cards.map((c) => `<button class="kpi ${c.cls || ''}" data-b="${c.b}" ${c.f?.status ? `data-st="${esc(c.f.status)}"` : ''} ${c.f?.late ? 'data-late="1"' : ''}><b>${typeof c.n === 'number' ? c.n : esc(c.n || '0 €')}</b><span>${esc(c.l)}</span></button>`).join('')}</div>
+      <div class="kpis">${st.cards.map((c) => `<button class="kpi ${c.cls || ''}" data-b="${c.b}" ${c.f?.status ? `data-st="${esc(c.f.status)}"` : ''} ${c.f?.group ? `data-g="${esc(c.f.group)}"` : ''} ${c.f?.late ? 'data-late="1"' : ''}><b>${typeof c.n === 'number' ? c.n : esc(c.n || '0 €')}</b><span>${esc(c.l)}</span></button>`).join('')}</div>
       <div class="grid2">
         ${st.attention?.length ? `<div class="card"><h3>Requiere atención</h3><p class="sub">Vencidos, estancados, urgentes y llamadas pendientes</p><div class="rows">${st.attention.slice(0, onlySpace ? 40 : 8).map((a) => `<div class="r" data-open="${a.it.id}"><span class="t">${esc(a.it.name)}${a.parent ? ` <span class="tag muted">${esc(a.parent.name)}</span>` : ''}</span><span class="tag late">!</span><span class="d">${esc(a.why)}</span></div>`).join('')}</div>${st.attention.length > 8 && !onlySpace ? `<button class="btn sm" data-space="${esc(s.id)}">Ver las ${st.attention.length}</button>` : ''}</div>` : ''}
         ${st.blocks.map((bl) => `<div class="card"><h3>${esc(bl.title)}</h3><p class="sub">${esc(bl.b.name)}</p>${barsHtml(bl)}</div>`).join('')}
@@ -744,7 +744,7 @@ async function renderHome(el, onlySpace) {
   el.innerHTML = h;
   el.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => { location.hash = 'space-' + b.dataset.space; });
   el.querySelectorAll('.kpi[data-b], .bar[data-b]').forEach((b) => b.onclick = () => {
-    const id = +b.dataset.b; S.filters[id] = { ...(S.filters[id] || {}), group: b.dataset.g || null, status: b.dataset.st || null, late: !!b.dataset.late, closed: !!b.dataset.g && groupOf(board(id), b.dataset.g)?.closed };
+    const id = +b.dataset.b; S.filters[id] = { ...(S.filters[id] || {}), q: '', person: null, group: b.dataset.g || null, status: b.dataset.st || null, late: !!b.dataset.late, closed: !!b.dataset.g && groupOf(board(id), b.dataset.g)?.closed };
     go({ kind: 'board', id });
   });
   el.querySelectorAll('[data-open]').forEach((r) => r.onclick = () => openItem(+r.dataset.open));
@@ -779,7 +779,7 @@ function filteredItems(b) {
   return topItems(b.id).filter((i) => {
     if (f.group && i.group_id !== f.group) return false;
     if (!f.closed && !f.group && isClosed(b, i)) return false;
-    if (f.status && !Object.values(i.data).includes(f.status)) return false;
+    if (f.status && !Object.values(i.data).includes(f.status) && !subsOf(i.id).some((s) => Object.values(s.data).includes(f.status))) return false;
     if (f.late) { const late = overdueOf(b, i, b.columns) || subsOf(i.id).some((s) => overdueOf(b, s, b.sub_columns)); if (!late) return false; }
     if (f.person) { const has = JSON.stringify(i.data).includes(f.person) || subsOf(i.id).some((s) => JSON.stringify(s.data).includes(f.person)); if (!has) return false; }
     if (q) { const hay = (i.name + ' ' + Object.values(i.data).join(' ') + ' ' + subsOf(i.id).map((s) => s.name + ' ' + Object.values(s.data).join(' ')).join(' ')).toLowerCase(); if (!hay.includes(q)) return false; }
