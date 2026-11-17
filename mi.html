@@ -654,6 +654,15 @@
   @keyframes recPulse { 50% { opacity: .35; } }
   .rec-live { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #d93636 6%, var(--panel)); border: 1px solid color-mix(in srgb, #d93636 25%, var(--line)); font-size: 13px; color: var(--muted); }
   .rec-live[hidden] { display: none; }
+  .tabs .rec-tab { display: inline-block; width: 8px; height: 8px; margin-left: 7px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.28); vertical-align: middle; animation: recPulse 1.2s ease-in-out infinite; }
+  .tabs .rec-tab[hidden] { display: none; }
+  .rec-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, #d93636 7%, var(--panel)); border: 1px solid color-mix(in srgb, #d93636 30%, var(--line)); font-size: 14px; }
+  .rec-banner[hidden] { display: none; }
+  .rec-banner .rb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #d93636; animation: recPulse 1.2s ease-in-out infinite; }
+  .rec-banner .rb-txt { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec-banner .rb-txt small { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 6px; }
+  .rec-banner .rb-stop { color: #b42323; }
+  @media (max-width: 560px) { .tabs .rec-tab { position: absolute; top: 4px; left: calc(50% - 18px); margin: 0; width: 7px; height: 7px; } }
   .rec-live .rl-dot { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: #d93636; animation: recPulse 1.2s ease-in-out infinite; }
   .rec-live .rl-txt { font-style: italic; }
   @media (max-width: 560px) { .rec-btn .t { display: none; } .rec-btn.on .t { display: inline; } }
@@ -751,9 +760,9 @@
     <nav class="tabs" role="tablist" aria-label="Secciones">
     <button role="tab" id="tab-hoy" data-view="hoy" aria-selected="true"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg></span><span class="tlab">Hoy</span></button>
     <button role="tab" id="tab-correo" data-view="correo" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg></span><span class="tlab">Correo</span><span class="count" id="count-correo"></span></button>
-    <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="count" id="count-reuniones"></span></button>
+    <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="rec-tab" id="rec-tab-reuniones" hidden></span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
-    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="count" id="count-catchups"></span></button>
+    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="rec-tab" id="rec-tab-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
   </nav>
     <div class="sq-me" id="sq-me"></div>
   </aside>
@@ -799,6 +808,7 @@
 
   <!-- REUNIONES -->
   <main id="view-reuniones" class="view" hidden style="display:grid; gap:18px;">
+    <section class="rec-banner" id="rec-banner" hidden><span class="rb-dot" aria-hidden="true"></span><span class="rb-txt" id="rb-txt">Grabando</span><button type="button" class="btn" id="rb-open">Ver notas</button><button type="button" class="btn rb-stop" id="rb-stop">Parar</button></section>
     <section class="card" id="agenda-card">
       <div class="row-between"><h2>Próximas reuniones</h2><span class="note" id="agenda-cap"></span></div>
       <div class="chips" id="agenda-day"></div>
@@ -3194,7 +3204,7 @@
     const ol = document.createElement('a'); ol.className = 'btn'; ol.target = '_blank'; ol.rel = 'noopener'; ol.textContent = 'Outlook ↗'; ol.title = 'Abrir en Outlook (desde ahí entras a Teams)';
     ol.href = ev.enlace || ('https://outlook.cloud.microsoft/calendar/view/day/' + ev.fecha.replace(/-/g, '/')); acts.appendChild(ol);
     if (team) { const fb = el('button', 'btn', 'Ficha del catch-up'); fb.type = 'button'; fb.addEventListener('click', () => { state.cuSel = p.id; show('catchups'); renderCatchups(); }); acts.appendChild(fb); }
-    const x = el('button', 'btn ghost', 'Cerrar'); x.type = 'button'; x.addEventListener('click', () => { state.mtOpen = null; renderMeetRoom(true); }); acts.appendChild(x);
+    const x = el('button', 'btn ghost', 'Cerrar'); x.type = 'button'; x.addEventListener('click', () => { state.mtOpen = null; renderMeetRoom(true); recPaint(); }); acts.appendChild(x);
     head.appendChild(acts); host.appendChild(head);
     if (team) host.appendChild(el('p', 'note', 'Se guarda también en el historial de catch-ups de ' + (isGroup(p) ? p.nombre : firstName(p.nombre)) + '.'));
     host.appendChild(cuEditor(p, mo.id, {pre: 'mt', kind: team ? null : 'reunion', refresh: () => renderMeetRoom(true), onDone: () => { state.mtOpen = null; renderMeetRoom(true); renderMeetNotes(); }}));
@@ -3265,7 +3275,25 @@
       b.setAttribute('aria-pressed', String(on));
     });
     document.querySelectorAll('.rec-live').forEach((l) => { l.hidden = !(DICT.target && l.dataset.cu === DICT.target.id && DICT.state !== 'idle'); });
+    // punto rojo en el menú (Reuniones o Catch-ups) y aviso arriba en Reuniones mientras graba
+    const on = !!(DICT.target && DICT.state !== 'idle'); const inMt = on && DICT.target.pre === 'mt';
+    const tip = on ? 'Grabando' + (DICT.t0 ? ' · ' + recFmt(Date.now() - DICT.t0) : '') : '';
+    const tr = $('#rec-tab-reuniones'), tc = $('#rec-tab-catchups');
+    if (tr) { tr.hidden = !inMt; tr.title = inMt ? tip : ''; }
+    if (tc) { tc.hidden = !(on && !inMt); tc.title = on && !inMt ? tip : ''; }
+    const bn = $('#rec-banner');
+    if (bn) {
+      const mo = inMt && DICT.target.mo; const roomOpen = inMt && state.mtOpen && state.mtOpen.id === DICT.target.id;
+      bn.hidden = !inMt || roomOpen;
+      if (!bn.hidden) {
+        const t = $('#rb-txt'); t.replaceChildren(document.createTextNode('Grabando' + (mo ? ' «' + cleanTitle(mo.ev.titulo) + '»' : ' la reunión')));
+        const sm = document.createElement('small'); sm.textContent = DICT.state === 'starting' ? 'preparando…' : DICT.t0 ? recFmt(Date.now() - DICT.t0) : ''; t.appendChild(sm);
+        $('#rb-open').hidden = !mo;
+      }
+    }
   };
+  $('#rb-stop').addEventListener('click', () => { if (dict && DICT.state !== 'idle') dict.stop().catch(() => {}); });
+  $('#rb-open').addEventListener('click', () => { const mo = DICT.target && DICT.target.mo; if (!mo) return; state.mtOpen = mo; show('reuniones'); renderMeetRoom(true); recPaint(); setTimeout(() => { const h = $('#meet-room'); if (h) h.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); });
   function dictInit(ns) {
     dict = ns;
     ns.onPartial(({text}) => { const t = DICT.target; if (!t) return; const l = document.querySelector('.rec-live[data-cu="' + t.id + '"] .rl-txt'); if (l) l.textContent = text || 'Escuchando…'; });
@@ -3299,7 +3327,7 @@
       if (!dict) { setSync('Para grabar usa Chrome o Edge y permite el micrófono.', true); return; }
       const mine = DICT.target && DICT.target.id === id;
       if (mine && DICT.state !== 'idle') { dict.stop().catch(() => {}); return; }
-      DICT.target = {id, pre, started: false};
+      DICT.target = {id, pre, started: false, mo: pre === 'mt' && state.mtOpen && state.mtOpen.id === id ? state.mtOpen : null};
       const pr = dict.start(); recPaint();
       pr.catch((e) => { const c = e && e.code; if (c === 'unavailable') { setSync('La transcripción no está disponible en este navegador o cuenta.', true); recPaint(); return; } if (c && c !== 'stopped') setSync(c === 'not_granted' ? 'Sin permiso de micrófono: actívalo en el menú de permisos de synqalia.' : c === 'dismissed' ? 'No se ha empezado a grabar.' : 'No se ha podido empezar a grabar.', true); recPaint(); });
     });
