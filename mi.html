@@ -747,6 +747,9 @@
     .refresh-btn { width: 34px; height: 34px; }
     .stats { margin-top: 2px; }
   }
+  .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
+  .summary.off { color: var(--muted); font-style: italic; }
+  .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="synqalia.css?v=20261117d">
@@ -1148,16 +1151,24 @@
       const { data } = await sb.functions.invoke('ai', { body: { ping: true } });
       if (!data || !data.available) return null;
     } catch (e) { return null; }
-    return {
-      async limits() { return { images: true }; },
-      async json(prompt, opts) {
-        const images = [];
-        for (const b of (opts && opts.images) || []) images.push({ media_type: b.type || 'image/png', data: await toB64(b) });
-        const { data, error } = await sb.functions.invoke('ai', { body: { prompt, images } });
-        if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'IA no disponible');
-        return data.result;
-      },
+    const callJson = async (prompt, opts) => {
+      const images = [];
+      for (const b of (opts && opts.images) || []) images.push({ media_type: b.type || 'image/png', data: await toB64(b) });
+      const { data, error } = await sb.functions.invoke('ai', { body: { prompt, images } });
+      if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'IA no disponible');
+      return data.result;
     };
+    // Texto libre (redactar, resumir…): la función devuelve JSON, así que pedimos {"texto": "..."} y lo desenvolvemos
+    const fn = async (input, opts) => {
+      const prompt = Array.isArray(input) ? input.map((x) => (x.role === 'assistant' ? 'ASISTENTE: ' : '') + x.content).join('\n\n') : String(input || '');
+      const res = await callJson(prompt + '\n\nFORMATO DE SALIDA: devuelve SOLO este JSON: {"texto": "<tu respuesta completa, con saltos de línea \\n>"}', opts);
+      const text = String((res && (res.texto != null ? res.texto : res.text)) || (typeof res === 'string' ? res : '')).trim();
+      if (opts && typeof opts.onText === 'function') { try { opts.onText({ text, delta: text }); } catch (e) {} }
+      return { text, truncated: false };
+    };
+    fn.json = callJson;
+    fn.limits = async () => ({ images: true });
+    return fn;
   }
 
   const cacheUse = {};
@@ -2092,6 +2103,30 @@
     return wrap;
   }
 
+  // Micrófono para dictar en un campo (reconocimiento de voz del navegador: Chrome/Edge y Chrome del móvil)
+  function micButton(field, onChange) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const b = el('button', 'btn mic-btn', '🎤 Hablar'); b.type = 'button'; b.title = 'Dicta tu respuesta; pulsa otra vez para parar';
+    if (!SR) { b.disabled = true; b.title = 'El dictado necesita Chrome o Edge. En el móvil usa el micro del teclado.'; return b; }
+    let rec = null, base = '';
+    const stop = () => { try { rec && rec.stop(); } catch (e) {} };
+    b.addEventListener('click', () => {
+      if (rec) { stop(); return; }
+      rec = new SR(); rec.lang = 'es-ES'; rec.continuous = true; rec.interimResults = true;
+      base = field.value.replace(/\s+$/, ''); if (base) base += ' ';
+      let finals = '';
+      rec.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) finals += t.trim() + ' '; else interim += t; }
+        field.value = base + finals + interim; if (onChange) onChange(field.value);
+      };
+      rec.onend = () => { rec = null; field.value = field.value.replace(/\s+$/, ''); if (onChange) onChange(field.value); b.classList.remove('on'); b.textContent = '🎤 Hablar'; };
+      rec.onerror = (e) => { if (e.error === 'not-allowed') setSync('Sin permiso de micrófono para synqalia.', true); };
+      try { rec.start(); b.classList.add('on'); b.textContent = '■ Parar'; } catch (e) { rec = null; }
+    });
+    return b;
+  }
+
   function composer(m) {
     const r = state.replies[m.id] || {};
     const box = el('div', 'composer');
@@ -2105,19 +2140,22 @@
     box.appendChild(full);
     if (Array.isArray(m.adjuntos) && m.adjuntos.length) box.appendChild(el('div', 'detail', 'Adjuntos: ' + m.adjuntos.join(', ')));
     const sumBar = el('div', 'bar');
-    const sumOut = el('div', 'summary'); sumOut.hidden = !state.summaries[m.id]; sumOut.textContent = state.summaries[m.id] || '';
+    const sumLbl = el('div', 'section-label', 'Qué esperan de ti'); box.appendChild(sumLbl);
+    const sumOut = el('div', 'summary expect'); sumOut.hidden = !state.summaries[m.id]; sumOut.textContent = state.summaries[m.id] || '';
     const sumBtn = el('button', 'btn', 'Resumir'); sumBtn.type = 'button'; sumBtn.disabled = !m.cuerpo;
     sumBtn.addEventListener('click', async () => {
       if (!sample) return;
-      sumBtn.disabled = true; sumOut.hidden = false; sumOut.textContent = 'Resumiendo…';
+      sumBtn.disabled = true; sumOut.hidden = false; sumOut.textContent = 'Leyendo el correo…';
       try {
-        const out = await sample('Resume para Jaime (director de la unidad de salones de Provalliance España) este correo o hilo en español, en 3 a 5 viñetas cortas: qué ha pasado, qué le piden a él exactamente, plazos y quién espera respuesta. Sin introducción.\n\n' + mailContext(m), {onText: ({text}) => { sumOut.textContent = text; }});
+        const out = await sample('Lee este correo o hilo para Jaime (director de la unidad de salones de Provalliance España) y dile en español, en 2 a 5 viñetas cortas que empiecen por «- »: primero QUÉ ESPERAN DE ÉL exactamente (qué le preguntan, qué tiene que decidir, aprobar, enviar o contestar), luego el plazo si lo hay y quién espera la respuesta, y por último, en una sola viñeta, el contexto mínimo necesario. Si no le piden nada y es solo informativo, dilo en la primera viñeta. Sin introducción.\n\n' + mailContext(m), {onText: ({text}) => { sumOut.textContent = text; }});
         state.summaries[m.id] = (out && out.text) || sumOut.textContent;
         sumOut.textContent = state.summaries[m.id];
       } catch (e) { sumOut.textContent = 'No se ha podido resumir ahora. Inténtalo otra vez.'; }
       finally { sumBtn.disabled = false; }
     });
-    sumBar.appendChild(el('span', 'note', m.cuerpo ? '' : 'El resumen estará disponible cuando tenga el texto completo.'));
+    sumBtn.textContent = state.summaries[m.id] ? 'Volver a leer' : 'Qué esperan de mí';
+    if (!sample) { sumOut.hidden = false; sumOut.classList.add('off'); sumOut.textContent = 'La IA no está conectada en este momento. Recarga la página; si sigue así, avísame.'; sumBtn.disabled = true; }
+    sumBar.appendChild(el('span', 'note', m.cuerpo ? '' : 'Estará disponible cuando tenga el texto completo del correo.'));
     sumBar.appendChild(sumBtn);
     box.appendChild(sumBar);
     box.appendChild(sumOut);
@@ -2144,7 +2182,7 @@
         if (!sample) { setStatus('La redacción con Claude no está disponible aquí.', true); return; }
         btn.disabled = true; setStatus('Claude está redactando…');
         const actual = ta.value.trim();
-        const prompt = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Firma: «Un saludo,\\nJaime».\n\nCORREO AL QUE SE RESPONDE:\n' + mailContext(m) + '\n\n' + (actual ? 'BORRADOR ACTUAL:\n' + actual + '\n\nINSTRUCCIÓN DE JAIME PARA CAMBIARLO:\n' + instruction : (instruction ? 'INDICACIONES DE JAIME:\n' + instruction : 'Propón la respuesta más útil.')) + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en las indicaciones: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
+        const prompt = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Cierra solo con «Un saludo,» y NO pongas su nombre ni firma debajo (Outlook añade su firma electrónica).\n\nCORREO AL QUE SE RESPONDE:\n' + mailContext(m) + '\n\n' + (actual ? 'BORRADOR ACTUAL:\n' + actual + '\n\nINSTRUCCIÓN DE JAIME PARA CAMBIARLO:\n' + instruction : (instruction ? 'INDICACIONES DE JAIME:\n' + instruction : 'Propón la respuesta más útil.')) + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en las indicaciones: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
         try {
           const out = await sample(prompt, {onText: ({text}) => { ta.value = text; }});
           ta.value = (out && out.text ? out.text : ta.value).trim();
@@ -2156,11 +2194,12 @@
       };
       askBox.appendChild(el('div', 'section-label', '¿Qué quieres contestar?'));
       const ask = document.createElement('textarea'); ask.id = 'ri-' + m.id; ask.setAttribute('aria-label', 'Qué quieres contestar');
-      ask.placeholder = 'Opcional. Tu idea con tus palabras o dictando con el micro del teclado. Ej.: «ok, adelante con el presupuesto de los 1.000 €, que empiece ya». Si lo dejas vacío, te propongo yo la respuesta.';
+      ask.placeholder = 'Escribe o pulsa 🎤 y dícelo con tus palabras. Ej.: «ok, adelante con el presupuesto de los 1.000 €, que empiece ya». Si lo dejas vacío, te propongo yo la respuesta.';
       ask.value = state.asks[m.id] || '';
       ask.addEventListener('input', () => { state.asks[m.id] = ask.value; });
       const askRow = el('div', 'bar'); askRow.appendChild(el('span', 'note', 'Con tu idea redacto el correo; sin idea, te propongo yo una respuesta.'));
       const askBtn = el('button', 'btn primary', '✨ Sugerir correo'); askBtn.type = 'button';
+      askRow.appendChild(micButton(ask, (t) => { state.asks[m.id] = t; }));
       askBtn.addEventListener('click', () => { const ins = ask.value.trim(); ta.value = ''; run(ins, askBtn); });
       ask.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); askBtn.click(); } });
       askRow.appendChild(askBtn);
@@ -2191,7 +2230,7 @@
         if (!sample) { finish(t); return; }
         ready.disabled = true; setStatus('Revisando el texto antes de darlo por listo…');
         try {
-          const prompt = 'Revisa este borrador de correo de Jaime Marrero (director de la unidad de salones de Provalliance España) antes de enviarlo. Busca: erratas y ortografía, puntuación, frases cortadas o sin verbo, respuestas ambiguas para el destinatario, saludo y firma (debe terminar en «Un saludo,» seguido de «Jaime» en otra línea), y tono (directo y cordial). Respeta lo que Jaime quiere decir: no añadas compromisos, datos ni fechas nuevos; si algo es ambiguo, señálalo en vez de inventarlo.\n\nCorreo al que responde:\n' + mailContext(m) + '\n\nBORRADOR:\n' + t + '\n\nDevuelve SOLO JSON: {"ok": true si no hace falta cambiar nada, "cambios": ["cada cambio en una frase corta"], "texto": "versión corregida completa"}';
+          const prompt = 'Revisa este borrador de correo de Jaime Marrero (director de la unidad de salones de Provalliance España) antes de enviarlo. Busca: erratas y ortografía, puntuación, frases cortadas o sin verbo, respuestas ambiguas para el destinatario, saludo y cierre (debe terminar en «Un saludo,» SIN nombre ni firma debajo, porque Outlook añade la firma electrónica; si lleva «Jaime» u otra firma al final, quítala), y tono (directo y cordial). Respeta lo que Jaime quiere decir: no añadas compromisos, datos ni fechas nuevos; si algo es ambiguo, señálalo en vez de inventarlo.\n\nCorreo al que responde:\n' + mailContext(m) + '\n\nBORRADOR:\n' + t + '\n\nDevuelve SOLO JSON: {"ok": true si no hace falta cambiar nada, "cambios": ["cada cambio en una frase corta"], "texto": "versión corregida completa"}';
           const out = await sample.json(prompt);
           if (!out || out.ok || !out.texto || out.texto.trim() === t) { setStatus('Texto revisado: está bien.'); await finish(t); return; }
           review.replaceChildren();
