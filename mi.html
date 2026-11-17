@@ -495,7 +495,7 @@
   .tabs .ti { display: none; }
   .tabs .ti svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   @media (max-width: 560px) {
-    .tabs { display: grid !important; grid-template-columns: repeat(5, 1fr); gap: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); left: 10px; right: 10px; bottom: 10px; border-radius: 20px; background: rgba(13,16,21,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.08); }
+    .tabs { display: grid !important; grid-template-columns: repeat(6, 1fr); gap: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); left: 10px; right: 10px; bottom: 10px; border-radius: 20px; background: rgba(13,16,21,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.08); }
     .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 0 6px; min-width: 0; color: rgba(255,255,255,.55); border-radius: 14px; }
     .tabs button[aria-selected="true"] { color: #fff; background: rgba(255,255,255,.08); }
     .tabs button[aria-selected="true"]::after { display: none; }
@@ -748,6 +748,7 @@
     .stats { margin-top: 2px; }
   }
 </style>
+<link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="synqalia.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -768,6 +769,7 @@
     <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="rec-tab" id="rec-tab-reuniones" hidden></span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
     <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="rec-tab" id="rec-tab-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
+    <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
   </nav>
     <div class="sq-me" id="sq-me"></div>
   </aside>
@@ -915,6 +917,9 @@
     </section>
     <div id="cu-detail" class="cu-detail"></div>
   </main>
+
+  <!-- NOTAS (libretas) -->
+  <main id="view-notas" class="view" hidden></main>
 </div>
 
 <script>
@@ -1171,14 +1176,14 @@
   let db = null, sample = null, assets = null;
 
   // ---------- vistas ----------
-  const VIEWS = ['hoy', 'correo', 'reuniones', 'tareas', 'catchups'];
+  const VIEWS = ['hoy', 'correo', 'reuniones', 'tareas', 'catchups', 'notas'];
   function show(view) {
     if (view === 'captura') view = 'catchups';
     if (!VIEWS.includes(view)) view = 'hoy';
     state.view = view;
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups'}[view];
+    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas'}[view];
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
   }
@@ -3650,5 +3655,6 @@
   setInterval(refresh, 120000);
 })();
 </script>
+<script src="notas.js" defer></script>
 </body>
 </html>
