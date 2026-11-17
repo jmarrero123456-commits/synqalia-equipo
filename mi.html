@@ -763,6 +763,16 @@
     .refresh-btn { width: 34px; height: 34px; }
     .stats { margin-top: 2px; }
   }
+  /* Resumen de Hoy compacto: una sola fila, también en el móvil */
+  .stats.mini { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+  .stats.mini .stat { padding: 8px 10px 7px; gap: 1px; border-radius: 11px; box-shadow: none; }
+  .stats.mini .stat b { font-size: 22px; font-weight: 800; order: 1; }
+  .stats.mini .stat span { order: 2; }
+  .stats.mini .stat span { font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 700; line-height: 1.15; white-space: normal; }
+  .stats.mini .stat::after { display: none; }
+  .stats.mini .stat.key.hot { background: color-mix(in srgb, var(--bad) 8%, var(--panel)); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+  .stats.mini .stat.key.hot b { color: var(--bad); }
+  @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 7px 7px 6px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
   .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
   .summary.off { color: var(--muted); font-style: italic; }
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
@@ -836,11 +846,11 @@
 
   <!-- HOY -->
   <main id="view-hoy" class="view" style="display:grid; gap:18px;">
-    <section class="stats" aria-label="Resumen">
-      <button class="stat key" data-go="tareas" type="button"><b id="st-alta">–</b><span>Tareas de prioridad alta</span></button>
-      <button class="stat" data-go="tareas" type="button"><b id="st-abiertas">–</b><span>Tareas abiertas</span></button>
-      <button class="stat" data-go="correo" type="button"><b id="st-parati">–</b><span>Correos con decisión tuya</span></button>
-      <button class="stat" data-go="correo" type="button"><b id="st-reu">–</b><span>Reuniones por confirmar</span></button>
+    <section class="stats mini" aria-label="Resumen">
+      <button class="stat key" data-quick="hoy" type="button" title="Tareas que vencen hoy o ya vencidas"><b id="st-hoy">–</b><span>Resolver hoy</span></button>
+      <button class="stat" data-quick="mias" type="button" title="Tareas que dependen de ti"><b id="st-mias">–</b><span>Dependen de mí</span></button>
+      <button class="stat" data-go="correo" type="button" title="Correos con decisión tuya"><b id="st-parati">–</b><span>Correos para ti</span></button>
+      <button class="stat" data-go="reuniones" type="button" title="Reuniones por confirmar"><b id="st-reu">–</b><span>Por confirmar</span></button>
     </section>
 
     <section class="card">
@@ -1273,6 +1283,7 @@
       sh.addEventListener('click', (e) => { if (e.target === sh) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } }); } }
   $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
+  $$('[data-quick]').forEach((b) => b.addEventListener('click', () => { show('tareas'); applyQuick(QUICK.find((q) => q.k === b.dataset.quick)); }));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || (navigator.onLine ? 'hoy' : 'notas'));
 
@@ -1830,8 +1841,8 @@
     const open = openTasks();
     $('#count-tareas').textContent = open.length ? String(open.length) : '';
     // Hoy
-    $('#st-abiertas').textContent = String(open.length);
-    $('#st-alta').textContent = String(open.filter((t) => t.prioridad === 'Alta').length);
+    { const nh = state.tasks.filter(forToday).length; const sh = $('#st-hoy'); sh.textContent = String(nh); sh.parentElement.classList.toggle('hot', nh > 0); }
+    $('#st-mias').textContent = String(open.filter((t) => espOf(t) === 'mia').length);
     const top = $('#hoy-top'); top.replaceChildren();
     const firsts = open.slice().sort((a, b) => (isLate(b) - isLate(a)) || sortTasks(a, b)).slice(0, 6);
     if (!firsts.length) top.appendChild(el('div', 'empty', 'Sin tareas abiertas. Crea una en Tareas o pasa un correo a tarea.'));
