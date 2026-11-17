@@ -752,7 +752,7 @@
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261117e">
+<link rel="stylesheet" href="synqalia.css?v=20261117f">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -2127,6 +2127,59 @@
     return b;
   }
 
+  // Tareas sugeridas a partir de un correo: la IA propone de 1 a 4; Jaime las revisa, pone fecha y las crea una a una o todas
+  function taskSuggester(m, setStatus) {
+    const wrap = el('div', 'tsug');
+    const list = el('div', 'tsug-list');
+    const st = (state.taskSugs = state.taskSugs || {});
+    const addRow = (t) => {
+      const row = el('div', 'tsug-row');
+      const ti = document.createElement('input'); ti.type = 'text'; ti.value = t.titulo || ''; ti.placeholder = 'Qué tienes que hacer'; ti.setAttribute('aria-label', 'Tarea');
+      const di = document.createElement('input'); di.type = 'date'; di.value = /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : todayISO; di.setAttribute('aria-label', 'Fecha límite');
+      const quick = el('div', 'tsug-quick');
+      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.addEventListener('click', () => { di.value = v; }); quick.appendChild(q); });
+      const ok = el('button', 'btn primary', 'Crear'); ok.type = 'button';
+      const no = el('button', 'btn ghost', '✕'); no.type = 'button'; no.title = 'Descartar'; no.setAttribute('aria-label', 'Descartar esta tarea');
+      ok.addEventListener('click', async () => {
+        const titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
+        ok.disabled = true;
+        const id = await addTask({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id});
+        if (id) { row.classList.add('done'); row.replaceChildren(el('span', 'tsug-ok', '✓ ' + titulo + ' · ' + (di.value === todayISO ? 'hoy' : dayName(di.value)))); t.creada = true; }
+        else ok.disabled = false;
+      });
+      no.addEventListener('click', () => { t.descartada = true; row.remove(); });
+      ti.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
+      row.appendChild(ti); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
+      const btns = el('div', 'tsug-btns'); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
+      list.appendChild(row); return row;
+    };
+    const bar = el('div', 'tsug-bar');
+    const sug = el('button', 'btn', '✨ Sugerir tareas'); sug.type = 'button';
+    const add = el('button', 'btn ghost', '+ Añadir una'); add.type = 'button';
+    const all = el('button', 'btn', 'Crear todas'); all.type = 'button'; all.hidden = true;
+    const refreshAll = () => { all.hidden = list.querySelectorAll('.tsug-row:not(.done)').length < 2; };
+    add.addEventListener('click', () => { const r = addRow({titulo: '', vence: todayISO}); r.querySelector('input').focus(); refreshAll(); });
+    all.addEventListener('click', async () => { all.disabled = true; for (const b of [...list.querySelectorAll('.tsug-row:not(.done) .btn.primary')]) { b.click(); await new Promise((r) => setTimeout(r, 250)); } all.disabled = false; refreshAll(); });
+    const fill = (arr) => { list.replaceChildren(); arr.filter((t) => !t.descartada && !t.creada).forEach(addRow); refreshAll(); };
+    sug.addEventListener('click', async () => {
+      if (!sample) { setStatus('La IA no está conectada ahora mismo.', true); return; }
+      sug.disabled = true; sug.textContent = 'Pensando…';
+      try {
+        const out = await sample('Eres el asistente de Jaime Marrero (director de la unidad de salones de Provalliance España). Lee este correo o hilo y propón las tareas que Jaime tiene que hacer él (de 1 a 4; solo las necesarias; ninguna si es solo informativo). Cada tarea: verbo en infinitivo, concreta, con quién si aplica, máximo 90 caracteres. Si el correo marca un plazo, ponlo como fecha (AAAA-MM-DD; hoy es ' + todayISO + '); si no, deja la fecha vacía. Devuelve SOLO un JSON: [{"titulo": "...", "vence": "AAAA-MM-DD" o ""}].\n\n' + mailContext(m));
+        const txt = String((out && out.text) || ''); const j = txt.match(/\[[\s\S]*\]/);
+        const arr = (j ? JSON.parse(j[0]) : []).filter((t) => t && t.titulo).slice(0, 4).map((t) => ({titulo: String(t.titulo).slice(0, 200), vence: t.vence || todayISO}));
+        st[m.id] = arr; fill(arr);
+        if (!arr.length) list.appendChild(el('p', 'note', 'No veo tareas para ti en este correo. Si quieres, añade una a mano.'));
+      } catch (e) { setStatus('No he podido sugerir tareas ahora. Inténtalo otra vez.', true); }
+      finally { sug.disabled = false; sug.textContent = '✨ Volver a sugerir'; }
+    });
+    bar.appendChild(sug); bar.appendChild(add); bar.appendChild(all);
+    wrap.appendChild(bar); wrap.appendChild(list);
+    wrap._addRow = (x) => { const r = addRow(x); refreshAll(); r.scrollIntoView({block: 'center', behavior: 'smooth'}); const inp = r.querySelector('input'); inp.focus(); inp.select(); };
+    if (st[m.id]) { fill(st[m.id]); sug.textContent = '✨ Volver a sugerir'; }
+    return wrap;
+  }
+
   function composer(m) {
     const r = state.replies[m.id] || {};
     const box = el('div', 'composer');
@@ -2141,15 +2194,15 @@
     if (Array.isArray(m.adjuntos) && m.adjuntos.length) box.appendChild(el('div', 'detail', 'Adjuntos: ' + m.adjuntos.join(', ')));
     const sumBar = el('div', 'bar');
     const sumLbl = el('div', 'section-label', 'Qué esperan de ti'); box.appendChild(sumLbl);
-    const sumOut = el('div', 'summary expect'); sumOut.hidden = !state.summaries[m.id]; sumOut.textContent = state.summaries[m.id] || '';
+    const sumOut = el('div', 'summary expect rich'); sumOut.hidden = !state.summaries[m.id]; renderRich(sumOut, state.summaries[m.id] || '');
     const sumBtn = el('button', 'btn', 'Resumir'); sumBtn.type = 'button'; sumBtn.disabled = !m.cuerpo;
     sumBtn.addEventListener('click', async () => {
       if (!sample) return;
       sumBtn.disabled = true; sumOut.hidden = false; sumOut.textContent = 'Leyendo el correo…';
       try {
-        const out = await sample('Lee este correo o hilo para Jaime (director de la unidad de salones de Provalliance España) y dile en español, en 2 a 5 viñetas cortas que empiecen por «- »: primero QUÉ ESPERAN DE ÉL exactamente (qué le preguntan, qué tiene que decidir, aprobar, enviar o contestar), luego el plazo si lo hay y quién espera la respuesta, y por último, en una sola viñeta, el contexto mínimo necesario. Si no le piden nada y es solo informativo, dilo en la primera viñeta. Sin introducción.\n\n' + mailContext(m), {onText: ({text}) => { sumOut.textContent = text; }});
+        const out = await sample('Lee este correo o hilo para Jaime (director de la unidad de salones de Provalliance España) y dile en español, en 2 a 5 viñetas cortas que empiecen por «- » (una idea por viñeta, frases sencillas; pon en **negrita** solo lo clave: lo que tiene que hacer, el plazo y el nombre de quien espera): primero QUÉ ESPERAN DE ÉL exactamente (qué le preguntan, qué tiene que decidir, aprobar, enviar o contestar), luego el plazo si lo hay y quién espera la respuesta, y por último, en una sola viñeta, el contexto mínimo necesario. Si no le piden nada y es solo informativo, dilo en la primera viñeta. Sin introducción.\n\n' + mailContext(m), {onText: ({text}) => { renderRich(sumOut, text); }});
         state.summaries[m.id] = (out && out.text) || sumOut.textContent;
-        sumOut.textContent = state.summaries[m.id];
+        renderRich(sumOut, state.summaries[m.id]);
       } catch (e) { sumOut.textContent = 'No se ha podido resumir ahora. Inténtalo otra vez.'; }
       finally { sumBtn.disabled = false; }
     });
@@ -2262,28 +2315,8 @@
       btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(ready);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
       if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
-      box.appendChild(el('div', 'section-label', 'Siguiente acción'));
-      const na = el('div', 'change');
-      const ni = document.createElement('input'); ni.type = 'text'; ni.id = 'na-' + m.id; ni.placeholder = 'Crear tarea…'; ni.setAttribute('aria-label', 'Siguiente acción');
-      const nb = el('button', 'btn', 'Crear tarea'); nb.type = 'button';
-      nb.addEventListener('click', async () => {
-        const t = ni.value.trim(); if (!t) { setStatus('Escribe o dicta la siguiente acción.', true); return; }
-        nb.disabled = true;
-        if (await addTask({persona: personaDe(m.de), titulo: t, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, origen: 'correo', ref: m.id})) { ni.value = ''; setStatus('Tarea creada.'); }
-        nb.disabled = false;
-      });
-      ni.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nb.click(); } });
-      const nsug = el('button', 'btn ghost', 'Sugerir'); nsug.type = 'button';
-      nsug.addEventListener('click', async () => {
-        if (!sample) return; nsug.disabled = true; setStatus('Pensando la siguiente acción…');
-        try {
-          const out = await sample('Propón UNA siguiente acción concreta para Jaime (director de la unidad de salones de Provalliance España) tras este correo: verbo en infinitivo, con quién y cuándo si se deduce, máximo 90 caracteres. Devuelve solo la frase.\n\n' + mailContext(m));
-          ni.value = String((out && out.text) || '').trim().replace(/^["«]|["»]$/g, ''); setStatus('Revísala y pulsa «Crear tarea».');
-        } catch (e) { setStatus('No he podido sugerirla ahora.', true); }
-        finally { nsug.disabled = false; }
-      });
-      const nbtns = el('div', 'btns'); nbtns.appendChild(nsug); nbtns.appendChild(nb);
-      na.appendChild(ni); na.appendChild(nbtns); box.appendChild(na);
+      box.appendChild(el('div', 'section-label', 'Tareas de este correo'));
+      box.appendChild(taskSuggester(m, setStatus));
       if (r.estado === 'error' && r.nota) { const n = el('p', 'status err', r.nota); box.appendChild(n); }
     } else {
       askBox.hidden = true;
@@ -2426,6 +2459,8 @@
         const toTask = el('button', 'btn', linked.has(m.id) ? 'Ya es tarea' : 'Pasar a tarea'); toTask.type = 'button';
         toTask.disabled = linked.has(m.id);
         toTask.addEventListener('click', async () => {
+          const ts = o.pane && document.querySelector('#mail-pane .tsug');
+          if (ts && ts._addRow) { ts._addRow({titulo: m.asunto, vence: todayISO}); return; }
           toTask.disabled = true;
           const ok = await addTask({persona: personaDe(m.de), titulo: m.asunto, detalle: m.de + ' — ' + m.accion, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: m.prioridad === 'Alta' ? todayISO : null, origen: 'correo', ref: m.id});
           if (!ok) toTask.disabled = false;

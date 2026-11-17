@@ -257,3 +257,37 @@ body:has(.login) .sq-bar { display: none; }
 .tav { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: color-mix(in srgb, var(--accent, #2b4fd8) 14%, var(--panel)); color: var(--accent, #2b4fd8); font-size: 11px; font-weight: 800; flex: none; }
 .tmsg-when { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .tmsg-body { white-space: pre-wrap; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+
+/* ---------- Lectura tipo chat: «Qué esperan de ti» y el hilo, más aire y negritas ---------- */
+.summary.expect.rich { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gold-2, #5fe0cf); border-radius: 12px; padding: 14px 18px;
+  white-space: normal; font-size: 15.5px; line-height: 1.65; color: var(--ink, inherit); max-width: 76ch; }
+.summary.expect.rich .rich-ul { padding-left: 20px; gap: 8px; }
+.summary.expect.rich li::marker { color: var(--gold-2, #5fe0cf); }
+.summary.expect.rich b { font-weight: 700; }
+.summary.expect.rich .rich-p { margin: 0 0 8px; }
+.tmsg { padding: 16px 18px; }
+.tmsg-body { font-size: 15px; line-height: 1.7; max-width: 80ch; }
+.tmsg:not(.last) .tmsg-body { color: color-mix(in srgb, var(--ink, #1b2030) 80%, transparent); }
+.thread { gap: 14px; }
+.composer .section-label { margin-top: 22px; }
+
+/* ---------- Tareas sugeridas de un correo ---------- */
+.tsug { display: grid; gap: 10px; }
+.tsug-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+.tsug-list { display: grid; gap: 8px; }
+.tsug-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title title' 'when btns'; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.tsug-row input[type=text] { grid-area: title; width: 100%; font: inherit; font-size: 14.5px; border: 0; background: transparent; padding: 6px 2px; border-bottom: 1px dashed var(--line); }
+.tsug-row input[type=text]:focus { outline: none; border-bottom-color: var(--accent, #2b4fd8); }
+.tsug-when { grid-area: when; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tsug-when input[type=date] { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.tsug-quick { display: flex; gap: 4px; } .tsug-quick .chip { padding: 4px 9px; font-size: 12px; }
+.tsug-btns { grid-area: btns; display: flex; gap: 4px; justify-content: flex-end; }
+.tsug-row.done { display: block; border-style: dashed; background: color-mix(in srgb, var(--gold-2, #5fe0cf) 10%, var(--panel)); }
+.tsug-ok { font-size: 14px; font-weight: 600; color: #0b5f55; }
+@media (max-width: 760px) {
+  .tsug-row { grid-template-columns: 1fr; grid-template-areas: 'title' 'when' 'btns'; }
+  .tsug-btns { justify-content: flex-end; }
+}
+
+/* recuadro «¿Qué quieres contestar?» más ligero (sin fondo azul) */
+.composer .ask { background: var(--panel); border-color: var(--line); border-left: 3px solid var(--accent, #2b4fd8); border-radius: 12px; padding: 14px 16px; }
