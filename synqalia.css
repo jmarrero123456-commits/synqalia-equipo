@@ -75,11 +75,11 @@
 .sq-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 60; height: calc(var(--sq-bar) + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) 18px 0; display: flex; align-items: center; gap: 16px;
   background: #0b0e13; border-bottom: 1px solid rgba(255,255,255,.08); color: #fff; }
-.sq-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; flex: none; }
-.sq-logo svg.mark { width: 30px; height: 30px; color: #fff; }
+.sq-logo { display: flex; align-items: center; gap: 6px; text-decoration: none; color: #fff; flex: none; }
+.sq-logo svg.mark { width: 32px; height: 32px; color: #fff; }
 .sq-logo svg.mark .mark-dot { fill: var(--gold-2, #5fe0cf); }
-.sq-logo span { font: 700 21px/1 "Manrope", system-ui, sans-serif; letter-spacing: -.02em; }
-.sq-logo span b { font-weight: 700; color: var(--gold-2, #5fe0cf); }
+.sq-logo span { font: 800 22px/1 "Manrope", system-ui, sans-serif; letter-spacing: -.02em; }
+.sq-logo span b { font-weight: 800; color: var(--gold-2, #5fe0cf); }
 .sq-switch-bar { margin-left: auto; width: 250px; }
 body.sq-has-bar { padding-top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px)); }
 body.sq-has-bar:has(.login) { padding-top: 0; }
@@ -87,7 +87,7 @@ body:has(.login) .sq-bar { display: none; }
 @media (max-width: 560px) {
   :root { --sq-bar: 52px; }
   .sq-bar { padding-left: 14px; padding-right: 10px; gap: 10px; }
-  .sq-logo span { font-size: 19px; }
+  .sq-logo { gap: 5px; } .sq-logo svg.mark { width: 28px; height: 28px; } .sq-logo span { font-size: 20px; }
   .sq-switch-bar { width: auto; flex: 0 1 210px; }
   .sq-switch-bar a { padding: 7px 8px; font-size: 12px; }
 }
