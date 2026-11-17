@@ -656,6 +656,10 @@
   .rec-live[hidden] { display: none; }
   .tabs .rec-tab { display: inline-block; width: 8px; height: 8px; margin-left: 7px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.28); vertical-align: middle; animation: recPulse 1.2s ease-in-out infinite; }
   .tabs .rec-tab[hidden] { display: none; }
+  .cal-ev.rec { box-shadow: inset 0 0 0 2px #e5484d; padding-right: 22px; }
+  .cal-ev.rec::after { content: ""; position: absolute; top: 7px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.25); animation: recPulse 1.2s ease-in-out infinite; }
+  .cal-ev.rec.tiny::after { top: 50%; margin-top: -4px; width: 7px; height: 7px; }
+  .mt-title.rec::after { content: ""; display: inline-block; width: 10px; height: 10px; margin-left: 10px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.25); vertical-align: middle; animation: recPulse 1.2s ease-in-out infinite; }
   .rec-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, #d93636 7%, var(--panel)); border: 1px solid color-mix(in srgb, #d93636 30%, var(--line)); font-size: 14px; }
   .rec-banner[hidden] { display: none; }
   .rec-banner .rb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #d93636; animation: recPulse 1.2s ease-in-out infinite; }
@@ -1836,6 +1840,7 @@
         const box = document.createElement(tag); box.className = 'cal-ev' + (pend && !okd ? ' pend' : '') + (okd ? ' okd' : '') + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : '');
         if (tag === 'div') { box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0; const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}; box.addEventListener('click', () => openMeetRoom(ev)); box.addEventListener('keydown', (k) => { if (k.key === 'Enter') openMeetRoom(ev); }); if (mtRecord(ev)) box.classList.add('has-notes'); }
         if (tag === 'a') { box.href = e.enlace; box.target = '_blank'; box.rel = 'noopener'; box.title = 'Abrir en Outlook para aceptar o rechazar'; box.addEventListener('click', () => setTimeout(() => markAnswered({fecha, inicio: e.inicio, titulo: e.titulo, mas: []}, true), 400)); }
+        box.dataset.mtkey = fecha + '|' + e.inicio; if (window.__sqRecKey === box.dataset.mtkey) { box.classList.add('rec'); box.title = 'Grabando esta reunión'; }
         const h = y(b) - y(a);
         box.style.top = (y(a) + 1) + 'px'; box.style.height = Math.max(h - 2, 14) + 'px';
         box.style.left = 'calc(var(--cal-g) + ' + k + ' * ((100% - var(--cal-g)) / ' + n + '))'; box.style.width = 'calc((100% - var(--cal-g)) / ' + n + ' - 3px)';
@@ -3208,6 +3213,7 @@
     head.appendChild(acts); host.appendChild(head);
     if (team) host.appendChild(el('p', 'note', 'Se guarda también en el historial de catch-ups de ' + (isGroup(p) ? p.nombre : firstName(p.nombre)) + '.'));
     host.appendChild(cuEditor(p, mo.id, {pre: 'mt', kind: team ? null : 'reunion', refresh: () => renderMeetRoom(true), onDone: () => { state.mtOpen = null; renderMeetRoom(true); renderMeetNotes(); }}));
+    try { recPaint(); } catch (e) { /* aún no listo */ }
     const open = tasksOfP(p).filter((t) => t.ref !== mo.id);
     if (open.length) {
       const w = el('div', 'mt-block'); w.appendChild(el('div', 'cu-lbl', 'Tareas abiertas de reuniones anteriores'));
@@ -3281,6 +3287,11 @@
     const tr = $('#rec-tab-reuniones'), tc = $('#rec-tab-catchups');
     if (tr) { tr.hidden = !inMt; tr.title = inMt ? tip : ''; }
     if (tc) { tc.hidden = !(on && !inMt); tc.title = on && !inMt ? tip : ''; }
+    // punto rojo en la propia reunión: en el calendario (Reuniones y Hoy) y en el título de la reunión abierta
+    const mo0 = inMt && DICT.target.mo; const key = mo0 ? mo0.ev.fecha + '|' + mo0.ev.inicio : null;
+    window.__sqRecKey = key;
+    document.querySelectorAll('.cal-ev[data-mtkey]').forEach((b) => { const r = !!key && b.dataset.mtkey === key; b.classList.toggle('rec', r); if (r) b.title = 'Grabando esta reunión' + (DICT.t0 ? ' · ' + recFmt(Date.now() - DICT.t0) : ''); else if (b.title.startsWith('Grabando')) b.title = ''; });
+    const mtt = document.querySelector('#meet-room .mt-title'); if (mtt) { const r = inMt && state.mtOpen && state.mtOpen.id === DICT.target.id; mtt.classList.toggle('rec', !!r); mtt.title = r ? 'Grabando' : ''; }
     const bn = $('#rec-banner');
     if (bn) {
       const mo = inMt && DICT.target.mo; const roomOpen = inMt && state.mtOpen && state.mtOpen.id === DICT.target.id;
