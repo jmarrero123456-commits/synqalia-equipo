@@ -80,7 +80,7 @@
   .mi-switch { display:none; }
   .side-backdrop { display:none; }
   @media (max-width: 860px) {
-    .mi-switch { display:inline-flex; align-items:center; gap:4px; margin:0 0 12px; padding:7px 13px; border-radius:999px; border:1px solid rgba(95,224,207,.45); background:rgba(95,224,207,.12); color:#fff; font-weight:700; font-size:13px; text-decoration:none; }
+    .mi-switch { display:inline-flex; align-items:center; gap:4px; margin:0 0 8px; padding:5px 11px; font-size:12px !important; border-radius:999px; border:1px solid rgba(95,224,207,.45); background:rgba(95,224,207,.12); color:#fff; font-weight:700; font-size:13px; text-decoration:none; }
     .mi-switch:active { background:rgba(95,224,207,.24); }
     .side-backdrop.open { display:block; position:fixed; inset:0; z-index:29; background:rgba(5,10,20,.45); }
   }
@@ -96,6 +96,30 @@
   .toolbar .input { width:auto; min-width:200px; flex:1; max-width:340px; background:var(--panel); }
   .toolbar select.input { flex:none; min-width:0; }
   .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .toolbar.tb-main { flex-wrap:nowrap; }
+  .toolbar.tb-main .input { max-width:none; min-width:0; }
+  .tb-ftog { flex:none; white-space:nowrap; }
+  .tb-ftog .tb-n { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--accent, #2b4fd8); color:#fff; font-size:11px; font-weight:700; }
+  .tb-ftog .tb-car { opacity:.6; font-size:11px; }
+  .tb-seg { flex:none; }
+  .toolbar.tb-more { margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+  .toolbar.tb-more[hidden] { display:none; }
+  @media (max-width:860px) {
+    .toolbar.tb-more .input { flex:1 1 140px; }
+    .band .head p { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:calc(100vw - 120px); }
+  }
+  .tb-seg-more { display:none; }
+  @media (max-width:560px) { .toolbar.tb-main .tb-seg { display:none; } .tb-seg-more { display:flex; } .toolbar.tb-main { gap:6px; } }
+  .page { grid-template-columns:minmax(0,1fr); }
+  .page > * { min-width:0; }
+  .toolbar.tb-more .input { min-width:0; }
+  @media (max-width:860px) {
+    .band .head { flex-wrap:nowrap; align-items:center; }
+    .band .head .grow { min-width:0; }
+    .band .head > .btn:not(.menu-btn) { flex:none; padding-left:10px; padding-right:10px; }
+    .band .head #bmenu { font-size:0; } .band .head #bmenu::before { content:'⋯'; font-size:18px; line-height:1; }
+    .tablewrap { max-height:calc(100vh - 200px); }
+  }
   .chip { border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:4px 11px; font-size:13px; cursor:pointer; }
   .chip[aria-pressed="true"] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
 
@@ -245,7 +269,7 @@
   /* franja superior del área de trabajo */
   .page { padding-top:0; max-width:none; }
   .band { margin:0 -26px; padding:26px 26px 24px; background:var(--glow); }
-  @media (max-width:860px) { .band { margin:0 -12px; padding:16px 12px 18px; } }
+  @media (max-width:860px) { .band { margin:0 -12px; padding:12px 12px 14px; } .band .head h2 { font-size:24px; } }
   .head h2 { font:700 28px/1.1 var(--display); letter-spacing:-.02em; color:#fff; }
   .head p { color:rgba(255,255,255,.62); font-weight:500; }
   .head .btn:not(.primary) { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); color:#fff; }
@@ -770,9 +794,14 @@ function renderBoard(el, b) {
   const statusCols = b.columns.filter((c) => c.type === 'status');
   const people = [...new Set(S.items.filter((i) => i.board_id === b.id).flatMap((i) => Object.values(i.data).filter(Array.isArray).flat().filter((x) => String(x).includes('@'))))];
   const closedN = topItems(b.id).filter((i) => isClosed(b, i)).length;
+  const nAct = [f.group, f.status, f.person, f.late, f.closed].filter(Boolean).length;
   let h = `<div class="page">${headHtml(b.name, `${esc(space(b.space_id)?.name)} · ${esc(b.description || '')}`, `<button class="btn" id="bmenu" title="Opciones del tablero">⋯ Tablero</button><button class="btn primary" id="new">+ Nuevo</button>`)}
-    <div class="toolbar">
-      <input class="input" id="q" placeholder="Buscar en ${esc(b.name.toLowerCase())}…" value="${esc(f.q)}">
+    <div class="toolbar tb-main">
+      <input class="input" id="q" type="search" placeholder="Buscar en ${esc(b.name.toLowerCase())}…" value="${esc(f.q)}">
+      <button class="btn tb-ftog" id="ftog" aria-expanded="${!!S.fOpen}" aria-controls="tb-more">Filtros${nAct ? ` <span class="tb-n">${nAct}</span>` : ''} <span class="tb-car">${S.fOpen ? '▴' : '▾'}</span></button>
+      <div class="seg tb-seg" style="width:auto"><button data-mode="table" aria-selected="${f.mode === 'table'}">Tabla</button><button data-mode="kanban" aria-selected="${f.mode === 'kanban'}">Kanban</button></div>
+    </div>
+    <div class="toolbar tb-more" id="tb-more" ${S.fOpen ? '' : 'hidden'}>
       <select class="input" id="fg"><option value="">Todas las fases</option>${b.groups.map((g) => `<option value="${esc(g.id)}" ${f.group === g.id ? 'selected' : ''}>${esc(g.title)}</option>`).join('')}</select>
       ${statusCols.length ? `<select class="input" id="fs"><option value="">Cualquier estado</option>${statusCols.map((c) => `<optgroup label="${esc(c.title)}">${c.options.map((o) => `<option ${f.status === o.label ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}
       ${people.length ? `<select class="input" id="fp"><option value="">Cualquier responsable</option>${people.map((p) => `<option value="${esc(p)}" ${f.person === p ? 'selected' : ''}>${esc(member(p)?.name || p)}</option>`).join('')}</select>` : ''}
@@ -781,8 +810,8 @@ function renderBoard(el, b) {
         ${closedN ? `<button class="chip" id="fc" aria-pressed="${f.closed}">Ver cerrados (${closedN})</button>` : ''}
       </div>
       <span style="flex:1"></span>
+      <div class="seg tb-seg-more" style="width:auto"><button data-mode="table" aria-selected="${f.mode === 'table'}">Tabla</button><button data-mode="kanban" aria-selected="${f.mode === 'kanban'}">Kanban</button></div>
       <button class="btn" id="cols" title="Mostrar, ocultar o añadir columnas">Columnas</button>
-      <div class="seg" style="width:auto"><button data-mode="table" aria-selected="${f.mode === 'table'}">Tabla</button><button data-mode="kanban" aria-selected="${f.mode === 'kanban'}">Kanban</button></div>
     </div>
     <div class="msg">${its.length} de ${total} elementos${f.group || f.status || f.q || f.late || f.person ? ' · <a href="#" id="clr">quitar filtros</a>' : ''}</div>`;
   h += f.mode === 'kanban' ? kanbanHtml(b, its) : tableHtml(b, its, cols);
@@ -790,6 +819,7 @@ function renderBoard(el, b) {
   el.innerHTML = h;
   const q = el.querySelector('#q');
   q.oninput = () => { f.q = q.value; clearTimeout(q._t); q._t = setTimeout(() => { renderMain(); const n = document.getElementById('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 220); };
+  el.querySelector('#ftog').onclick = () => { S.fOpen = !S.fOpen; renderMain(); };
   el.querySelector('#fg').onchange = (e) => { f.group = e.target.value || null; renderMain(); };
   el.querySelector('#fs')?.addEventListener('change', (e) => { f.status = e.target.value || null; renderMain(); });
   el.querySelector('#fp')?.addEventListener('change', (e) => { f.person = e.target.value || null; renderMain(); });
