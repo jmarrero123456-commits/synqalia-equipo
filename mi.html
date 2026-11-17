@@ -777,7 +777,19 @@
   .stats.mini .stat::after { display: none; }
   .stats.mini .stat.key.hot { background: color-mix(in srgb, var(--bad) 8%, var(--panel)); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
   .stats.mini .stat.key.hot b { color: var(--bad); }
-  @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 7px 7px 6px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
+  /* número a la izquierda y texto a la derecha, centrados en el recuadro */
+  .stats.mini .stat { display: flex; align-items: center; justify-content: center; gap: 7px; text-align: left; padding: 9px 8px; min-height: 52px; background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--bg) 40%, var(--panel))); }
+  .stats.mini .stat b { flex: none; }
+  .stats.mini .stat span { color: var(--muted); }
+  .stats.mini .stat:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  .stats.mini .stat.key.hot { background: linear-gradient(180deg, color-mix(in srgb, var(--bad) 9%, var(--panel)), color-mix(in srgb, var(--bad) 4%, var(--panel))); }
+  .stats.mini .stat.key.hot span { color: color-mix(in srgb, var(--bad) 70%, var(--ink)); }
+  /* Hoy · correos: botones a la derecha y más compactos */
+  #hoy-mail .item { padding: 10px 0; gap: 6px 10px; }
+  #hoy-mail .item.mitem > .actions, #hoy-mail .item > .actions { justify-content: flex-end; gap: 6px; }
+  #hoy-mail .item > .actions .btn { padding: 5px 10px; font-size: 12.5px; min-height: 0; }
+  #hoy-mail .item .detail { margin-top: 1px; }
+  @media (max-width: 560px) { .stats.mini { gap: 6px; } .stats.mini .stat { padding: 8px 5px; gap: 5px; } .stats.mini .stat b { font-size: 20px; } .stats.mini .stat span { font-size: 10.5px; } }
   .summary.expect { border-left: 3px solid var(--accent, #2bb3a3); }
   .summary.off { color: var(--muted); font-style: italic; }
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
