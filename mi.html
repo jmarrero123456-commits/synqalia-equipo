@@ -842,6 +842,7 @@
   #hoy-mail .hoy-row:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
   #hoy-mail .hoy-row { padding: 9px 0; }
   .dec-dot { display: inline-block; margin-left: 7px; vertical-align: 1px; font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; color: #8a5a00; background: #fff1d6; border: 1px solid #f0d59c; }
+  .dec-dot.urg { color: var(--bad, #b0302a); background: color-mix(in srgb, var(--bad, #c0392b) 14%, transparent); }
   .xrow .title { cursor: pointer; }
   .xrow .title::after { content: '▾'; display: inline-block; margin-left: 6px; font-size: 11px; color: var(--muted); transition: transform .15s; }
   .xrow.xp .title::after { transform: rotate(180deg); }
@@ -945,7 +946,7 @@
     <section class="stats mini" aria-label="Resumen">
       <button class="stat key" data-quick="hoy" type="button" title="Tareas que vencen hoy o ya vencidas"><b id="st-hoy">–</b><span>Resolver hoy</span></button>
       <button class="stat" data-quick="mias" type="button" title="Tareas que dependen de ti"><b id="st-mias">–</b><span>Dependen de mí</span></button>
-      <button class="stat" data-go="correo" type="button" title="Correos con decisión tuya"><b id="st-parati">–</b><span>Correos para ti</span></button>
+      <button class="stat" data-go="correo" data-mailc="urgente" type="button" title="Correos urgentes: alguien espera tu decisión"><b id="st-parati">–</b><span>Urgentes para ti</span></button>
       <button class="stat" data-go="reuniones" type="button" title="Reuniones por confirmar"><b id="st-reu">–</b><span>Por confirmar</span></button>
     </section>
 
@@ -1044,7 +1045,8 @@
       <p class="hint" id="ready-hint" hidden></p>
       <div class="chips" id="mail-filter">
         <button class="chip" type="button" data-c="todos" aria-pressed="true">Recibidos <span class="count" id="count-todos"></span></button>
-        <button class="chip chip-dec" type="button" data-c="decision" aria-pressed="false">Decisión tuya <span class="count" id="count-dec"></span></button>
+        <button class="chip chip-dec chip-urg" type="button" data-c="urgente" aria-pressed="false" title="Alguien está parado esperando tu decisión, hay plazo en 48 h, dinero reclamado o un riesgo legal">Urgente · decide tú <span class="count" id="count-urg"></span></button>
+        <button class="chip chip-pide" type="button" data-c="decision" aria-pressed="false" title="Te piden revisar, opinar o contestar, sin bloquear a nadie. Pasa a Urgente si lleva más de 5 días o se acerca el plazo">Te piden algo <span class="count" id="count-dec"></span></button>
         <button class="chip" type="button" data-c="respuestas" aria-pressed="false">Enviados a Outlook <span class="count" id="count-cola"></span></button>
         <button class="chip" type="button" data-c="pospuestos" aria-pressed="false">Para otro día <span class="count" id="count-pos"></span></button>
         <button class="chip" type="button" data-c="gestionados" aria-pressed="false">Gestionados</button>
@@ -1373,7 +1375,7 @@
     if (mb && sh) { mb.addEventListener('click', (e) => { e.stopPropagation(); sh.hidden = !sh.hidden; mb.setAttribute('aria-expanded', String(!sh.hidden)); });
       sh.addEventListener('click', (e) => { if (e.target === sh) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } }); } }
-  $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
+  $$('[data-go]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.mailc) { state.mailC = b.dataset.mailc; syncMailChips(); renderMail(); } show(b.dataset.go); }));
   $$('[data-quick]').forEach((b) => b.addEventListener('click', () => { show('tareas'); applyQuick(QUICK.find((q) => q.k === b.dataset.quick)); }));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || (navigator.onLine ? 'hoy' : 'notas'));
@@ -1498,7 +1500,7 @@
           meta.appendChild(lk);
         } else if (!compact) {
           const lk = chip('link', 'mail', 'Ver correo', 'button'); lk.type = 'button'; lk.title = 'Correo de ' + personaDe(src.de);
-          lk.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : isDecision(src) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); });
+          lk.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); });
           meta.appendChild(lk);
         }
       }
@@ -2647,7 +2649,28 @@
   const byFecha = (a, b) => fechaDe(b).localeCompare(fechaDe(a));
   const sortMails = (a, b) => (state.mailSort === 'prioridad' ? (PRIO[a.prioridad] ?? 1) - (PRIO[b.prioridad] ?? 1) : 0) || byFecha(a, b);
   const isMeeting = (m) => m.categoria === 'Reuniones';
-  const isDecision = (m) => m.categoria === 'Para ti' || m.categoria === 'Aprobaciones';
+  // Nivel de lo que se espera de Jaime: 'bloquea' (urgente · decide tú), 'pide' (te piden algo, sin prisa) o null (en copia / informativo).
+  // Lo pone la IA al clasificar (campos nivel, motivo, plazo); Jaime puede corregirlo (nivelManual: bloquea | pide | no).
+  // «Te piden algo» sube solo a urgente si lleva más de 5 días o el plazo es en 48 h o menos.
+  const NIVEL_TXT = {bloquea: 'Urgente', pide: 'Te piden algo'};
+  const nivelBase = (m) => {
+    if (m.nivelManual) return m.nivelManual === 'no' ? null : m.nivelManual;
+    if (m.nivel !== undefined) return m.nivel === 'bloquea' || m.nivel === 'pide' ? m.nivel : null;
+    if (m.categoria === 'Para ti' || m.categoria === 'Aprobaciones') return m.prioridad === 'Alta' ? 'bloquea' : 'pide';
+    return null;
+  };
+  const diasDesde = (d) => d ? Math.round((new Date(todayISO + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000) : 0;
+  const escalaPor = (m) => {
+    if (m.nivelManual || nivelBase(m) !== 'pide') return '';
+    if (m.plazo && diasDesde(m.plazo) >= -2) return diasDesde(m.plazo) > 0 ? 'Plazo vencido' : 'Plazo ' + (m.plazo === todayISO ? 'hoy' : 'en ' + -diasDesde(m.plazo) + ' día' + (diasDesde(m.plazo) === -1 ? '' : 's'));
+    const d = diasDesde(fechaDe(m)); return d > 5 ? 'Lleva ' + d + ' días esperando' : '';
+  };
+  const nivelDe = (m) => { const n = nivelBase(m); return n === 'pide' && escalaPor(m) ? 'bloquea' : n; };
+  const isDecision = (m) => !!nivelDe(m);
+  const isUrgent = (m) => nivelDe(m) === 'bloquea';
+  const chipDe = (m) => isUrgent(m) ? 'urgente' : isDecision(m) ? 'decision' : 'todos';
+  const motivoDe = (m) => escalaPor(m) || m.motivo || '';
+  const nivelBadge = (m) => { const n = nivelDe(m); if (!n) return null; const b = el('span', 'mdec' + (n === 'bloquea' ? ' urg' : ''), NIVEL_TXT[n]); const mo = motivoDe(m); if (mo) b.title = mo; return b; };
   const tomorrowISO = (() => { const d = new Date(todayISO + 'T12:00:00'); do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6); return iso(d); })();
   const OUT = ['lista', 'cola_borrador', 'en_outlook', 'enviada'];
   const handled = (m) => { const r = state.replies[m.id]; return !!(r && OUT.includes(r.estado)); };
@@ -2713,9 +2736,9 @@
     }
     if (o.hoy) {
       // Hoy: sin botones; tocar el correo lo abre en Correo
-      if (isDecision(m)) { row.classList.add('dec-mine'); const dl = body.querySelector('.detail'); if (dl) dl.appendChild(el('span', 'dec-dot', 'Decisión tuya')); }
+      if (isDecision(m)) { row.classList.add('dec-mine'); if (isUrgent(m)) row.classList.add('urg'); const dl = body.querySelector('.detail'); if (dl) dl.appendChild(el('span', 'dec-dot' + (isUrgent(m) ? ' urg' : ''), isUrgent(m) ? 'Urgente' : 'Te piden algo')); }
       row.appendChild(body); row.classList.add('hoy-row'); row.tabIndex = 0; row.setAttribute('role', 'button');
-      const go = () => { state.openReply = m.id; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); };
+      const go = () => { state.openReply = m.id; state.mailC = chipDe(m); syncMailChips(); renderAll(); show('correo'); };
       row.addEventListener('click', go); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
       return row;
     }
@@ -2725,9 +2748,9 @@
     if (o.compact) {
       if (isMeeting(m)) { meetingButtons(m, act); } else {
       const go = el('button', 'btn', 'Abrir'); go.type = 'button';
-      go.addEventListener('click', () => { state.openReply = m.id; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); });
+      go.addEventListener('click', () => { state.openReply = m.id; state.mailC = chipDe(m); syncMailChips(); renderAll(); show('correo'); });
       act.appendChild(go); act.appendChild(outlookBtn(m)); }
-      if (!isMeeting(m) && !handled(m)) { const sg = el('button', 'btn sg-btn'); sg.type = 'button'; sg.innerHTML = '✨ Sugerir <span class="sg-l">respuesta</span><span class="sg-s">resp.</span>'; sg.title = 'Sugerir respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; state.mailC = isDecision(m) ? 'decision' : 'todos'; syncMailChips(); renderAll(); show('correo'); }); act.appendChild(sg); }
+      if (!isMeeting(m) && !handled(m)) { const sg = el('button', 'btn sg-btn'); sg.type = 'button'; sg.innerHTML = '✨ Sugerir <span class="sg-l">respuesta</span><span class="sg-s">resp.</span>'; sg.title = 'Sugerir respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; state.mailC = chipDe(m); syncMailChips(); renderAll(); show('correo'); }); act.appendChild(sg); }
     } else if (isMeeting(m) && !meetingDone(m)) {
       meetingButtons(m, act);
     } else if (isMeeting(m)) {
@@ -2772,11 +2795,11 @@
     row.appendChild(act);
     if (open && !isMeeting(m)) row.appendChild(composer(m));
     if (o.inbox) {
-      row.classList.add('mrow'); if (open) row.classList.add('open'); if (o.split && state.openReply === m.id) row.classList.add('sel'); if (isDecision(m)) row.classList.add('dec'); row.dataset.mid = m.id;
+      row.classList.add('mrow'); if (open) row.classList.add('open'); if (o.split && state.openReply === m.id) row.classList.add('sel'); if (isDecision(m)) row.classList.add('dec'); if (isUrgent(m)) row.classList.add('urg'); row.dataset.mid = m.id;
       const line = el('div', 'mline');
       line.appendChild(el('span', 'mfrom', personaDe(m.de)));
       const sub = el('span', 'msub');
-      if (isDecision(m) && m.estado !== 'gestionado') sub.appendChild(el('span', 'mdec', 'Decisión tuya'));
+      if (isDecision(m) && m.estado !== 'gestionado') sub.appendChild(nivelBadge(m));
       sub.appendChild(el('b', null, m.asunto || '(sin asunto)'));
       if (m.accion) sub.appendChild(el('span', 'mprev', ' — ' + m.accion));
       line.appendChild(sub);
@@ -2819,7 +2842,20 @@
     head.appendChild(el('h3', 'pane-subj', m.asunto || '(sin asunto)'));
     const meta = el('div', 'pane-meta'); meta.appendChild(el('b', null, m.de)); meta.appendChild(el('span', null, cuandoDe(m) + (m.mensajes > 1 ? ' · ' + m.mensajes + ' mensajes en el hilo' : '')));
     head.appendChild(meta); if (m.para) head.appendChild(el('div', 'pane-para', 'Para: ' + m.para));
-    if (isDecision(m) && m.estado !== 'gestionado') head.appendChild(el('span', 'mdec', 'Decisión tuya'));
+    if (m.estado !== 'gestionado' && !handled(m)) {
+      const nv = el('div', 'pane-nivel');
+      if (isDecision(m)) { nv.appendChild(nivelBadge(m)); const mo = motivoDe(m); if (mo) nv.appendChild(el('span', 'pane-motivo', mo)); }
+      // corrección manual del nivel
+      const setN = (v, txt) => write(() => db.collection('correos').doc(m.id).update({nivelManual: v}), txt);
+      const opts = [];
+      if (nivelDe(m) !== 'bloquea') opts.push(['bloquea', 'Es urgente', 'Pasado a Urgente']);
+      if (nivelDe(m) !== 'pide') opts.push(['pide', isUrgent(m) ? 'No es urgente' : 'Me piden algo', 'Pasado a «Te piden algo»']);
+      if (isDecision(m)) opts.push(['no', 'No me piden nada', 'Quitado de tus decisiones']);
+      const fx = el('span', 'nivel-fix');
+      opts.forEach(([v, t, ok]) => { const b = el('button', 'btn ghost sm', t); b.type = 'button'; b.addEventListener('click', () => setN(v, ok)); fx.appendChild(b); });
+      if (m.nivelManual) { const b = el('button', 'btn ghost sm', 'Como lo clasificó la IA'); b.type = 'button'; b.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({nivelManual: null}), 'Clasificación de la IA')); fx.appendChild(b); }
+      nv.appendChild(fx); head.appendChild(nv);
+    }
     pane.appendChild(head);
     const full = mailRow(m, {pane: true}); full.classList.add('pane-item');
     pane.appendChild(full);
@@ -2836,7 +2872,7 @@
     if (state.mailC === 'gestionados') rows = rows.filter((m) => m.estado === 'gestionado');
     else if (state.mailC === 'respuestas') rows = rows.filter((m) => handled(m)).sort((a, b) => ['cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[a.id].estado) - ['cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[b.id].estado));
     else if (state.mailC === 'pospuestos') rows = rows.filter((m) => m.estado !== 'gestionado' && snoozed(m));
-    else rows = rows.filter((m) => isPending(m) && (state.mailC === 'decision' ? isDecision(m) : state.mailC === 'general' ? !isDecision(m) : true));
+    else rows = rows.filter((m) => isPending(m) && (state.mailC === 'urgente' ? isUrgent(m) : state.mailC === 'decision' ? isDecision(m) && !isUrgent(m) : state.mailC === 'general' ? !isDecision(m) : true));
     {
       const ps = new Map(); rows.forEach((m) => { const k = personaDe(m.de); ps.set(k, (ps.get(k) || 0) + 1); });
       if (state.mailP && !ps.has(state.mailP)) ps.set(state.mailP, 0);
@@ -2848,7 +2884,7 @@
     if (q) rows = rows.filter((m) => (m.de + ' ' + m.asunto + ' ' + m.accion).toLowerCase().includes(q));
     if (state.mailC !== 'respuestas') rows.sort(sortMails);
     if (!rows.length) list.appendChild(el('div', 'empty', state.mailC === 'respuestas' ? 'Aún no has enviado nada a Outlook.' : state.mailC === 'pospuestos' ? 'No tienes correos programados para otro día.' : 'Nada pendiente en esta categoría.'));
-    if (state.mailGroup && (state.mailC === 'decision' || state.mailC === 'general' || state.mailC === 'todos')) {
+    if (state.mailGroup && (state.mailC === 'urgente' || state.mailC === 'decision' || state.mailC === 'general' || state.mailC === 'todos')) {
       const groups = new Map();
       rows.forEach((m) => { const k = personaDe(m.de); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
       [...groups.keys()].sort((a, b) => (state.mailSort === 'prioridad' ? groups.get(b).length - groups.get(a).length : 0) || byFecha(groups.get(a)[0], groups.get(b)[0]) || a.localeCompare(b)).forEach((k) => {
@@ -2865,8 +2901,8 @@
     } else { const pn = $('#mail-pane'); if (pn) pn.replaceChildren(); }
     state._mailRows = rows.map((x) => x.id);
     const pend = state.mails.filter(isPending);
-    { const pm = pend.filter((m) => !isMeeting(m)); $('#count-todos').textContent = pm.length ? String(pm.length) : ''; $('#count-dec').textContent = pm.filter(isDecision).length ? String(pm.filter(isDecision).length) : ''; }
-    const paraTi = pend.filter(isDecision).length;
+    { const pm = pend.filter((m) => !isMeeting(m)); $('#count-todos').textContent = pm.length ? String(pm.length) : ''; const nU = pm.filter(isUrgent).length, nP = pm.filter((x) => isDecision(x) && !isUrgent(x)).length; $('#count-urg').textContent = nU ? String(nU) : ''; $('#count-dec').textContent = nP ? String(nP) : ''; }
+    const paraTi = pend.filter((x) => !isMeeting(x) && isUrgent(x)).length;
     const nCola = Object.values(state.replies).filter((x) => x.estado === 'lista' || x.estado === 'cola_borrador').length;
     const nOut = Object.values(state.replies).filter((x) => x.estado === 'en_outlook').length;
     $('#count-cola').textContent = nCola + nOut ? String(nCola + nOut) : '';
@@ -3103,7 +3139,7 @@
   function renderHoy() {
     const mbox = $('#hoy-mail'); mbox.replaceChildren();
     const pendM = state.mails.filter((m) => isPending(m) && !isMeeting(m));
-    const mine = pendM.filter(isDecision).sort(sortMails).concat(pendM.filter((m) => !isDecision(m)).sort(sortMails));
+    const mine = pendM.filter(isUrgent).sort(sortMails).concat(pendM.filter((m) => isDecision(m) && !isUrgent(m)).sort(sortMails)).concat(pendM.filter((m) => !isDecision(m)).sort(sortMails));
     if (!mine.length) mbox.appendChild(el('div', 'empty', 'Nada pendiente en el correo.'));
     mine.slice(0, 8).forEach((m) => mbox.appendChild(mailRow(m, {compact: true, hoy: true})));
     $('#hoy-mail-more').textContent = mine.length > 8 ? 'y ' + (mine.length - 8) + ' más en Correo' : '';

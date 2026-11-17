@@ -301,3 +301,12 @@ body:has(.login) .sq-bar { display: none; }
 .tsug-row.needdate input[type=date] { border-color: var(--bad, #c0392b); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad, #c0392b) 25%, transparent); }
 .tsug-row.needdate .tsug-when::after { content: 'Pon una fecha para crearla'; color: var(--bad, #c0392b); font-size: 12px; font-weight: 600; }
 .tsug-row.gone { background: transparent; opacity: .6; } .tsug-gone { font-size: 13.5px; text-decoration: line-through; color: var(--muted); }
+
+/* ---------- Correo: niveles «Urgente · decide tú» / «Te piden algo» ---------- */
+.mdec.urg { background: color-mix(in srgb, var(--bad, #c0392b) 16%, transparent); color: var(--bad, #b0302a); }
+#view-correo .chip-pide[aria-pressed="false"] .count:not(:empty) { background: color-mix(in srgb, var(--gold-2, #5fe0cf) 40%, transparent); color: #0b5f55; }
+.pane-nivel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; }
+.pane-nivel .mdec { margin: 0; }
+.pane-motivo { font-size: 13.5px; font-weight: 600; }
+.nivel-fix { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.nivel-fix .btn.sm { padding: 3px 9px; font-size: 12px; min-height: 0; }
