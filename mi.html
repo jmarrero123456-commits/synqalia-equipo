@@ -752,7 +752,7 @@
   .mic-btn.on { background: #d93636; border-color: #d93636; color: #fff; }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261117d">
+<link rel="stylesheet" href="synqalia.css?v=20261117e">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -904,7 +904,7 @@
         <label class="tk-sel">Ordenar<select id="mail-sort"><option value="fecha" selected>Más recientes primero</option><option value="prioridad">Por prioridad</option></select></label>
         <label class="tk-sel tk-check"><input type="checkbox" id="mail-group"> Agrupar por persona</label>
       </div>
-      <div class="list inbox" id="mail-list"></div>
+      <div class="mail-split" id="mail-split"><div class="list inbox" id="mail-list"></div><aside class="mail-pane" id="mail-pane" aria-live="polite"></aside></div>
     </section>
   </main>
 
@@ -2405,7 +2405,7 @@
     }
     row.appendChild(body);
     const act = el('div', 'actions');
-    const open = state.openReply === m.id && !o.compact;
+    const open = state.openReply === m.id && !o.compact && !o.split;
     if (o.compact) {
       if (isMeeting(m)) { meetingButtons(m, act); } else {
       const go = el('button', 'btn', 'Abrir'); go.type = 'button';
@@ -2419,7 +2419,7 @@
     } else if (m.estado !== 'gestionado') {
       const rp = el('button', 'btn' + (open ? ' primary' : ''), open ? 'Cerrar' : isMeeting(m) ? 'Ver agenda y decidir' : 'Abrir'); rp.type = 'button';
       rp.addEventListener('click', () => { state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus(); } });
-      act.appendChild(rp);
+      if (!o.pane) act.appendChild(rp);
       if (!isMeeting(m)) act.appendChild(outlookBtn(m));
       if (!isMeeting(m) && !handled(m) && !open) { const sg = el('button', 'btn', '✨ Sugerir respuesta'); sg.type = 'button'; sg.title = 'Abre el correo y te propongo una respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; renderAll(); }); act.appendChild(sg); }
       if (!isMeeting(m)) {
@@ -2454,7 +2454,7 @@
     row.appendChild(act);
     if (open && !isMeeting(m)) row.appendChild(composer(m));
     if (o.inbox) {
-      row.classList.add('mrow'); if (open) row.classList.add('open'); if (isDecision(m)) row.classList.add('dec');
+      row.classList.add('mrow'); if (open) row.classList.add('open'); if (o.split && state.openReply === m.id) row.classList.add('sel'); if (isDecision(m)) row.classList.add('dec'); row.dataset.mid = m.id;
       const line = el('div', 'mline');
       line.appendChild(el('span', 'mfrom', personaDe(m.de)));
       const sub = el('span', 'msub');
@@ -2464,16 +2464,54 @@
       line.appendChild(sub);
       line.appendChild(el('span', 'mdate', cuandoDe(m)));
       row.insertBefore(line, body);
-      line.title = open ? 'Cerrar' : 'Abrir';
-      line.addEventListener('click', () => { state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus({preventScroll: true}); } });
+      line.title = o.split ? 'Ver en el panel' : open ? 'Cerrar' : 'Abrir';
+      line.addEventListener('click', () => { if (o.split) { if (state.openReply !== m.id) { state.openReply = m.id; renderAll(); } return; } state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus({preventScroll: true}); } });
     }
     return row;
   }
 
   function syncMailChips() { $$('#mail-filter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.c === state.mailC))); }
 
+  const splitMQ = window.matchMedia('(min-width: 1100px)');
+  splitMQ.addEventListener('change', () => { if ($('#view-correo') && !$('#view-correo').hidden) renderAll(); });
+  function threadView(text) {
+    // el cuerpo guarda el hilo como «— Nombre, día, hora —» + texto, del más reciente al más antiguo
+    const wrap = el('div', 'thread');
+    const parts = String(text || '').split(/^(— .+ —)\s*$/m);
+    if (parts.length < 3) { wrap.appendChild(el('div', 'tmsg-body', text)); return wrap; }
+    if (parts[0].trim()) wrap.appendChild(el('div', 'tmsg-body', parts[0].trim()));
+    for (let i = 1; i < parts.length; i += 2) {
+      const head = parts[i].replace(/^—\s*|\s*—$/g, ''); const k = head.lastIndexOf(', '), k2 = head.lastIndexOf(', ', k - 1);
+      const who = k2 > 0 ? head.slice(0, k2) : head, when = k2 > 0 ? head.slice(k2 + 2) : '';
+      const msg = el('div', 'tmsg' + (i === 1 ? ' last' : ''));
+      const h = el('div', 'tmsg-head'); const av = el('span', 'tav', (who.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?').toUpperCase());
+      h.appendChild(av); h.appendChild(el('b', null, who)); h.appendChild(el('span', 'tmsg-when', when)); msg.appendChild(h);
+      msg.appendChild(el('div', 'tmsg-body', (parts[i + 1] || '').trim() || '(sin texto)'));
+      wrap.appendChild(msg);
+    }
+    return wrap;
+  }
+  function renderMailPane(rows) {
+    const pane = $('#mail-pane'); if (!pane) return;
+    const m = rows.find((x) => x.id === state.openReply);
+    pane.replaceChildren();
+    if (!m) { pane.appendChild(el('div', 'empty', rows.length ? 'Elige un correo de la lista para leerlo aquí.' : '')); return; }
+    const head = el('div', 'pane-head');
+    head.appendChild(el('h3', 'pane-subj', m.asunto || '(sin asunto)'));
+    const meta = el('div', 'pane-meta'); meta.appendChild(el('b', null, m.de)); meta.appendChild(el('span', null, cuandoDe(m) + (m.mensajes > 1 ? ' · ' + m.mensajes + ' mensajes en el hilo' : '')));
+    head.appendChild(meta); if (m.para) head.appendChild(el('div', 'pane-para', 'Para: ' + m.para));
+    if (isDecision(m) && m.estado !== 'gestionado') head.appendChild(el('span', 'mdec', 'Decisión tuya'));
+    pane.appendChild(head);
+    const full = mailRow(m, {pane: true}); full.classList.add('pane-item');
+    pane.appendChild(full);
+    const mb = full.querySelector('.mail-body');
+    if (mb && m.cuerpo) { const tv = threadView(m.cuerpo); mb.replaceWith(tv); }
+    pane.scrollTop = 0;
+  }
   function renderMail() {
+    const split = splitMQ.matches;
     const list = $('#mail-list'); list.replaceChildren();
+    $('#mail-split').classList.toggle('on', split);
     const q = state.mailQ.trim().toLowerCase();
     let rows = state.mails.filter((m) => !isMeeting(m));
     if (state.mailC === 'gestionados') rows = rows.filter((m) => m.estado === 'gestionado');
@@ -2496,9 +2534,17 @@
       rows.forEach((m) => { const k = personaDe(m.de); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
       [...groups.keys()].sort((a, b) => (state.mailSort === 'prioridad' ? groups.get(b).length - groups.get(a).length : 0) || byFecha(groups.get(a)[0], groups.get(b)[0]) || a.localeCompare(b)).forEach((k) => {
         const head = el('div', 'group-head'); head.appendChild(el('span', null, k)); head.appendChild(el('span', 'count', String(groups.get(k).length)));
-        list.appendChild(head); groups.get(k).forEach((m) => list.appendChild(mailRow(m, {inbox: true})));
+        list.appendChild(head); groups.get(k).forEach((m) => list.appendChild(mailRow(m, {inbox: true, split})));
       });
-    } else rows.forEach((m) => list.appendChild(mailRow(m, {inbox: true})));
+    } else rows.forEach((m) => list.appendChild(mailRow(m, {inbox: true, split})));
+    if (split) {
+      if (!rows.some((x) => x.id === state.openReply)) { const k = Math.min(Math.max(0, state._lastIdx || 0), rows.length - 1); state.openReply = rows[k] ? rows[k].id : null; }
+      state._lastIdx = rows.findIndex((x) => x.id === state.openReply);
+      $$('#mail-list .mrow').forEach((r) => r.classList.toggle('sel', r.dataset.mid === state.openReply));
+      renderMailPane(rows);
+      const selRow = list.querySelector('.mrow.sel'); if (selRow && !state._mailScrolled) { selRow.scrollIntoView({block: 'nearest'}); }
+    } else { const pn = $('#mail-pane'); if (pn) pn.replaceChildren(); }
+    state._mailRows = rows.map((x) => x.id);
     const pend = state.mails.filter(isPending);
     { const pm = pend.filter((m) => !isMeeting(m)); $('#count-todos').textContent = pm.length ? String(pm.length) : ''; $('#count-dec').textContent = pm.filter(isDecision).length ? String(pm.filter(isDecision).length) : ''; }
     const paraTi = pend.filter(isDecision).length;
@@ -2662,6 +2708,13 @@
   $('#mail-sort').addEventListener('change', (e) => { state.mailSort = e.target.value; renderAll(); });
   $('#mail-search').addEventListener('input', (e) => { state.mailQ = e.target.value; renderMail(); });
   $('#mail-person').addEventListener('change', (e) => { state.mailP = e.target.value; renderMail(); });
+  document.addEventListener('keydown', (e) => {
+    if (!splitMQ.matches || $('#view-correo').hidden || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '') || e.target.isContentEditable) return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'j' && e.key !== 'k') return;
+    const ids = state._mailRows || []; if (!ids.length) return;
+    const i = ids.indexOf(state.openReply), n = (e.key === 'ArrowDown' || e.key === 'j') ? Math.min(ids.length - 1, i + 1) : Math.max(0, i - 1);
+    if (n !== i) { e.preventDefault(); state.openReply = ids[n]; renderAll(); }
+  });
 
   // ---------- render agenda ----------
   function renderBrief() {
