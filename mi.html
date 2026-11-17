@@ -3384,9 +3384,9 @@
     const upd = () => {
       const q = (k, v) => k + '=' + encodeURIComponent(v);
       const parts = [q('subject', sj.value)]; if (to.value.trim()) parts.unshift(q('to', to.value.trim().replace(/\s*;\s*/g, ';')));
-      let url = 'https://outlook.office.com/mail/deeplink/compose?' + parts.concat([q('body', fullText())]).join('&');
+      let url = 'https://outlook.cloud.microsoft/mail/deeplink/compose?' + parts.concat([q('body', fullText())]).join('&');
       ol.dataset.long = url.length > 7000 ? '1' : '';
-      if (ol.dataset.long) url = 'https://outlook.office.com/mail/deeplink/compose?' + parts.join('&');
+      if (ol.dataset.long) url = 'https://outlook.cloud.microsoft/mail/deeplink/compose?' + parts.join('&');
       ol.href = url;
       ml.href = 'mailto:' + encodeURIComponent(to.value.trim()).replace(/%40/g, '@').replace(/%3B/gi, ';') + '?subject=' + encodeURIComponent(sj.value) + '&body=' + encodeURIComponent(fullText().slice(0, 1800));
     };
