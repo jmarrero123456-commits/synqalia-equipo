@@ -1059,21 +1059,33 @@
         }
         if (interim) emit('partial', { text: interim });
       };
-      r.onend = () => { if (want && Date.now() - startedAt < 60 * 60 * 1000) { try { r.start(); } catch (e) { /* reintento */ } } else { want = false; emit('state', { state: 'idle', reason: Date.now() - startedAt >= 3600000 ? 'time_limit' : 'viewer_stopped' }); } };
+      r.onend = () => { if (want && Date.now() - startedAt < 60 * 60 * 1000) restart(r); else { setRec(false); emit('state', { state: 'idle', reason: Date.now() - startedAt >= 3600000 ? 'time_limit' : 'viewer_stopped' }); } };
+      r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { setRec(false); emit('state', { state: 'idle', reason: 'not_granted' }); } };
       return r;
     };
-    document.addEventListener('visibilitychange', () => { if (document.hidden && want) { want = false; try { rec && rec.stop(); } catch (e) {} emit('state', { state: 'idle', reason: 'hidden' }); } });
+    /* La grabación sigue aunque synqalia quede en segundo plano (otra pestaña, otra ventana o minimizada): no se para al ocultarse.
+       Si el navegador corta el reconocimiento, se vuelve a arrancar solo; si falla, se reintenta con una instancia nueva. */
+    const baseTitle = document.title;
+    const setRec = (on) => { want = on; window.__sqRecording = on; document.title = on ? '● Grabando · ' + baseTitle : baseTitle; };
+    const restart = (r, n = 0) => {
+      if (!want) return;
+      try { r.start(); }
+      catch (e) {
+        if (n >= 5) { setRec(false); emit('state', { state: 'idle', reason: 'upstream_error' }); return; }
+        setTimeout(() => { if (!want) return; rec = create(); restart(rec, n + 1); }, 400 * (n + 1));
+      }
+    };
     return {
       onPartial: (f) => h.partial.push(f), onFinal: (f) => h.final.push(f), onState: (f) => h.state.push(f),
       start() {
         return new Promise((resolve, reject) => {
-          rec = create(); want = true; startedAt = Date.now();
+          rec = create(); setRec(true); startedAt = Date.now();
           rec.onstart = () => { emit('state', { state: 'listening' }); resolve(); };
-          rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { want = false; emit('state', { state: 'idle', reason: 'not_granted' }); reject({ code: 'not_granted' }); } };
-          try { rec.start(); } catch (e) { reject({ code: 'unavailable' }); }
+          rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { setRec(false); emit('state', { state: 'idle', reason: 'not_granted' }); reject({ code: 'not_granted' }); } };
+          try { rec.start(); } catch (e) { setRec(false); reject({ code: 'unavailable' }); }
         });
       },
-      async stop() { want = false; try { rec && rec.stop(); } catch (e) {} },
+      async stop() { setRec(false); try { rec && rec.stop(); } catch (e) {} },
     };
   }
 
@@ -1126,11 +1138,11 @@
   const todayISO = iso(now);
   // Si synqalia se queda abierta de un día para otro, se recarga sola al cambiar el día (sin interrumpir si estás escribiendo)
   setInterval(() => {
-    if (iso(new Date()) === todayISO) return;
+    if (iso(new Date()) === todayISO || window.__sqRecording) return;
     const a = document.activeElement; if (a && /TEXTAREA|INPUT|SELECT/.test(a.tagName)) return;
     location.reload();
   }, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && iso(new Date()) !== todayISO) location.reload(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !window.__sqRecording && iso(new Date()) !== todayISO) location.reload(); });
   const fmtLong = new Intl.DateTimeFormat('es-ES', {weekday: 'long', day: 'numeric', month: 'long'});
   const fmtShort = new Intl.DateTimeFormat('es-ES', {day: 'numeric', month: 'short'});
   const fmtStamp = new Intl.DateTimeFormat('es-ES', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
