@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118j">
+<link rel="stylesheet" href="synqalia.css?v=20261118k">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118a">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -943,7 +943,6 @@
   </aside>
   <div class="sq-more" id="sq-more" hidden>
     <div class="sq-more-panel" role="menu" aria-label="Más secciones">
-      <button type="button" role="menuitem" data-go="hoy">Hoy</button>
       <button type="button" role="menuitem" data-go="reuniones">Reuniones <span class="count" id="more-c-reuniones"></span></button>
       <button type="button" role="menuitem" data-go="catchups">Catch-ups</button>
       <button type="button" role="menuitem" data-go="notas">Notas</button>
@@ -1388,7 +1387,7 @@
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
     const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
-    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['hoy', 'reuniones', 'catchups', 'notas', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
+    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'notas', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
   }
