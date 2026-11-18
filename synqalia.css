@@ -363,3 +363,13 @@ body:has(.login) .sq-bar { display: none; }
 .pane-sum .ps-pide.urg { background: color-mix(in srgb, var(--bad, #c0392b) 9%, transparent); }
 .pane-sum .ps-pide.urg .ps-k { color: var(--bad, #b0302a); }
 .pane-sum .ps-pide .ps-v { font-weight: 600; }
+
+/* ---------- Tareas desde un correo: prioridad junto a «Crear» ---------- */
+.tsug-btns { align-items: center; }
+.tsug-pri { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-right: 4px; }
+.tsug-pri .pri-opt { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 9px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.tsug-pri .pri-opt + .pri-opt { border-left: 1px solid var(--line); }
+.tsug-pri .pri-opt[aria-checked="true"].Alta { background: color-mix(in srgb, var(--bad, #c0392b) 16%, transparent); color: var(--bad, #b0302a); }
+.tsug-pri .pri-opt[aria-checked="true"].Media { background: color-mix(in srgb, #e0a100 18%, transparent); color: #8a6100; }
+.tsug-pri .pri-opt[aria-checked="true"].Baja { background: color-mix(in srgb, #5fe0cf 22%, transparent); color: #0b6e63; }
+.tsug-pri .pri-opt[aria-checked="true"].Mega { background: color-mix(in srgb, #7c3aed 16%, transparent); color: #6d28d9; }
