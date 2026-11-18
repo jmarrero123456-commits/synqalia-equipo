@@ -331,3 +331,24 @@ body:has(.login) .sq-bar { display: none; }
   .cu-mini .cu-row.on::before { left: 0; top: 4px; bottom: 4px; }
   .cu-mini .cu-n { position: absolute; top: 1px; right: 3px; min-width: 15px; height: 15px; padding: 0 4px; font-size: 9.5px; }
 }
+
+/* ---------- Mi trabajo en PC: sin faldón azul; el nombre de la sección va en la franja de arriba ---------- */
+@media (min-width: 861px) {
+  .sq-has-bar .app { padding-top: 18px; }
+  .sq-has-bar .app > .top { position: fixed; top: env(safe-area-inset-top, 0px); left: 168px; right: 286px; height: var(--sq-bar); z-index: 61;
+    margin: 0; padding: 0 0 0 18px; background: none; border: 0; box-shadow: none; border-radius: 0; border-left: 1px solid rgba(255,255,255,.12);
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+  .sq-has-bar .app > .top::before, .sq-has-bar .app > .top::after { display: none !important; }
+  .sq-has-bar .top .vt h2 { font: 700 17px/1 var(--font-display, "Manrope", system-ui); letter-spacing: -.01em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sq-has-bar .top .ms-link { font-size: 12px; padding: 5px 10px; min-height: 0; }
+  .sq-has-bar .top .date { display: flex; align-items: center; gap: 10px; text-align: right; }
+  .sq-has-bar .top .date-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(255,255,255,.72); }
+  .sq-has-bar .top .date-row #today-label { white-space: nowrap; }
+  .sq-has-bar .top .refresh-btn { width: 28px; height: 28px; }
+  .sq-has-bar .top .sync-line, .sq-has-bar .top .date > :not(.date-row) { font-size: 11px; color: rgba(255,255,255,.6); white-space: nowrap; }
+  .cu-mini .cu-roster { margin-top: -18px; }
+}
+@media (min-width: 861px) and (max-width: 1180px) {
+  .sq-has-bar .top .date-row #today-label, .sq-has-bar .top .date > :not(.date-row) { display: none; }
+}
+@media (min-width: 861px) { .sq-has-bar .top .date > .olk { display: none; } .sq-has-bar .top .date > .status { order: -1; } }
