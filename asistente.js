@@ -1,4 +1,4 @@
-/* synqalia · Asistente — pregunta lo que quieras sobre lo que pasa por synqalia
+/* Synqalia · Asistente — pregunta lo que quieras sobre lo que pasa por Synqalia
    (correo, Teams, reuniones y catch-ups, tareas, notas, agenda y fichas de Equipo).
    La función «asistente» busca y lee los datos con la sesión del usuario y responde con las fuentes.
    Conversaciones guardadas en personal_docs, col «asistente» (privadas). */
@@ -203,7 +203,7 @@
         '<form class="sqa-ask"><textarea rows="1" placeholder="Escribe o dicta tu pregunta" aria-label="Tu pregunta"></textarea>' +
         (hasSR ? '<button type="button" class="sqa-mic" title="Dictar" aria-label="Dictar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="sqa-send" title="Preguntar" aria-label="Preguntar"' + (S.busy ? ' disabled' : '') + '>' + IC.send + '</button></form>' +
-        '<p class="sqa-foot">Responde con lo que ha pasado por synqalia: correo, Teams, reuniones, catch-ups, tareas, notas y Equipo. Revisa las cifras en las fuentes.</p>' +
+        '<p class="sqa-foot">Responde con lo que ha pasado por Synqalia: correo, Teams, reuniones, catch-ups, tareas, notas y Equipo. Revisa las cifras en las fuentes.</p>' +
       '</section>';
     view.appendChild(root);
     S.inp = root.querySelector('textarea'); S.inp.value = draft; grow();

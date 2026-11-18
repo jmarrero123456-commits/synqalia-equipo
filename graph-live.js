@@ -1,5 +1,5 @@
-/* synqalia · Microsoft 365 en directo
-   - Sincroniza al abrir synqalia y al volver a la pestaña (además de los avisos al instante de Microsoft).
+/* Synqalia · Microsoft 365 en directo
+   - Sincroniza al abrir Synqalia y al volver a la pestaña (además de los avisos al instante de Microsoft).
    - «Teams · sin leer» en Hoy, con «Abrir en Teams ↗» que lleva a ese chat.
    - «Unirse a Teams ↗» en la sala de cada reunión de Teams. */
 (async () => {
@@ -52,7 +52,7 @@
 
   /* ---------- datos (teams y agenda) con cambios en vivo ---------- */
   const data = { teams: new Map(), agenda: new Map(), teams_visto: new Map() };
-  // Misma regla que Mensajes (mensajes.js): abierta en synqalia desde su último mensaje = vista
+  // Misma regla que Mensajes (mensajes.js): abierta en Synqalia desde su último mensaje = vista
   const normV = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
   const firmaV = (d) => [d.fecha || '', d.hora || '', normV(d.ultimo)].join('|');
   const sinLeer = (id, d) => d && (d.noLeido === true || d.noLeido === 'true') && data.teams_visto.get(id)?.firma !== firmaV(d);
@@ -92,7 +92,7 @@
   }
   function paintLive() {
     const live = card.querySelector('.sq-live');
-    if (live) { live.hidden = !(st?.directo || []).length; live.title = 'Microsoft avisa a synqalia en cuanto llega algo nuevo'; }
+    if (live) { live.hidden = !(st?.directo || []).length; live.title = 'Microsoft avisa a Synqalia en cuanto llega algo nuevo'; }
     paintTeams();
   }
 
@@ -124,8 +124,8 @@
     pop.dataset.sqLive = '1';
     for (const p of pop.querySelectorAll('p')) if (/cada 10 minutos/.test(p.textContent)) {
       p.textContent = (st?.directo || []).length
-        ? 'Al instante: Microsoft avisa a synqalia en cuanto llega un correo, cambia una reunión o te escriben en Teams. También se actualiza al abrir synqalia.'
-        : 'Se actualiza al abrir synqalia y cada 10 minutos.';
+        ? 'Al instante: Microsoft avisa a Synqalia en cuanto llega un correo, cambia una reunión o te escriben en Teams. También se actualiza al abrir Synqalia.'
+        : 'Se actualiza al abrir Synqalia y cada 10 minutos.';
     }
   }).observe(document.body, { childList: true });
 

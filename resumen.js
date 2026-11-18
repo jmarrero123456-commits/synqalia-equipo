@@ -1,4 +1,4 @@
-/* synqalia · Resumen del grupo de trabajo
+/* Synqalia · Resumen del grupo de trabajo
    Objetivos (objetivo / conseguido / previsión ponderada), embudo por etapas con probabilidad editable,
    captación, «necesita atención» y «esta semana». Se carga desde index.html (import) y recibe el contexto C. */
 
@@ -244,7 +244,7 @@ function attentionCard(sid) {
   }
   rows.sort((a, z) => z.st.prob - a.st.prob || z.days - a.days);
   if (!rows.length) return '';
-  return `<div class="card" style="align-content:start"><h3>Parados</h3><p class="sub">Operaciones y leads vivos sin movimiento: más de 21 días si están avanzados (≥ 30 %), más de 30 días si no. Se mide por la última edición en synqalia o la fecha de la ficha.</p>
+  return `<div class="card" style="align-content:start"><h3>Parados</h3><p class="sub">Operaciones y leads vivos sin movimiento: más de 21 días si están avanzados (≥ 30 %), más de 30 días si no. Se mide por la última edición en Synqalia o la fecha de la ficha.</p>
     <div class="rows">${rows.slice(0, 12).map((a) => `<div class="r" data-open="${a.it.id}"><span class="t">${esc(a.it.name)} <span class="tag muted">${esc(a.b.name)}</span></span><span class="tag late">${a.days} d</span><span class="d">${esc(a.why)}</span></div>`).join('')}</div>${rows.length > 12 ? `<p class="sub">Y ${rows.length - 12} más.</p>` : ''}</div>`;
 }
 async function weekCard(sid, host) {
