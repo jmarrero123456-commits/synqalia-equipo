@@ -128,8 +128,7 @@
   function paintMic() {
     const on = !!S.rec;
     const b = view.querySelector('.sqa-mic'); if (b) { b.classList.toggle('on', on); b.innerHTML = on ? IC.stop : IC.mic; }
-    const it = view.querySelector('.sqa-intro');
-    if (it) { it.classList.toggle('live', on); const o = it.querySelector('.sqa-orb-mic'); if (o) o.innerHTML = on ? IC.stop : IC.mic; const p = it.querySelector('p'); if (p) p.textContent = on ? 'Te escucho… pulsa para terminar y te respondo.' : 'Pulsa para dictar o escribe abajo lo que quieres saber.'; }
+    const it = view.querySelector('.sqa-intro'); if (it) { let p = it.querySelector('p'); if (on && !p) { p = document.createElement('p'); it.appendChild(p); } if (p) { if (on) p.textContent = '● Te escucho… pulsa el micrófono para terminar y te respondo.'; else p.remove(); } }
   }
   // Pulsar para hablar; al pulsar otra vez se para y la pregunta sale sola.
   function toggleMic(opts) {
@@ -153,7 +152,7 @@
     try { r.start(); } catch (e) { S.rec = null; window.__sqRecording = false; }
     paintMic();
   }
-  const grow = () => { const t = S.inp; if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 220) + 'px'; };
+  const grow = () => { const t = S.inp; if (!t) return; t.style.height = '40px'; if (t.scrollHeight > 44) t.style.height = Math.min(t.scrollHeight, 160) + 'px'; };
 
   /* ---------- preguntar ---------- */
   async function ask(q) {
@@ -218,7 +217,6 @@
       el.querySelector('.sqa-h-open').addEventListener('click', () => { if (S.busy) return; S.cur = S.chats.find((h) => h.id === el.dataset.id) || null; S.showList = false; render(); scrollEnd(); });
       el.querySelector('.sqa-h-del').addEventListener('click', () => { if (confirm('¿Borrar esta consulta?')) delChat(el.dataset.id); });
     });
-    const orb = root.querySelector('.sqa-orb-mic'); if (orb) orb.addEventListener('click', () => toggleMic());
     root.querySelectorAll('.sqa-cite, .sqa-src').forEach((b) => b.addEventListener('click', () => openSource(b.dataset.col, b.dataset.id)));
     root.querySelectorAll('.sqa-copy').forEach((b) => b.addEventListener('click', async () => {
       const m = c && c.mensajes[Number(b.dataset.i)]; if (!m) return;
@@ -231,10 +229,9 @@
     }));
   }
   function intro() {
-    const live = !!S.rec;
-    return '<div class="sqa-intro' + (live ? ' live' : '') + '"><button type="button" class="sqa-orb sqa-orb-mic" aria-label="' + (live ? 'Parar y preguntar' : 'Dictar la pregunta') + '">' + (live ? IC.stop : IC.mic) + '</button>' +
-      '<h3>¿Qué quieres saber?</h3><div class="sqa-sub">Pregúntame por cualquier cosa que haya pasado por tu correo, Teams, reuniones, tareas, notas o los tableros de Equipo. Te lo resumo, te digo de dónde sale cada dato y te preparo el texto si lo necesitas.</div>' +
-      '<p>' + (live ? 'Te escucho… pulsa para terminar y te respondo.' : 'Pulsa para dictar o escribe abajo lo que quieres saber.') + '</p></div>';
+    return '<div class="sqa-intro"><div class="sqa-orb">' + IC.spark + '</div><h3>¿Qué quieres saber?</h3>' +
+      '<div class="sqa-sub">Pregúntame por cualquier cosa que haya pasado por tu correo, Teams, reuniones, tareas, notas o los tableros de Equipo. Te lo resumo, te digo de dónde sale cada dato y te preparo el texto si lo necesitas.</div>' +
+      (S.rec ? '<p>● Te escucho… pulsa el micrófono para terminar y te respondo.</p>' : '') + '</div>';
   }
   function msgHtml(m, i) {
     if (m.rol === 'user') return '<div class="sqa-msg user"><div class="sqa-bub">' + esc(m.texto).replace(/\n/g, '<br>') + '</div></div>';

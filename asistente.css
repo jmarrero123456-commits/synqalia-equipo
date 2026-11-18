@@ -79,23 +79,21 @@
 .sqa-wait i:nth-child(2) { animation-delay: .15s; } .sqa-wait i:nth-child(3) { animation-delay: .3s; } .sqa-wait span { margin-left: 6px; }
 @keyframes sqa-b { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
 
-/* portada: vacía, solo el micrófono */
-.sqa-intro { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 40px 4px 20px; }
+/* portada */
+.sqa-intro { display: grid; justify-items: center; text-align: center; gap: 10px; padding: 18px 4px 6px; }
+.sqa-orb { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--sqa-navy); color: var(--sqa-q); }
+.sqa-orb svg { width: 30px; height: 30px; }
 .sqa-intro h3 { margin: 0; font-size: 22px; } .sqa-sub { color: var(--muted); max-width: 560px; font-size: 14.5px; }
-.sqa-intro p { margin: 0; color: var(--muted); font-size: 13.5px; font-weight: 600; }
-.sqa-intro.live p { color: var(--bad); }
-.sqa-orb { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; background: var(--sqa-navy); color: var(--sqa-q); box-shadow: 0 10px 28px rgba(13, 27, 51, .25); }
-.sqa-orb svg { width: 36px; height: 36px; }
-.sqa-intro.live .sqa-orb { background: var(--bad); color: #fff; animation: sqa-p 1.4s infinite; }
+.sqa-intro p { margin: 0; color: var(--bad); font-size: 13.5px; font-weight: 700; }
 /* caja de pregunta (fija abajo) */
 .sqa-ask { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: flex-end; gap: 8px; padding: 8px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 28px rgba(13, 27, 51, .12); }
-.sqa-ask textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: inherit; font: 15px/1.45 var(--font-body); padding: 8px 6px; max-height: 220px; }
+.sqa-ask textarea { flex: 1; min-width: 0; min-height: 40px; height: 40px; resize: none; border: 0; outline: 0; background: transparent; color: inherit; font: 15px/1.45 var(--font-body); padding: 8px 6px; max-height: 220px; }
 .sqa-mic, .sqa-send { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; border: 0; cursor: pointer; }
 .sqa-mic { background: var(--bg); color: var(--ink); } .sqa-mic.on { background: var(--bad); color: #fff; animation: sqa-p 1.4s infinite; }
 .sqa-send { background: var(--accent); color: #fff; } .sqa-send:disabled { opacity: .45; cursor: default; }
 @keyframes sqa-p { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 25%, transparent); } }
 .sqa-foot { margin: -6px 0 0; text-align: center; font-size: 11.5px; color: var(--muted); }
-@media (max-width: 560px) { .sqa-ask { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); } .sqa-main { padding-bottom: 8px; } }
+@media (max-width: 560px) { .sqa-ask { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); padding: 6px; } .sqa-main { padding-bottom: 76px; } .sqa-foot { display: none; } }
 
 /* botón flotante: solo en el móvil (en el PC está en el menú lateral) */
 .sqa-fab { display: none; }
