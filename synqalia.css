@@ -352,3 +352,14 @@ body:has(.login) .sq-bar { display: none; }
   .sq-has-bar .top .date-row #today-label, .sq-has-bar .top .date > :not(.date-row) { display: none; }
 }
 @media (min-width: 861px) { .sq-has-bar .top .date > .olk { display: none; } .sq-has-bar .top .date > .status { order: -1; } }
+
+/* ---------- Correo: resumen y «Te piden» en el panel de lectura ---------- */
+.pane-sum { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel, #fff); }
+.pane-sum .ps-row { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 10px; padding: 9px 12px; font-size: 14px; line-height: 1.45; }
+.pane-sum .ps-row + .ps-row { border-top: 1px solid var(--line); }
+.pane-sum .ps-k { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.pane-sum .ps-pide { background: color-mix(in srgb, #5fe0cf 14%, transparent); }
+.pane-sum .ps-pide .ps-k { color: #0b6e63; }
+.pane-sum .ps-pide.urg { background: color-mix(in srgb, var(--bad, #c0392b) 9%, transparent); }
+.pane-sum .ps-pide.urg .ps-k { color: var(--bad, #b0302a); }
+.pane-sum .ps-pide .ps-v { font-weight: 600; }
