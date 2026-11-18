@@ -2725,7 +2725,7 @@
       body.appendChild(el('div', 'detail', (meetingDone(m) ? dayName(m.reunion.fecha).replace(/^./, (c) => c.toUpperCase()) + ', ' + m.reunion.inicio + '–' + m.reunion.fin + ' · ' : '') + 'Convoca ' + (m.reunion.organiza || personaDe(m.de))));
     }
     else body.appendChild(el('div', 'detail', m.de + ' · ' + cuandoDe(m)));
-    if (!o.compact && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
+    if (!o.compact && !o.pane && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
     if (snoozed(m)) body.appendChild(el('div', 'detail', 'Vuelve a tu lista el ' + dayName(m.posponer)));
     if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
     else if (r || dz) { const meta = el('div', 'meta'); if (r) meta.appendChild(el('span', 'rstate ' + r.estado, RLABEL[r.estado] || r.estado)); if (dz) meta.appendChild(el('span', 'rstate ' + (dz.estado === 'hecha' ? 'enviada' : 'lista'), (DLABEL[dz.decision] || dz.decision) + (dz.estado === 'hecha' ? ' · hecho en Outlook' : ' · decidida, falta aplicar en Outlook'))); body.appendChild(meta); }
@@ -2801,7 +2801,7 @@
       const sub = el('span', 'msub');
       if (isDecision(m) && m.estado !== 'gestionado') sub.appendChild(nivelBadge(m));
       sub.appendChild(el('b', null, m.asunto || '(sin asunto)'));
-      if (m.accion) sub.appendChild(el('span', 'mprev', ' — ' + m.accion));
+      if (m.resumen || m.accion) sub.appendChild(el('span', 'mprev', ' — ' + (m.resumen || m.accion)));
       line.appendChild(sub);
       line.appendChild(el('span', 'mdate', cuandoDe(m)));
       row.insertBefore(line, body);
@@ -2858,6 +2858,15 @@
       opts.forEach(([v, t, ok]) => { const b = el('button', 'btn ghost sm', t); b.type = 'button'; b.addEventListener('click', () => setN(v, ok)); fx.appendChild(b); });
       if (m.nivelManual) { const b = el('button', 'btn ghost sm', 'Como lo clasificó la IA'); b.type = 'button'; b.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({nivelManual: null}), 'Clasificación de la IA')); fx.appendChild(b); }
       nv.appendChild(fx); head.appendChild(nv);
+    }
+    // Resumen ya analizado y, solo si le piden algo a Jaime, qué le piden (campos resumen y peticion del barrido)
+    if (!isMeeting(m)) {
+      const sm = el('div', 'pane-sum');
+      const rs = String(m.resumen || m.accion || '').trim();
+      if (rs) { const p1 = el('div', 'ps-row'); p1.appendChild(el('span', 'ps-k', 'Resumen')); p1.appendChild(el('span', 'ps-v', rs)); sm.appendChild(p1); }
+      const pd = isDecision(m) && m.estado !== 'gestionado' ? String(m.peticion || m.motivo || '').trim() : '';
+      if (pd) { const p2 = el('div', 'ps-row ps-pide' + (isUrgent(m) ? ' urg' : '')); p2.appendChild(el('span', 'ps-k', 'Te piden')); p2.appendChild(el('span', 'ps-v', pd)); sm.appendChild(p2); }
+      if (sm.childNodes.length) head.appendChild(sm);
     }
     pane.appendChild(head);
     const full = mailRow(m, {pane: true}); full.classList.add('pane-item');
