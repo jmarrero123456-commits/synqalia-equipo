@@ -955,7 +955,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118z">
+<link rel="stylesheet" href="synqalia.css?v=20261118y">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -989,7 +989,7 @@
       <button type="button" role="menuitem" data-go="reuniones">Reuniones <span class="count" id="more-c-reuniones"></span></button>
       <button type="button" role="menuitem" data-go="catchups">Catch-ups</button>
       <button type="button" role="menuitem" data-go="notas">Notas</button>
-      <button type="button" role="menuitem" data-go="asistente">✨ Asistente</button>
+      <button type="button" role="menuitem" data-go="asistente">Asistente</button>
     </div>
   </div>
   <header class="top">
@@ -1435,6 +1435,8 @@
     window.scrollTo(0, 0);
   }
   $$('.tabs button[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+  // menú «Más»: cada opción lleva el icono de su sección
+  $$('#sq-more [data-go]').forEach((b) => { const ti = document.querySelector('#tab-' + b.dataset.go + ' .ti'); if (ti && !b.querySelector('.ti')) { const c = ti.cloneNode(true); b.prepend(c); } });
   { const mb = $('#tab-mas'), sh = $('#sq-more');
     if (mb && sh) { mb.addEventListener('click', (e) => { e.stopPropagation(); sh.hidden = !sh.hidden; mb.setAttribute('aria-expanded', String(!sh.hidden)); });
       sh.addEventListener('click', (e) => { if (e.target === sh) { sh.hidden = true; mb.setAttribute('aria-expanded', 'false'); } });
