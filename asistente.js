@@ -23,14 +23,6 @@
     retry: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7L20 8.5"/><path d="M20 3.5v5h-5"/></svg>',
   };
   const COL_LABEL = { correos: 'Correo', teams: 'Teams', catchups: 'Reunión', tareas: 'Tarea', agenda: 'Agenda', lb_notas: 'Nota', respuestas: 'Respuesta', decisiones: 'Decisión', equipo: 'Equipo', brief: 'Resumen del día', invitaciones: 'Convocatoria', ficha: 'Ficha' };
-  const SUGG = [
-    { t: 'Zona centro', q: 'Cuéntame cómo van los salones de la zona centro de OMC: un breve resumen con lo que ha puesto Ana Revilla.' },
-    { t: 'Impagos · Roberto Nieto', q: 'Búscame todos los correos sobre impagos en los que está Roberto Nieto y dame un resumen por fecha.' },
-    { t: 'Reclamaciones 10 días', q: 'En los últimos 10 días, ¿cuántas reclamaciones de deuda o impagos he hecho y qué importe se está reclamando en total? Desglósamelo.' },
-    { t: 'Lo urgente hoy', q: '¿Qué tengo hoy urgente o pendiente de decidir? Ordénamelo por importancia.' },
-    { t: 'Ayer en reuniones', q: 'Resúmeme las reuniones y catch-ups de ayer: acuerdos y tareas para mí.' },
-    { t: 'Pendiente con Frederic', q: '¿Qué tengo pendiente con Frederic o qué me ha pedido esta semana?' },
-  ];
   const WAIT = ['Buscando en tu correo…', 'Revisando Teams y reuniones…', 'Leyendo los hilos que encajan…', 'Cruzando fechas e importes…', 'Preparando el resumen…'];
 
   view.removeAttribute('style');
@@ -41,7 +33,7 @@
   const fab = document.createElement('button');
   fab.type = 'button'; fab.className = 'sqa-fab'; fab.title = 'Pregúntale al asistente'; fab.setAttribute('aria-label', 'Asistente');
   fab.innerHTML = IC.spark;
-  fab.addEventListener('click', () => { location.hash = '#asistente'; setTimeout(() => S.inp && S.inp.focus(), 60); });
+  fab.addEventListener('click', () => { location.hash = '#asistente'; window.__sqAsistenteGo && window.__sqAsistenteGo(); });
   document.body.appendChild(fab);
   const syncFab = () => { fab.hidden = location.hash === '#asistente' || !!document.querySelector('.login'); };
   addEventListener('hashchange', syncFab); syncFab();
@@ -133,27 +125,40 @@
   }
 
   /* ---------- dictado ---------- */
-  function toggleMic(btn) {
+  function paintMic() {
+    const on = !!S.rec;
+    const b = view.querySelector('.sqa-mic'); if (b) { b.classList.toggle('on', on); b.innerHTML = on ? IC.stop : IC.mic; }
+    const it = view.querySelector('.sqa-intro');
+    if (it) { it.classList.toggle('live', on); const o = it.querySelector('.sqa-orb-mic'); if (o) o.innerHTML = on ? IC.stop : IC.mic; const p = it.querySelector('p'); if (p) p.textContent = on ? 'Te escucho… pulsa para terminar y te respondo.' : 'Pulsa para dictar o escribe abajo lo que quieres saber.'; }
+  }
+  // Pulsar para hablar; al pulsar otra vez se para y la pregunta sale sola.
+  function toggleMic(opts) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    if (S.rec) { S.rec.want = false; try { S.rec.r.stop(); } catch (e) {} return; }
-    if (window.__sqRecording) { alert('Hay una grabación en marcha en Reuniones o Catch-ups.'); return; }
+    if (!SR) { S.inp && S.inp.focus(); return; }
+    if (S.rec) { S.rec.want = false; S.rec.send = !(opts && opts.noSend); try { S.rec.r.stop(); } catch (e) {} return; }
+    if (S.busy) return;
+    if (window.__sqRecording) { S.inp && S.inp.focus(); return; }
     const r = new SR(); r.lang = 'es-ES'; r.continuous = true; r.interimResults = true;
-    const base = S.inp.value.trim() ? S.inp.value.trim() + ' ' : '';
+    const base = S.inp && S.inp.value.trim() ? S.inp.value.trim() + ' ' : '';
     let fin = '';
-    S.rec = { r, want: true };
-    r.onresult = (e) => { let inter = ''; for (let k = e.resultIndex; k < e.results.length; k++) { const t = e.results[k][0].transcript; if (e.results[k].isFinal) fin += t + ' '; else inter += t; } S.inp.value = (base + fin + inter).replace(/\s+/g, ' ').trimStart(); grow(); };
-    r.onend = () => { if (S.rec && S.rec.want) { try { r.start(); return; } catch (e) {} } S.rec = null; window.__sqRecording = false; const b = view.querySelector('.sqa-mic'); if (b) { b.classList.remove('on'); b.innerHTML = IC.mic; } S.inp && S.inp.focus(); };
-    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { S.rec && (S.rec.want = false); } };
-    window.__sqRecording = true; btn.classList.add('on'); btn.innerHTML = IC.stop;
-    try { r.start(); } catch (e) { S.rec = null; window.__sqRecording = false; btn.classList.remove('on'); btn.innerHTML = IC.mic; }
+    S.rec = { r, want: true, send: false };
+    r.onresult = (e) => { let inter = ''; for (let k = e.resultIndex; k < e.results.length; k++) { const t = e.results[k][0].transcript; if (e.results[k].isFinal) fin += t + ' '; else inter += t; } if (S.inp) { S.inp.value = (base + fin + inter).replace(/\s+/g, ' ').trimStart(); grow(); } };
+    r.onend = () => {
+      if (S.rec && S.rec.want) { try { r.start(); return; } catch (e) {} }
+      const send = S.rec && S.rec.send; S.rec = null; window.__sqRecording = false; paintMic();
+      if (send && S.inp && S.inp.value.trim()) ask(S.inp.value); else if (S.inp && matchMedia('(pointer: fine)').matches) S.inp.focus();
+    };
+    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') { if (S.rec) { S.rec.want = false; S.rec.send = false; } } };
+    window.__sqRecording = true;
+    try { r.start(); } catch (e) { S.rec = null; window.__sqRecording = false; }
+    paintMic();
   }
   const grow = () => { const t = S.inp; if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 220) + 'px'; };
 
   /* ---------- preguntar ---------- */
   async function ask(q) {
     q = String(q || '').trim(); if (!q || S.busy) return;
-    if (S.rec) { S.rec.want = false; try { S.rec.r.stop(); } catch (e) {} }
+    if (S.rec) { S.rec.want = false; S.rec.send = false; try { S.rec.r.stop(); } catch (e) {} }
     if (!S.cur) { S.cur = { id: newId(), titulo: q.slice(0, 80), creada: nowIso(), mensajes: [] }; S.chats.unshift(S.cur); }
     S.cur.mensajes.push({ rol: 'user', texto: q, en: nowIso() });
     S.busy = true; S.showList = false; if (S.inp) S.inp.value = '';
@@ -196,7 +201,7 @@
         '<div class="sqa-title">' + IC.spark + '<b>' + esc(c ? c.titulo : 'Asistente') + '</b></div>' +
         (c ? '<button type="button" class="sqa-hbtn sqa-new">' + IC.plus + '<span>Nueva</span></button>' : '') + '</div>' +
         '<div class="sqa-thread">' + (c ? c.mensajes.map(msgHtml).join('') : intro()) + (S.busy ? '<div class="sqa-msg ia"><div class="sqa-wait"><i></i><i></i><i></i><span>' + WAIT[0] + '</span></div></div>' : '') + '</div>' +
-        '<form class="sqa-ask"><textarea rows="1" placeholder="Pregunta o dicta: «resúmeme los correos de impagos con Roberto Nieto»" aria-label="Tu pregunta"></textarea>' +
+        '<form class="sqa-ask"><textarea rows="1" placeholder="Escribe o dicta tu pregunta" aria-label="Tu pregunta"></textarea>' +
         (hasSR ? '<button type="button" class="sqa-mic" title="Dictar" aria-label="Dictar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="sqa-send" title="Preguntar" aria-label="Preguntar"' + (S.busy ? ' disabled' : '') + '>' + IC.send + '</button></form>' +
         '<p class="sqa-foot">Responde con lo que ha pasado por synqalia: correo, Teams, reuniones, catch-ups, tareas, notas y Equipo. Revisa las cifras en las fuentes.</p>' +
@@ -206,14 +211,14 @@
     S.inp.addEventListener('input', grow);
     S.inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) { e.preventDefault(); ask(S.inp.value); } });
     root.querySelector('.sqa-ask').addEventListener('submit', (e) => { e.preventDefault(); ask(S.inp.value); });
-    const mic = root.querySelector('.sqa-mic'); if (mic) { if (S.rec) { mic.classList.add('on'); mic.innerHTML = IC.stop; } mic.addEventListener('click', () => toggleMic(mic)); }
-    root.querySelectorAll('.sqa-new').forEach((b) => b.addEventListener('click', () => { if (S.busy) return; S.cur = null; S.showList = false; render(); S.inp.focus(); }));
+    const mic = root.querySelector('.sqa-mic'); if (mic) { if (S.rec) { mic.classList.add('on'); mic.innerHTML = IC.stop; } mic.addEventListener('click', () => toggleMic()); }
+    root.querySelectorAll('.sqa-new').forEach((b) => b.addEventListener('click', () => { if (S.busy) return; S.cur = null; S.showList = false; render(); toggleMic(); }));
     root.querySelector('.sqa-toggle').addEventListener('click', () => { S.showList = !S.showList; root.classList.toggle('list-open', S.showList); });
     root.querySelectorAll('.sqa-h').forEach((el) => {
       el.querySelector('.sqa-h-open').addEventListener('click', () => { if (S.busy) return; S.cur = S.chats.find((h) => h.id === el.dataset.id) || null; S.showList = false; render(); scrollEnd(); });
       el.querySelector('.sqa-h-del').addEventListener('click', () => { if (confirm('¿Borrar esta consulta?')) delChat(el.dataset.id); });
     });
-    root.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.q)));
+    const orb = root.querySelector('.sqa-orb-mic'); if (orb) orb.addEventListener('click', () => toggleMic());
     root.querySelectorAll('.sqa-cite, .sqa-src').forEach((b) => b.addEventListener('click', () => openSource(b.dataset.col, b.dataset.id)));
     root.querySelectorAll('.sqa-copy').forEach((b) => b.addEventListener('click', async () => {
       const m = c && c.mensajes[Number(b.dataset.i)]; if (!m) return;
@@ -226,9 +231,10 @@
     }));
   }
   function intro() {
-    return '<div class="sqa-intro"><div class="sqa-orb">' + IC.spark + '</div><h3>¿Qué quieres saber?</h3>' +
-      '<p>Pregúntame por cualquier cosa que haya pasado por tu correo, Teams, reuniones, tareas, notas o los tableros de Equipo. Te lo resumo, te digo de dónde sale cada dato y te preparo el texto si lo necesitas.</p>' +
-      '<div class="sqa-sugg">' + SUGG.map((s) => '<button type="button" class="sqa-chip" data-q="' + esc(s.q) + '"><b>' + esc(s.t) + '</b><span>' + esc(s.q) + '</span></button>').join('') + '</div></div>';
+    const live = !!S.rec;
+    return '<div class="sqa-intro' + (live ? ' live' : '') + '"><button type="button" class="sqa-orb sqa-orb-mic" aria-label="' + (live ? 'Parar y preguntar' : 'Dictar la pregunta') + '">' + (live ? IC.stop : IC.mic) + '</button>' +
+      '<h3>¿Qué quieres saber?</h3><div class="sqa-sub">Pregúntame por cualquier cosa que haya pasado por tu correo, Teams, reuniones, tareas, notas o los tableros de Equipo. Te lo resumo, te digo de dónde sale cada dato y te preparo el texto si lo necesitas.</div>' +
+      '<p>' + (live ? 'Te escucho… pulsa para terminar y te respondo.' : 'Pulsa para dictar o escribe abajo lo que quieres saber.') + '</p></div>';
   }
   function msgHtml(m, i) {
     if (m.rol === 'user') return '<div class="sqa-msg user"><div class="sqa-bub">' + esc(m.texto).replace(/\n/g, '<br>') + '</div></div>';
@@ -241,5 +247,16 @@
 
   await loadChats();
   render();
-  addEventListener('hashchange', () => { if (location.hash === '#asistente' && S.inp && matchMedia('(pointer: fine)').matches) setTimeout(() => S.inp.focus(), 50); });
+  // Entrar en el Asistente (botón ✨, menú lateral o «Más»): consulta nueva, vacía, y empieza a escuchar.
+  // Las consultas anteriores siguen en «Consultas».
+  window.__sqAsistenteGo = () => {
+    if (S.busy) return;
+    if (S.rec) { S.rec.want = false; S.rec.send = false; try { S.rec.r.stop(); } catch (e) {} }
+    S.cur = null; S.showList = false; if (S.inp) S.inp.value = '';
+    render(); toggleMic();
+  };
+  document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-view="asistente"], [data-go="asistente"]'); if (t) window.__sqAsistenteGo(); });
+  // si se sale del Asistente con el micrófono abierto, se para sin enviar
+  addEventListener('hashchange', () => { if (location.hash !== '#asistente' && S.rec) toggleMic({ noSend: true }); });
+  if (location.hash === '#asistente') { /* entrada directa por enlace: sin micrófono automático (el navegador pide un toque) */ }
 })();
