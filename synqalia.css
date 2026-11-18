@@ -464,3 +464,40 @@ body:has(.login) .sq-bar { display: none; }
   .item.mrow.mob-open > .composer textarea { padding: 8px; }
   .item.mrow.mob-open > .actions { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ---------- Correo · filtros: «Recibidos», «Te piden algo» y botón de filtro (en el móvil) ---------- */
+#mail-filter .chip-mias, #mail-filter .mf-btn { display: none; }
+#mail-filter .mf-more { display: contents; }
+@media (max-width: 560px) {
+  #view-correo .card > .row-between, #view-correo #ready-hint { display: none !important; }
+  #mail-filter { position: relative; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; }
+  #mail-filter > .chip { flex: 1; justify-content: center; min-height: 38px; }
+  #mail-filter .chip-mias { display: inline-flex; }
+  #mail-filter .mf-btn { display: inline-flex; flex: none; width: 44px; height: 38px; align-items: center; justify-content: center; border-radius: 19px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+  #mail-filter .mf-btn.on, #mail-filter.fopen .mf-btn { border-color: #2bb3a3; background: color-mix(in srgb, #5fe0cf 22%, var(--panel)); color: #0b5f55; }
+  #mail-filter .mf-more { display: none; }
+  #mail-filter.fopen .mf-more { display: flex; flex-direction: column; gap: 2px; position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 240px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+  #mail-filter.fopen .mf-more .chip { justify-content: space-between; min-height: 44px; border: 0; border-radius: 8px; background: none; }
+  #mail-filter.fopen .mf-more .chip[aria-pressed="true"] { background: color-mix(in srgb, #5fe0cf 18%, transparent); }
+  #mail-filter .mf-more .chip-pide { display: none !important; }
+  #view-correo .mail-bar .tk-sel { display: none !important; }
+  #view-correo .mail-bar, #view-correo .mail-bar .tk-search { width: 100%; }
+  #view-correo .mail-bar .tk-search input { width: 100%; box-sizing: border-box; }
+  /* correo abierto */
+  .item.mrow.mob-open .pane-sum .ps-row { padding: 12px; font-size: 15px; line-height: 1.5; }
+  .item.mrow.mob-open .pane-sum .ps-pide .ps-v { font-size: 15px; }
+  .item.mrow.mob-open > .mail-full { grid-column: 2; margin-top: 6px; border-top: 0; padding-top: 0; }
+  .item.mrow.mob-open > .composer .bar .btns, .item.mrow.mob-open > .composer .change { display: none !important; }
+  .item.mrow.mob-open > .composer .mob-ask { align-self: flex-start; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .item.mrow.mob-open > .actions { grid-column: 2; margin-top: 10px; }
+  .item.mrow.mob-open > .task-block { grid-column: 2; }
+  /* tarea: Hoy · Mañana · Viernes · fecha en una línea; debajo prioridad y Crear */
+  .item.mrow.mob-open .tsug-when { display: grid; grid-template-columns: 1fr 1fr 1fr 1.3fr; gap: 6px; width: 100%; }
+  .item.mrow.mob-open .tsug-quick { display: contents; }
+  .item.mrow.mob-open .tsug-quick .chip { order: 0; min-height: 40px; justify-content: center; padding: 0 4px; font-size: 13.5px; }
+  .item.mrow.mob-open .tsug-when input[type=date] { order: 1; min-width: 0; width: 100%; min-height: 40px; box-sizing: border-box; padding: 4px 6px; }
+  .item.mrow.mob-open .tsug-btns { display: grid; grid-template-columns: 1fr 44px; gap: 6px; width: 100%; }
+  .item.mrow.mob-open .tsug-pri { grid-column: 1 / -1; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); }
+  .item.mrow.mob-open .tsug-pri .pri-opt { min-height: 40px; font-size: 13.5px; }
+  .item.mrow.mob-open .tsug-btns > .btn.primary { min-height: 46px; justify-content: center; font-size: 15px; }
+}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>synqalia · Equipo</title>
+<title>Synqalia · Equipo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22%23121821%22/%3E%3Cg transform=%22translate%287 7%29%22%3E%3Ccircle cx=%2221%22 cy=%2220%22 r=%229.5%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%226%22/%3E%3Cpath d=%22M30.5 20v16%22 stroke=%22%23fff%22 stroke-width=%226%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2230.5%22 cy=%2244%22 r=%223.6%22 fill=%22%235fe0cf%22/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,7 +237,7 @@
   .loading { color:var(--muted); padding:40px; text-align:center; }
   .code { font-family:ui-monospace,Menlo,monospace; background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:2px 7px; letter-spacing:.08em; }
 
-  /* ===== Identidad synqalia ===== */
+  /* ===== Identidad Synqalia ===== */
   :root {
     --ink:#0e1116; --muted:#5f6b7f; --line:#e3e6ec; --panel:#fff; --bg:#f4f5f8; --soft:#f7f8fb;
     --accent:#2b4fd8; --accent-soft:#e8edfd; --bad:#b4232f; --warn:#a76400; --ok:#1d7a4b;
@@ -440,7 +440,7 @@
 <script>if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
 </head>
 <body class="sq-has-bar">
-<header class="sq-bar"><a class="sq-logo" href="mi.html" aria-label="synqalia"><svg class="mark" width="32" height="32" viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle class="mark-dot" cx="30.5" cy="44" r="3.6"/></svg><span>Synq<b>alia</b></span></a><nav class="sq-switch sq-switch-bar" aria-label="Zona de synqalia"><a href="mi.html">Mi trabajo</a><a href="./?z=equipo" aria-current="page">Equipo</a></nav></header>
+<header class="sq-bar"><a class="sq-logo" href="mi.html" aria-label="Synqalia"><svg class="mark" width="32" height="32" viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle class="mark-dot" cx="30.5" cy="44" r="3.6"/></svg><span>Synq<b>alia</b></span></a><nav class="sq-switch sq-switch-bar" aria-label="Zona de Synqalia"><a href="mi.html">Mi trabajo</a><a href="./?z=equipo" aria-current="page">Equipo</a></nav></header>
 <div id="app"><div class="loading">Cargando…</div></div>
 
 <script type="module">
@@ -467,7 +467,7 @@ function err(e) { console.error(e); toast('Error: ' + (e?.message || e)); }
 
 /* ---------------- auth ---------------- */
 const nextUrl = () => { const n = new URLSearchParams(location.search).get('next'); return n === 'mi.html' ? 'mi.html' : null; };
-// Al entrar en synqalia se abre Mi trabajo (admin o quien no tiene espacios de equipo); al Equipo se va con ?z=equipo
+// Al entrar en Synqalia se abre Mi trabajo (admin o quien no tiene espacios de equipo); al Equipo se va con ?z=equipo
 const wantEquipo = () => new URLSearchParams(location.search).get('z') === 'equipo';
 async function homeIsMi() {
   if (wantEquipo()) return false;
@@ -506,7 +506,7 @@ function renderLogin(mode = 'ms', msg = '', cls = '') {
     <div class="login-box">
     ${!pwd ? `
       <button class="btn primary ms" type="button" id="msbtn" style="justify-content:center;gap:10px;padding:12px">${MS_ICON}<span>Entrar con Microsoft</span></button>
-      <p class="msg" style="margin:0">Usa tu cuenta de trabajo de Provalliance. La primera vez Microsoft te pedirá que aceptes el acceso de synqalia.</p>
+      <p class="msg" style="margin:0">Usa tu cuenta de trabajo de Provalliance. La primera vez Microsoft te pedirá que aceptes el acceso de Synqalia.</p>
       <div class="msg ${cls}" id="lmsg">${esc(msg)}</div>
       <button class="linkbtn" type="button" data-mode="login">Entrar con contraseña</button>
     ` : `
@@ -565,7 +565,7 @@ async function loadAll() {
     for (const r of [mem, sp, bo]) if (r.error) throw r.error;
     S.members = mem.data; S.spaces = sp.data; S.boards = bo.data;
     S.me = S.members.find((m) => m.email.toLowerCase() === email);
-    if (!S.me) { await sb.auth.signOut({ scope: 'local' }); S.user = null; return renderLogin('ms', `La cuenta ${email} no está dada de alta en synqalia. Pide a Jaime que te añada al equipo.`, 'err'); }
+    if (!S.me) { await sb.auth.signOut({ scope: 'local' }); S.user = null; return renderLogin('ms', `La cuenta ${email} no está dada de alta en Synqalia. Pide a Jaime que te añada al equipo.`, 'err'); }
     const sm = await sb.from('space_members').select('*'); S.spaceMembers = sm.data || [];
     await Promise.all([loadItems(), RS.loadGoals(CTX())]);
     subscribe();
@@ -651,7 +651,7 @@ function renderSide() {
   const v = S.view;
   const cur = (k, id) => v.kind === k && (id == null || v.id === id);
   let h = `<div class="brand">${logo(36)}<div class="wordmark"><h1>Synq<span class="alia">alia</span></h1><div class="tagline">Una sola inteligencia</div></div><button class="side-x" id="sidex" title="Contraer el panel">«</button></div><nav class="nav">
-    <div class="sq-switch" role="navigation" aria-label="Zona de synqalia"><a href="mi.html">Mi trabajo</a><a href="./?z=equipo" aria-current="page">Equipo</a></div>
+    <div class="sq-switch" role="navigation" aria-label="Zona de Synqalia"><a href="mi.html">Mi trabajo</a><a href="./?z=equipo" aria-current="page">Equipo</a></div>
     <button data-go="home" aria-current="${cur('home')}">${S.me.role === 'admin' ? 'Todos los grupos' : 'Inicio'}</button>`;
   for (const s of S.spaces) {
     h += `<div class="sec"><span>${esc(s.name)}</span></div>`;
@@ -1251,7 +1251,7 @@ async function newItem(b, groupId, parentId = null) {
 }
 async function deleteItem(id) {
   const it = S.items.find((i) => i.id === id);
-  if (!(await confirmBox(`¿Eliminar «${it.name}»?`, it.parent_id ? 'Se borrará la subtarea. Puedes recuperarla con ↶ Deshacer.' : 'Se borrarán también sus subtareas y comentarios. Puedes recuperarlo con ↶ Deshacer mientras no cierres synqalia.'))) return;
+  if (!(await confirmBox(`¿Eliminar «${it.name}»?`, it.parent_id ? 'Se borrará la subtarea. Puedes recuperarla con ↶ Deshacer.' : 'Se borrarán también sus subtareas y comentarios. Puedes recuperarlo con ↶ Deshacer mientras no cierres Synqalia.'))) return;
   const snap = await snapshotItems([id]);
   const { error } = await sb.from('items').delete().eq('id', id);
   if (error) return err(error);

@@ -1,4 +1,4 @@
-// synqalia · Correo — separador arrastrable entre la lista de correos y el correo abierto (solo PC, ≥1100 px).
+// Synqalia · Correo — separador arrastrable entre la lista de correos y el correo abierto (solo PC, ≥1100 px).
 // El ancho se guarda en este navegador. Doble clic (o tecla Inicio) vuelve al ancho normal; flechas ← → lo ajustan.
 (() => {
   const KEY = 'sq-mail-list-w', DEF = 380, MIN = 260, PANE_MIN = 460;

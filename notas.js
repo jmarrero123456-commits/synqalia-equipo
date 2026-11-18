@@ -1,4 +1,4 @@
-/* synqalia · Notas — libretas personales tipo OneNote.
+/* Synqalia · Notas — libretas personales tipo OneNote.
    Libretas → secciones → notas. Cada nota puede tener texto (tecleado, dictado o pegado, que la IA ordena)
    y páginas escritas a mano (lápiz o dedo) que la IA puede transcribir.
    Datos privados en personal_docs: col «lb_libretas» y «lb_notas». */
@@ -39,7 +39,7 @@
   const DEFAULT_BOOKS = [
     { id: 'lb-pensamientos', tipo: 'diario', nombre: 'Pensamientos', color: '#7a3fd1', secciones: ['General', 'Personal'], orden: 1 },
     { id: 'lb-trabajo', tipo: 'reuniones', nombre: 'Reuniones', color: '#2340d0', secciones: ['Comité', 'Catch-up', 'Proveedores', 'Franquiciados'], orden: 2 },
-    { id: 'lb-ideas', tipo: 'libre', nombre: 'Ideas y proyectos', color: '#d9772b', secciones: ['General', 'synqalia', 'Zottelo'], orden: 3 },
+    { id: 'lb-ideas', tipo: 'libre', nombre: 'Ideas y proyectos', color: '#d9772b', secciones: ['General', 'Synqalia', 'Zottelo'], orden: 3 },
   ];
   const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const fmtD = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
@@ -134,7 +134,7 @@
   function booksForPrompt() { return booksSorted().map((b) => `- id "${b.id}": ${b.nombre} (secciones: ${(b.secciones || []).join(', ')})`).join('\n'); }
   async function organize(raw, opts = {}) {
     const today = new Date().toISOString().slice(0, 10);
-    const prompt = 'Eres el asistente personal de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, MSH, MIG y sus proyectos de software synqalia, Zottelo, etc.). Hoy es ' + today + '.\n' +
+    const prompt = 'Eres el asistente personal de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, MSH, MIG y sus proyectos de software Synqalia, Zottelo, etc.). Hoy es ' + today + '.\n' +
       'Jaime ha capturado esta nota (dictada, pegada o tecleada; puede tener errores de dictado, muletillas y estar desordenada). Ordénala SIN inventar nada y sin perder ninguna idea: corrige errores evidentes de dictado, quita repeticiones y muletillas, agrupa por temas y redacta en español claro, en primera persona como si la escribiera él.\n' +
       'Formato del cuerpo (texto plano): títulos de bloque con "## ", viñetas con "- ", cosas por hacer con "[ ] ". Párrafos cortos. Si es un pensamiento o reflexión, respeta su tono y no lo conviertas en lista si no hace falta.\n' +
       (opts.keepBook ? '' : 'Elige la libreta y sección más adecuadas de estas (usa el id exacto; si ninguna encaja usa la primera):\n' + booksForPrompt() + '\n') +

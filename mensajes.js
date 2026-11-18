@@ -1,12 +1,12 @@
-/* synqalia · Mensajes
+/* Synqalia · Mensajes
    Tres niveles, como en el mockup del Z Fold cerrado:
-   1) «Mensajes»: una tarjeta por mensajería (Teams, WhatsApp, synqalia) con sus sin leer y lo que te piden.
+   1) «Mensajes»: una tarjeta por mensajería (Teams, WhatsApp, Synqalia) con sus sin leer y lo que te piden.
    2) Una mensajería: sus conversaciones (Todas · Sin leer · Te piden algo, buscador) y arriba un selector para saltar a otra.
    3) Una conversación: a pantalla completa en el móvil (panel a la derecha en el PC), con el hilo y la caja de respuesta.
 
-   Teams: personal_docs col «teams» (la escribe la sincronización). Visto en synqalia: col «teams_visto» (firma del último mensaje);
+   Teams: personal_docs col «teams» (la escribe la sincronización). Visto en Synqalia: col «teams_visto» (firma del último mensaje);
    si llega uno nuevo, la firma cambia y vuelve a «Sin leer». Si el doc trae «mensajes» (lista), se pinta el hilo.
-   synqalia: mensajería interna propia (tablas chats, chat_members, chat_messages; funciones chat_list, chat_open_direct,
+   Synqalia: mensajería interna propia (tablas chats, chat_members, chat_messages; funciones chat_list, chat_open_direct,
    chat_create_group, chat_mark_read, chat_people). Tiempo real con Realtime.
    WhatsApp: solo con WhatsApp Business (API oficial); de momento se muestra sin conectar. */
 (async () => {
@@ -107,7 +107,7 @@
     }));
   }
 
-  /* ---------- synqalia (interno) ---------- */
+  /* ---------- Synqalia (interno) ---------- */
   const personName = (email) => st.people.find((p) => p.email === email)?.name || (email || '').split('@')[0];
   const firstName = (email) => (email === me ? 'Tú' : personName(email).split(' ')[0]);
   function chatTitle(c) {
