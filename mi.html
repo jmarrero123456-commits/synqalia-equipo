@@ -2136,12 +2136,12 @@
     const all = (Array.isArray(ag.eventos) ? ag.eventos : []).filter((e) => toMin(e.inicio) != null && toMin(e.fin) != null);
     const isBlock = (e) => /ubicaci/i.test(e.estado || '') || (toMin(e.fin) - toMin(e.inicio)) >= 7 * 60;
     const blocks = all.filter(isBlock); const evs = all.filter((e) => !isBlock(e)).sort((a, b) => toMin(a.inicio) - toMin(b.inicio) || toMin(b.fin) - toMin(a.fin));
-    const gaps = freeGaps(fecha, evs);
+    const gaps = fecha < todayISO ? [] : freeGaps(fecha, evs);
     // resumen de huecos
     const sum = el('div', 'free-sum' + (gaps.length ? '' : ' none'));
     if (gaps.length) { sum.appendChild(el('b', null, fecha === todayISO ? 'Hoy tienes libre: ' : 'Libre: ')); sum.appendChild(document.createTextNode(gaps.map(([a, b]) => hmOf(a) + '–' + hmOf(b)).join(' · '))); }
     else sum.textContent = fecha === todayISO ? 'No te quedan huecos libres hoy (9–19 h).' : 'Sin huecos libres entre 9 y 19 h.';
-    wrap.appendChild(sum);
+    if (fecha >= todayISO) wrap.appendChild(sum);
     if (blocks.length) { const bl = el('div', 'cal-allday'); blocks.forEach((e) => bl.appendChild(el('span', 'cal-chip', e.titulo + ' · ' + e.inicio + '–' + e.fin))); wrap.appendChild(bl); }
     // rango de horas
     let h0 = 8, h1 = 20;
