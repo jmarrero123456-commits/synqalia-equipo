@@ -406,6 +406,28 @@
   .tk-bar .tk-sel select { border-radius: 8px; padding: 8px 10px; font-weight: 600; background: var(--panel); }
   .tk-sel { font-weight: 600; }
   html, body { overflow-x: hidden; }
+  .qv-short { display: none; }
+  .te-del { margin-right: auto; color: #c0392b; }
+  /* Tareas en el móvil: vista ligera (título, abrir correo a lo ancho y Avances · Mañana · Editar) */
+  @media (max-width: 700px) {
+    .qv-l:has(.qv-short) .qv-long { display: none; } .qv-short { display: inline; }
+    #task-list .item .tmeta .mc.mine, #task-list .item .tmeta .mc.who, #task-list .item .tmeta .mc.today, #task-list .item .tmeta .mc.prio, #task-list .item .tmeta .morig { display: none; }
+    #task-list .item .tmeta:not(:has(> :not(.mine):not(.who):not(.today):not(.prio):not(.morig))) { display: none; }
+    #task-list .item .tmeta .mc.link { flex: 1 1 100%; justify-content: center; padding: 9px 12px; border-radius: 10px; font-weight: 700; }
+    #task-list .item > .actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 6px; }
+    #task-list .item > .actions .btn, #task-list .item > .actions .pp-btn { font-size: 13px; }
+    #task-list .item > .actions .pp-wrap { display: flex; min-width: 0; }
+    #task-list .item > .actions .pp-btn { flex: 1 1 auto; min-width: 0; padding-left: 6px; padding-right: 6px; }
+    #task-list .item > .actions .pp-sel { flex: 0 0 26px; width: 26px; padding: 0; text-align: center; }
+    #task-list .item > .actions .pp-btn::before { content: none; }
+    #task-list .item > .actions > .btn { min-width: 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #task-list .item > .actions .a-del { display: none; }
+    #task-list .item > .actions .a-prog { order: 1; }
+    #task-list .item > .actions .pp-wrap { order: 2; }
+    #task-list .item > .actions .a-edit { order: 3; }
+    #task-list .item > .actions .btn { justify-content: center; }
+    #task-list .item .detail { display: none; }
+  }
   @media (max-width: 560px) {
     .app { padding-left: 12px; padding-right: 12px; }
     .top .date { font-size: 12px; }
@@ -808,6 +830,7 @@
   .att-ov-hint { padding: 6px 12px; }
   .att-ov-txt { white-space: pre-wrap; padding: 14px; margin: 0; font-size: 13px; width: 100%; }
   .pp-wrap { display: inline-flex; align-items: stretch; }
+  .pp-btn::before { content: '⏭ '; }
   .pp-wrap .pp-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   .pp-sel { appearance: none; -webkit-appearance: none; border: 1px solid var(--line); border-left: 0; border-radius: 0 8px 8px 0; background: var(--panel); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; padding: 0 10px; cursor: pointer; width: 34px; text-align: center; }
   .mt-serie{color:var(--accent,#0f766e);font-weight:600}
@@ -1559,11 +1582,11 @@
     const progOpen = !compact && state.progTask === t.id;
     const pb = el('button', 'btn' + (progOpen ? ' primary' : ''), progOpen ? 'Cerrar avances' : 'Avances' + (av.length ? ' (' + av.length + ')' : '')); pb.type = 'button';
     pb.addEventListener('click', () => { if (progOpen) { state.progTask = null; renderTasks(); } else openProgress(t); });
-    act.appendChild(pb);
+    pb.classList.add('a-prog'); act.appendChild(pb);
     const editing = !compact && state.editTask === t.id;
     const ed = el('button', 'btn' + (editing ? ' primary' : ''), editing ? 'Cerrar' : 'Editar'); ed.type = 'button';
     ed.addEventListener('click', () => { if (editing) { state.editTask = null; state.editDraft = null; renderTasks(); } else { state.progTask = null; openTaskEdit(t); } });
-    act.appendChild(ed);
+    ed.classList.add('a-edit'); act.appendChild(ed);
     if (t.estado !== 'hecha') {
       const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       const base = new Date(todayISO + 'T12:00:00');
@@ -1578,7 +1601,7 @@
         write(() => db.collection('tareas').doc(t.id).update(upd), 'Aplazada a ' + label);
       };
       const wrap = el('div', 'pp-wrap');
-      const tb = el('button', 'btn pp-btn', '⏭ Mañana'); tb.type = 'button';
+      const tb = el('button', 'btn pp-btn', 'Mañana'); tb.type = 'button';
       tb.title = 'Pasar al ' + fmtShort.format(tmw) + (tmw.getDay() === 1 && plus(1).getDay() !== 1 ? ' (lunes, se salta el fin de semana)' : '');
       tb.addEventListener('click', () => postpone(tmw, tmw.getDay() === 1 && plus(1).getDay() !== 1 ? 'el lunes' : 'mañana'));
       const sel = document.createElement('select'); sel.className = 'pp-sel'; sel.setAttribute('aria-label', 'Aplazar a otra fecha');
@@ -1592,7 +1615,7 @@
       wrap.appendChild(tb); wrap.appendChild(sel); act.appendChild(wrap);
     }
     if (!compact) {
-      const del = el('button', 'btn ghost', 'Borrar'); del.type = 'button';
+      const del = el('button', 'btn ghost a-del', 'Borrar'); del.type = 'button';
       let armed = false;
       del.addEventListener('click', () => {
         if (!armed) { armed = true; del.textContent = t.asignadaA ? '¿Seguro? Se le quita también a ' + firstName(t.asignadaA.nombre) : t.asignadaPor ? '¿Seguro? ' + firstName(t.asignadaPor.nombre) + ' verá que la has quitado' : '¿Seguro?'; setTimeout(() => { armed = false; del.textContent = 'Borrar'; }, 3000); return; }
@@ -1839,6 +1862,14 @@
     const st = el('span', 'status'); bar.appendChild(st);
     const cancel = el('button', 'btn ghost', 'Cancelar'); cancel.type = 'button';
     cancel.addEventListener('click', () => { state.editTask = null; state.editDraft = null; renderTasks(); });
+    const delE = el('button', 'btn ghost te-del', 'Borrar tarea'); delE.type = 'button';
+    let armedE = false;
+    delE.addEventListener('click', async () => {
+      if (!armedE) { armedE = true; delE.textContent = t.asignadaA ? '¿Seguro? Se le quita también a ' + firstName(t.asignadaA.nombre) : '¿Seguro? Pulsa otra vez'; setTimeout(() => { armedE = false; delE.textContent = 'Borrar tarea'; }, 3000); return; }
+      state.editTask = null; state.editDraft = null;
+      await write(() => db.collection('tareas').doc(t.id).delete(), 'Tarea borrada'); renderTasks();
+    });
+    bar.appendChild(delE);
     const save = el('button', 'btn primary', 'Guardar cambios'); save.type = 'submit';
     bar.appendChild(cancel); bar.appendChild(save); box.appendChild(bar);
     box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); cancel.click(); } });
@@ -1861,7 +1892,7 @@
   const weekEndISO = (() => { const d = new Date(todayISO + 'T12:00:00'); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); return iso(d); })();
   const forToday = (t) => t.estado !== 'hecha' && (t.vence === todayISO || isLate(t));
   const QUICK = [
-    {k: 'hoy', label: 'Resolver hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
+    {k: 'hoy', label: 'Resolver hoy', short: 'Hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
     {k: 'mias', label: 'Mis tareas', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
   ];
   const quickBase = {taskF: 'abiertas', taskW: '', taskPr: '', taskP: '', empF: '', taskQ: ''};
@@ -1878,7 +1909,7 @@
       const n = state.tasks.filter(qv.test).length;
       const b = el('button', 'qv' + (qv.hot && n ? ' hot' : '')); b.type = 'button';
       const on = cur(qv); b.setAttribute('aria-pressed', String(on));
-      b.appendChild(el('span', null, qv.label));
+      const lb = el('span', 'qv-l'); lb.appendChild(el('span', 'qv-long', qv.label)); if (qv.short) lb.appendChild(el('span', 'qv-short', qv.short)); b.appendChild(lb);
       b.appendChild(el('span', 'qn', String(n)));
       b.addEventListener('click', () => applyQuick(on ? null : qv));
       box.appendChild(b);
