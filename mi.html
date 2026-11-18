@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118f">
+<link rel="stylesheet" href="synqalia.css?v=20261118g">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -2882,21 +2882,50 @@
 
   const splitMQ = window.matchMedia('(min-width: 1100px)');
   splitMQ.addEventListener('change', () => { if ($('#view-correo') && !$('#view-correo').hidden) renderAll(); });
-  function threadView(text) {
-    // el cuerpo guarda el hilo como «— Nombre, día, hora —» + texto, del más reciente al más antiguo
+  // Fecha de la cabecera de un mensaje: «jue 12 nov, 10:18 (a …)» o «Mié 11/11/2026, 20:09» → 'AAAA-MM-DDTHH:MM' (o '' si no se entiende)
+  const MESES_C = {ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12};
+  function whenKey(when, year) {
+    const w = String(when || '').toLowerCase();
+    const hm = /(\d{1,2}):(\d{2})/.exec(w); const hh = hm ? hm[1].padStart(2, '0') + ':' + hm[2] : '00:00';
+    let d, mo, y = year;
+    let x = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/.exec(w);
+    if (x) { d = +x[1]; mo = +x[2]; if (x[3]) y = +x[3] < 100 ? 2000 + +x[3] : +x[3]; }
+    else { x = /(\d{1,2})\s+(?:de\s+)?(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\.?(?:\s+(?:de\s+)?(\d{4}))?/.exec(w); if (x) { d = +x[1]; mo = MESES_C[x[2]]; if (x[3]) y = +x[3]; } }
+    if (!d || !mo) return '';
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0') + 'T' + hh;
+  }
+  function threadView(text, m) {
+    // el cuerpo guarda el hilo como «— Nombre, día, hora —» + texto; aquí se ordena siempre del más reciente al más antiguo
+    // y se quitan los mensajes repetidos (mismo autor, mismo día y hora), por si el barrido los ha juntado mal
     const wrap = el('div', 'thread');
     const parts = String(text || '').split(/^(— .+ —)\s*$/m);
     if (parts.length < 3) { wrap.appendChild(el('div', 'tmsg-body', text)); return wrap; }
     if (parts[0].trim()) wrap.appendChild(el('div', 'tmsg-body', parts[0].trim()));
+    const year = +(String((m && m.fecha) || todayISO).slice(0, 4)) || new Date().getFullYear();
+    let msgs = [];
     for (let i = 1; i < parts.length; i += 2) {
-      const head = parts[i].replace(/^—\s*|\s*—$/g, ''); const k = head.lastIndexOf(', '), k2 = head.lastIndexOf(', ', k - 1);
-      const who = k2 > 0 ? head.slice(0, k2) : head, when = k2 > 0 ? head.slice(k2 + 2) : '';
-      const msg = el('div', 'tmsg' + (i === 1 ? ' last' : ''));
-      const h = el('div', 'tmsg-head'); const av = el('span', 'tav', (who.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?').toUpperCase());
-      h.appendChild(av); h.appendChild(el('b', null, who)); h.appendChild(el('span', 'tmsg-when', when)); msg.appendChild(h);
-      msg.appendChild(el('div', 'tmsg-body', (parts[i + 1] || '').trim() || '(sin texto)'));
-      wrap.appendChild(msg);
+      const full = parts[i].replace(/^—\s*|\s*—$/g, ''); const pm = /\s*(\([^()]*\))\s*$/.exec(full); const head = pm ? full.slice(0, pm.index) : full;
+      const k = head.lastIndexOf(', '), k2 = head.lastIndexOf(', ', k - 1);
+      const who = k2 > 0 ? head.slice(0, k2) : head, when = (k2 > 0 ? head.slice(k2 + 2) : '') + (pm ? ' ' + pm[1] : '');
+      msgs.push({who, when, key: whenKey(when, year), body: (parts[i + 1] || '').trim(), pos: i});
     }
+    const norm = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+    const seen = new Map();
+    msgs.forEach((x) => { const id = norm(x.who) + '|' + x.key; if (!x.key) return; const o = seen.get(id); if (!o || x.body.length > o.body.length) seen.set(id, x); });
+    msgs = msgs.filter((x) => !x.key || seen.get(norm(x.who) + '|' + x.key) === x);
+    if (msgs.every((x) => x.key)) msgs.sort((a, b) => b.key.localeCompare(a.key) || a.pos - b.pos);
+    // si el correo es más nuevo que el último mensaje guardado, avisar de que falta texto
+    const last = msgs.find((x) => x.key);
+    if (m && m.fecha && last && String(m.fecha).slice(0, 16) > last.key) {
+      const f = String(m.fecha); wrap.appendChild(el('div', 'tmsg-miss', 'Falta el último mensaje del hilo (' + f.slice(8, 10) + '/' + f.slice(5, 7) + ' ' + f.slice(11, 16) + '). Lo traigo en el próximo barrido; mientras, puedes verlo en Outlook.'));
+    }
+    msgs.forEach((x, n) => {
+      const msg = el('div', 'tmsg' + (n === 0 ? ' last' : ''));
+      const h = el('div', 'tmsg-head'); const av = el('span', 'tav', (x.who.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?').toUpperCase());
+      h.appendChild(av); h.appendChild(el('b', null, x.who)); h.appendChild(el('span', 'tmsg-when', x.when)); msg.appendChild(h);
+      msg.appendChild(el('div', 'tmsg-body', x.body || '(sin texto)'));
+      wrap.appendChild(msg);
+    });
     return wrap;
   }
   function renderMailPane(rows) {
@@ -2936,7 +2965,7 @@
     const full = mailRow(m, {pane: true}); full.classList.add('pane-item');
     pane.appendChild(full);
     const mb = full.querySelector('.mail-body');
-    if (mb && m.cuerpo) { const tv = threadView(m.cuerpo); mb.replaceWith(tv); }
+    if (mb && m.cuerpo) { const tv = threadView(m.cuerpo, m); mb.replaceWith(tv); }
     pane.scrollTop = keepTop;
   }
   function renderMail() {

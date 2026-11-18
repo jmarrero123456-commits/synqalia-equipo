@@ -373,3 +373,4 @@ body:has(.login) .sq-bar { display: none; }
 .tsug-pri .pri-opt[aria-checked="true"].Media { background: color-mix(in srgb, #e0a100 18%, transparent); color: #8a6100; }
 .tsug-pri .pri-opt[aria-checked="true"].Baja { background: color-mix(in srgb, #5fe0cf 22%, transparent); color: #0b6e63; }
 .tsug-pri .pri-opt[aria-checked="true"].Mega { background: color-mix(in srgb, #7c3aed 16%, transparent); color: #6d28d9; }
+.tmsg-miss { font-size: 13px; padding: 8px 12px; margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
