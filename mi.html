@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118e">
+<link rel="stylesheet" href="synqalia.css?v=20261118f">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -2453,6 +2453,10 @@
       const di = document.createElement('input'); di.type = 'date'; di.value = /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : todayISO; di.setAttribute('aria-label', 'Fecha límite');
       const quick = el('div', 'tsug-quick');
       [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.addEventListener('click', () => { di.value = v; }); quick.appendChild(q); });
+      // prioridad elegida por Jaime (por defecto, la del correo)
+      if (!['Mega', 'Alta', 'Media', 'Baja'].includes(t.prioridad)) t.prioridad = ['Alta', 'Media', 'Baja'].includes(m.prioridad) ? m.prioridad : 'Media';
+      const pri = el('div', 'tsug-pri'); pri.setAttribute('role', 'radiogroup'); pri.setAttribute('aria-label', 'Prioridad de la tarea');
+      ['Mega', 'Alta', 'Media', 'Baja'].forEach((p) => { const b = el('button', 'pri-opt ' + p, p === 'Mega' ? 'Mega ⚡' : p); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(t.prioridad === p)); b.title = 'Prioridad ' + p.toLowerCase(); b.addEventListener('click', () => { t.prioridad = p; pri.querySelectorAll('.pri-opt').forEach((x) => x.setAttribute('aria-checked', String(x.classList.contains(p)))); }); pri.appendChild(b); });
       const ok = el('button', 'btn primary', 'Crear'); ok.type = 'button';
       const no = el('button', 'btn ghost', '✕'); no.type = 'button'; no.title = 'Descartar'; no.setAttribute('aria-label', 'Descartar esta tarea');
       ok.addEventListener('click', async () => {
@@ -2460,7 +2464,7 @@
         if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
         row.classList.remove('needdate');
         ok.disabled = true; t.titulo = titulo; t.vence = di.value;
-        const id = await addTask({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id});
+        const id = await addTask({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id});
         if (id) { t.creada = true; doneRow(row, t); refreshAll(); }
         else ok.disabled = false;
       });
@@ -2471,7 +2475,7 @@
       if (t.creada) { list.appendChild(row); doneRow(row, t); return row; }
       if (t.descartada) { row.classList.add('done', 'gone'); row.appendChild(el('span', 'tsug-gone', 'Descartada: ' + (t.titulo || 'tarea'))); list.appendChild(row); return row; }
       row.appendChild(ti); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
-      const btns = el('div', 'tsug-btns'); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
+      const btns = el('div', 'tsug-btns'); btns.appendChild(pri); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
       list.appendChild(row); return row;
     };
     const bar = el('div', 'tsug-bar');
@@ -2481,7 +2485,7 @@
     const refreshAll = () => { all.hidden = list.querySelectorAll('.tsug-row:not(.done)').length < 2; };
     add.addEventListener('click', () => { const t = {titulo: '', vence: todayISO}; (st[m.id] = st[m.id] || []).push(t); const r = addRow(t); r.querySelector('input').focus(); refreshAll(); });
     all.addEventListener('click', async () => { all.disabled = true; for (const b of [...list.querySelectorAll('.tsug-row:not(.done) .btn.primary')]) { b.click(); await new Promise((r) => setTimeout(r, 250)); } all.disabled = false; refreshAll(); });
-    const doneRow = (row, t) => { row.className = 'tsug-row done'; row.replaceChildren(el('span', 'tsug-ok', '✓ Creada: ' + t.titulo + ' · ' + (t.vence === todayISO ? 'hoy' : dayName(t.vence)))); };
+    const doneRow = (row, t) => { row.className = 'tsug-row done'; row.replaceChildren(el('span', 'tsug-ok', '✓ Creada: ' + t.titulo + ' · ' + (t.vence === todayISO ? 'hoy' : dayName(t.vence)) + (t.prioridad ? ' · prioridad ' + t.prioridad.toLowerCase() : ''))); };
     const fill = (arr) => { list.replaceChildren(); arr.forEach(addRow); refreshAll(); };
     sug.addEventListener('click', async () => {
       if (!sample) { setStatus('La IA no está conectada ahora mismo.', true); return; }
