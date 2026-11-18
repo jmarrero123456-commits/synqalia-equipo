@@ -896,7 +896,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118c">
+<link rel="stylesheet" href="synqalia.css?v=20261118d">
 <link rel="stylesheet" href="mensajes.css?v=20261118a">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -1064,7 +1064,7 @@
   <!-- CAPTURA -->
   <main id="view-catchups" class="view cu-layout" hidden>
     <section class="card cu-roster">
-      <div class="cu-roster-head"><h2>Catch-ups</h2><span class="note" id="cu-sub"></span></div>
+      <div class="cu-roster-head"><h2>Catch-ups</h2><span class="note" id="cu-sub"></span><button type="button" class="cu-collapse" id="cu-collapse" aria-label="Recoger la lista" title="Recoger la lista">«</button></div>
       <div class="cu-people" id="cu-people"></div>
       <details class="cu-addbox" id="cu-addbox">
         <summary>+ Añadir persona o grupo</summary>
@@ -2811,6 +2811,9 @@
     return row;
   }
 
+  (() => { const b = document.getElementById('cu-collapse'), v = document.getElementById('view-catchups'); if (!b || !v) return;
+    const set = (c) => { v.classList.toggle('cu-mini', c); b.textContent = c ? '»' : '«'; b.title = b.ariaLabel = c ? 'Desplegar la lista' : 'Recoger la lista'; try { localStorage.setItem('sq-cu-mini', c ? '1' : ''); } catch (e) {} };
+    let c0 = false; try { c0 = localStorage.getItem('sq-cu-mini') === '1'; } catch (e) {} set(c0); b.addEventListener('click', () => { set(!v.classList.contains('cu-mini')); renderCatchups(); }); })();
   function syncMailChips() { $$('#mail-filter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.c === state.mailC))); }
 
   const splitMQ = window.matchMedia('(min-width: 1100px)');
@@ -3234,7 +3237,7 @@
     const initials = (p) => String(p.nombre).split(/\s+/).filter((w) => w.length > 2 || /^[A-ZÁÉÍÓÚ]/.test(w)).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
     const row = (p) => {
       const last = cusOfP(p)[0]; const nt = tasksOfP(p).length; const nx = nextMeetingFor(p); const due = cuDue(p);
-      const c = el('button', 'cu-row' + (state.cuSel === p.id ? ' on' : '')); c.type = 'button'; c.setAttribute('aria-pressed', String(state.cuSel === p.id));
+      const c = el('button', 'cu-row' + (state.cuSel === p.id ? ' on' : '')); c.type = 'button'; c.title = p.nombre; c.setAttribute('aria-pressed', String(state.cuSel === p.id));
       c.appendChild(el('span', 'cu-av' + (isGroup(p) ? ' grp' : ''), initials(p)));
       const main = el('span', 'cu-main');
       main.appendChild(el('span', 'cu-name', p.nombre));
@@ -3269,7 +3272,7 @@
       const sorted = arr.slice().sort(byUse);
       let show;
       if (q) show = sorted.filter((p) => normTxt(p.nombre + ' ' + (p.rol || '') + ' ' + membersOf(p).join(' ')).includes(q));
-      else if (state.cuAll[key] || arr.length <= 4) show = sorted;
+      else if (state.cuAll[key] || arr.length <= 4 || document.getElementById('view-catchups').classList.contains('cu-mini')) show = sorted;
       else { show = sorted.slice(0, 3); const cur = sorted.find((p) => p.id === state.cuSel); if (cur && !show.includes(cur)) show.push(cur); }
       const lw = el('div', 'cu-list-' + key);
       show.forEach((p) => lw.appendChild(row(p)));

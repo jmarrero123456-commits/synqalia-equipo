@@ -310,3 +310,22 @@ body:has(.login) .sq-bar { display: none; }
 .pane-motivo { font-size: 13.5px; font-weight: 600; }
 .nivel-fix { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .nivel-fix .btn.sm { padding: 3px 9px; font-size: 12px; min-height: 0; }
+
+/* ---------- Catch-ups: lista de personas recogible (en PC) ---------- */
+.cu-collapse { display: none; margin-left: auto; border: 1px solid var(--line); background: var(--panel); color: var(--muted); width: 26px; height: 24px; border-radius: 7px; cursor: pointer; font: 700 13px/1 system-ui; padding: 0; flex: none; }
+.cu-collapse:hover { color: var(--ink, inherit); border-color: var(--muted); }
+@media (min-width: 900px) {
+  .cu-collapse { display: inline-block; }
+  .cu-layout:not([hidden]) { transition: grid-template-columns .18s ease; }
+  .cu-layout.cu-mini:not([hidden]) { grid-template-columns: 64px minmax(0, 1fr); }
+  .cu-mini .cu-roster { padding: 12px 6px; }
+  .cu-mini .cu-roster-head { justify-content: center; padding: 0 0 6px; }
+  .cu-mini .cu-roster { overflow: hidden; min-width: 0; }
+  .cu-mini .cu-roster-head h2, .cu-mini .cu-roster-head .note, .cu-mini .cu-sec, .cu-mini .cu-main, .cu-mini .cu-addbox, .cu-mini .cu-srch, .cu-mini .cu-more, .cu-mini .cu-none { display: none; }
+  .cu-mini .cu-people, .cu-mini [class^='cu-list-'] { display: grid; gap: 2px; }
+  .cu-mini .cu-row .cu-av { margin: 0 auto; }
+  .cu-mini .cu-collapse { margin: 0; }
+  .cu-mini .cu-row { grid-template-columns: 1fr; justify-items: center; padding: 6px 0; position: relative; }
+  .cu-mini .cu-n { position: absolute; top: 0; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
+  .cu-mini .cu-row.on::before { left: -6px; }
+}
