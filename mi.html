@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118h">
+<link rel="stylesheet" href="synqalia.css?v=20261118i">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -2452,7 +2452,10 @@
       const ti = document.createElement('input'); ti.type = 'text'; ti.value = t.titulo || ''; ti.placeholder = 'Qué tienes que hacer'; ti.setAttribute('aria-label', 'Tarea');
       const di = document.createElement('input'); di.type = 'date'; di.value = /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : todayISO; di.setAttribute('aria-label', 'Fecha límite');
       const quick = el('div', 'tsug-quick');
-      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.addEventListener('click', () => { di.value = v; }); quick.appendChild(q); });
+      // la fecha rápida elegida queda marcada (sombreada) igual que la prioridad; si se cambia el calendario, se marca la que coincida
+      const markQuick = () => quick.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.v === di.value)));
+      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.dataset.v = v; q.addEventListener('click', () => { di.value = v; t.vence = v; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); });
+      markQuick();
       // prioridad elegida por Jaime (por defecto, la del correo)
       if (!['Mega', 'Alta', 'Media', 'Baja'].includes(t.prioridad)) t.prioridad = ['Alta', 'Media', 'Baja'].includes(m.prioridad) ? m.prioridad : 'Media';
       const pri = el('div', 'tsug-pri'); pri.setAttribute('role', 'radiogroup'); pri.setAttribute('aria-label', 'Prioridad de la tarea');
@@ -2469,7 +2472,7 @@
         else ok.disabled = false;
       });
       no.addEventListener('click', () => { t.descartada = true; row.classList.add('done', 'gone'); row.replaceChildren(el('span', 'tsug-gone', 'Descartada: ' + (ti.value.trim() || 'tarea'))); refreshAll(); });
-      di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); });
+      di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); markQuick(); });
       ti.addEventListener('input', () => { t.titulo = ti.value; });
       ti.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
       if (t.creada) { list.appendChild(row); doneRow(row, t); return row; }
