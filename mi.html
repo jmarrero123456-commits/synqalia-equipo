@@ -211,6 +211,8 @@
   .mega-txt { flex: 1 1 auto; min-width: 0; }
   .mega-title { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
   .mega-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .mega-open { flex: 0 0 auto; color: #d93636; font: 700 13px/1 var(--font-body); padding: 8px 4px 8px 10px; white-space: nowrap; }
+  .mega-item.go:focus-visible { outline: 2px solid #d93636; outline-offset: 2px; }
   .mega-done { flex: 0 0 auto; border: 0; border-radius: 8px; background: #d93636; color: #fff; font: 700 13px/1 var(--font-body); padding: 9px 12px; cursor: pointer; }
   .mega-done:hover { filter: brightness(1.1); } .mega-done:disabled { opacity: .6; }
   @media (prefers-reduced-motion: reduce) { .mega-box, .mega-bolt { animation: none; } }
@@ -2099,10 +2101,15 @@
         if (t.vence) bits.push(isLate(t) ? 'Vencida' : (dueLabel(t.vence) || t.vence));
         if (bits.length) tx.appendChild(el('div', 'mega-meta', bits.join(' · ')));
         row.appendChild(tx);
-        const done = el('button', 'mega-done', 'Hecha'); done.type = 'button'; done.title = 'Marcar como hecha';
-        done.addEventListener('click', async (e) => { e.stopPropagation(); done.disabled = true; await write(() => db.collection('tareas').doc(t.id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Tarea mega hecha'); });
-        row.appendChild(done);
-        if (id === 'mega-hoy') { row.classList.add('go'); row.tabIndex = 0; row.title = 'Abrir en Tareas'; const go = () => { show('tareas'); }; row.addEventListener('click', go); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }); }
+        row.appendChild(el('span', 'mega-open', 'Abrir ›'));
+        // Pulsar la tarea abre su ficha (ahí se marca como hecha o se cambia la prioridad); nada se marca de un toque
+        row.classList.add('go'); row.tabIndex = 0; row.setAttribute('role', 'button'); row.title = 'Abrir la tarea para editarla';
+        const open = () => {
+          if (espOf(t) !== 'mia') state.tkOthersOpen = true;
+          openTaskEdit(t);
+          setTimeout(() => { if (!document.getElementById('te-titulo-' + t.id)) { state.taskQ = ''; state.taskP = ''; state.taskW = ''; state.taskPr = ''; state.empF = ''; state.taskF = 'abiertas'; state.tkOthersOpen = true; ['#tk-q', '#tk-who', '#tk-prio', '#tk-emp'].forEach((q) => { const x = $(q); if (x) x.value = ''; }); $('#tk-estado').value = 'abiertas'; openTaskEdit(t); } }, 60);
+        };
+        row.addEventListener('click', open); row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
         kids.push(row);
       }
       box.replaceChildren(...kids);
