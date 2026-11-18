@@ -183,7 +183,8 @@
   table.grid th.name { position:sticky; left:0; z-index:2; }
   .nm { display:flex; align-items:center; gap:6px; } .nm span.t { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .nm .cnt { font-size:11px; color:var(--muted); font-weight:500; border:1px solid var(--line); border-radius:6px; padding:0 5px; flex:none; }
-  tr.grp td { background:var(--panel); padding:14px 10px 6px; border-bottom:2px solid var(--gc); position:sticky; left:0; }
+  tr.grp td { background:var(--panel); padding:14px 10px 6px; border-bottom:2px solid var(--gc); }
+  table.grid tr.grp td, table.grid tr.add td { overflow:visible; }
   tr.grp .gt { display:flex; align-items:center; gap:8px; font-weight:700; color:var(--gc); cursor:pointer; position:sticky; left:10px; width:max-content; }
   tr.grp .gt .n { color:var(--muted); font-weight:500; font-size:13px; }
   tr.add td { padding:4px 10px 10px; border-bottom:0; }
@@ -384,6 +385,34 @@
   .colmenu button:hover:not(:disabled) { background:var(--soft); color:var(--accent); }
   .colmenu button:disabled { opacity:.4; cursor:default; }
   .colmenu button.danger:hover { color:var(--bad); }
+  /* edición en la propia tabla */
+  table.grid td.ed { cursor:text; }
+  table.grid td.ed:hover { box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+  table.grid td.editing { padding:2px 4px; overflow:visible; box-shadow:inset 0 0 0 2px var(--accent); background:var(--panel) !important; }
+  table.grid td.editing input, table.grid td.editing select { width:100%; height:30px; border:0; outline:0; background:transparent; font:inherit; padding:0 6px; color:var(--ink); }
+  table.grid td.editing input[type=number], table.grid td.num.editing input { text-align:right; }
+  .nm .ren { margin-left:auto; flex:none; border:0; background:transparent; color:var(--muted); cursor:pointer; padding:0 4px; font-size:14px; opacity:0; }
+  table.grid tr.item:hover .nm .ren { opacity:1; } .nm .ren:hover { color:var(--accent); }
+  .nm input.rename { flex:1; min-width:0; height:28px; border:1px solid var(--accent); border-radius:6px; padding:0 6px; font:inherit; }
+  table.grid td.rm { padding:0; text-align:center; }
+  table.grid td.rm button { border:0; background:transparent; color:var(--muted); cursor:pointer; width:100%; height:32px; font-size:16px; opacity:.35; }
+  table.grid tr.item:hover td.rm button { opacity:1; } table.grid td.rm button:hover { color:var(--accent); }
+  table.grid td:has(> select.stsel) { text-overflow:clip; }
+  input.addinp { position:sticky; left:10px; width:min(420px,100%); height:32px; border:1px dashed var(--line); border-radius:8px; background:transparent; padding:0 10px; font:inherit; font-size:13.5px; color:var(--ink); }
+  input.addinp:focus { outline:0; border:1px solid var(--accent); background:var(--panel); }
+  input.addinp::placeholder { color:var(--muted); }
+  .hrow { display:flex; align-items:center; gap:6px; margin:0 0 6px; }
+  .hrow[hidden] { display:none; }
+  .hbar { flex:1; position:relative; height:14px; border-radius:8px; background:var(--soft); border:1px solid var(--line); cursor:pointer; touch-action:none; }
+  .hbar .th { position:absolute; top:1px; bottom:1px; left:0; min-width:40px; border-radius:7px; background:#aab2c4; cursor:grab; }
+  .hbar .th:hover, .hbar.drag .th { background:var(--accent); } .hbar.drag .th { cursor:grabbing; }
+  .hrow button { flex:none; width:30px; height:24px; border:1px solid var(--line); background:var(--panel); border-radius:6px; cursor:pointer; color:var(--muted); font-size:13px; }
+  .hrow button:hover { color:var(--accent); border-color:var(--accent); }
+  .undo-g { display:inline-flex; gap:4px; } .undo-g .btn { padding-left:10px; padding-right:10px; } .undo-g .btn[disabled] { opacity:.4; }
+  .optlist { display:grid; gap:6px; max-height:52vh; overflow:auto; }
+  .optlist .or { display:grid; grid-template-columns:34px minmax(0,1fr) 52px 32px; gap:8px; align-items:center; }
+  .optlist input[type=color] { width:34px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; }
+  .optlist .n { color:var(--muted); font-size:12px; text-align:right; }
   .colsel { display:grid; gap:2px; max-height:50vh; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:6px; }
   .colsel label { display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; }
   .colsel label:hover { background:var(--soft); }
@@ -570,7 +599,7 @@ function subscribe() {
     const c = S.comments[p.new.item_id]; if (c && !c.find((x) => x.id === p.new.id)) { c.push(p.new); if (S.open === p.new.item_id) renderDrawer(); }
   }).subscribe();
 }
-let rT; function scheduleRender() { clearTimeout(rT); rT = setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('.drawer, .modal')) { renderMain(); if (S.open) renderDrawer(); } else renderMain(); }, 250); }
+let rT; function scheduleRender() { clearTimeout(rT); rT = setTimeout(() => { if (S.cellEdit) { S.renderPending = true; return; } if (!document.activeElement || !document.activeElement.closest('.drawer, .modal')) { renderMain(); if (S.open) renderDrawer(); } else renderMain(); }, 250); }
 
 const board = (id) => S.boards.find((b) => b.id === id);
 const space = (id) => S.spaces.find((s) => s.id === id);
@@ -825,7 +854,7 @@ function renderBoard(el, b) {
   const people = [...new Set(S.items.filter((i) => i.board_id === b.id).flatMap((i) => Object.values(i.data).filter(Array.isArray).flat().filter((x) => String(x).includes('@'))))];
   const closedN = topItems(b.id).filter((i) => isClosed(b, i)).length;
   const nAct = [f.group, f.status, f.person, f.late, f.closed].filter(Boolean).length;
-  let h = `<div class="page">${headHtml(b.name, `${esc(space(b.space_id)?.name)} · ${esc(b.description || '')}`, `<button class="btn" id="bmenu" title="Opciones del tablero">⋯ Tablero</button><button class="btn primary" id="new">+ Nuevo</button>`)}
+  let h = `<div class="page">${headHtml(b.name, `${esc(space(b.space_id)?.name)} · ${esc(b.description || '')}`, `<span class="undo-g"><button class="btn" id="undo" title="${esc(undoTitle('undo'))}" ${S.hist.undo.length ? '' : 'disabled'}>↶</button><button class="btn" id="redo" title="${esc(undoTitle('redo'))}" ${S.hist.redo.length ? '' : 'disabled'}>↷</button></span><button class="btn" id="bmenu" title="Opciones del tablero">⋯ Tablero</button><button class="btn primary" id="new">+ Nuevo</button>`)}
     <div class="toolbar tb-main">
       <input class="input" id="q" type="search" placeholder="Buscar en ${esc(b.name.toLowerCase())}…" value="${esc(f.q)}">
       <button class="btn tb-ftog" id="ftog" aria-expanded="${!!S.fOpen}" aria-controls="tb-more">Filtros${nAct ? ` <span class="tb-n">${nAct}</span>` : ''} <span class="tb-car">${S.fOpen ? '▴' : '▾'}</span></button>
@@ -858,10 +887,27 @@ function renderBoard(el, b) {
   el.querySelector('#clr')?.addEventListener('click', (e) => { e.preventDefault(); Object.assign(f, { q: '', group: null, status: null, late: false, person: null }); renderMain(); });
   el.querySelectorAll('.seg [data-mode]').forEach((x) => x.onclick = () => { f.mode = x.dataset.mode; renderMain(); });
   el.querySelector('#new').onclick = () => newItem(b, f.group || b.groups.find((g) => !g.closed)?.id || b.groups[0]?.id);
-  el.querySelectorAll('[data-open]').forEach((r) => r.onclick = (e) => { if (e.target.closest('select,a,button.addin')) return; openItem(+r.dataset.open); });
-  el.querySelectorAll('select.stsel').forEach((s) => { s.onclick = (e) => e.stopPropagation(); s.onchange = () => setField(+s.dataset.id, s.dataset.k, s.value || null); });
+  el.querySelectorAll('.kc[data-open]').forEach((r) => r.onclick = (e) => { if (e.target.closest('select,a,button')) return; openItem(+r.dataset.open); });
+  el.querySelectorAll('tr.item[data-open]').forEach((r) => {
+    r.onclick = (e) => { if (e.target.closest('select,a,button,input') || !e.target.closest('td.name')) return; openItem(+r.dataset.open); };
+    r.oncontextmenu = (e) => { e.preventDefault(); rowMenu(b, +r.dataset.open, e.clientX, e.clientY); };
+  });
+  el.querySelectorAll('select.stsel').forEach((s) => { s.onclick = (e) => e.stopPropagation(); s.onchange = () => statusChosen(b, s.dataset.k, +s.dataset.id, s.value, s); });
+  el.querySelectorAll('td.ed').forEach((td) => td.onclick = (e) => { e.stopPropagation(); editCell(b, td); });
+  el.querySelectorAll('.nm .ren').forEach((x) => x.onclick = (e) => { e.stopPropagation(); renameInline(x.closest('.nm'), +x.dataset.ren); });
+  el.querySelectorAll('td.rm button').forEach((x) => x.onclick = (e) => { e.stopPropagation(); const r = x.getBoundingClientRect(); rowMenu(b, +x.dataset.rm, r.right - 220, r.bottom + 4); });
+  el.querySelectorAll('input.addinp').forEach((inp) => inp.onkeydown = async (e) => {
+    if (e.key === 'Escape') { inp.value = ''; inp.blur(); return; }
+    if (e.key !== 'Enter' || !inp.value.trim()) return;
+    e.preventDefault(); const name = inp.value.trim(); inp.value = ''; S.addFocus = b.id + ':' + inp.dataset.g;
+    await createItem(b, inp.dataset.g, name);
+  });
+  if (S.addFocus) { const [bid, g] = S.addFocus.split(':'); if (+bid === b.id) { const inp = el.querySelector(`input.addinp[data-g="${CSS.escape(g)}"]`); if (inp) { inp.focus(); } } S.addFocus = null; }
+  el.querySelector('#undo').onclick = () => undo();
+  el.querySelector('#redo').onclick = () => redo();
   el.querySelectorAll('[data-tg]').forEach((g) => g.onclick = () => { const k = b.id + ':' + g.dataset.tg; S.collapsed[k] = !S.collapsed[k]; renderMain(); });
   el.querySelectorAll('button.addin').forEach((x) => x.onclick = () => newItem(b, x.dataset.g));
+  el.querySelectorAll('select.kst').forEach((s) => { s.onclick = (e) => e.stopPropagation(); s.onchange = () => statusChosen(b, s.dataset.k, +s.dataset.id, s.value, s); });
   // kanban drag & drop
   el.querySelectorAll('.kc').forEach((c) => { c.draggable = true; c.ondragstart = (e) => e.dataTransfer.setData('text/plain', c.dataset.open); });
   el.querySelectorAll('.col').forEach((col) => {
@@ -875,7 +921,29 @@ function renderBoard(el, b) {
   el.querySelectorAll('th.colh').forEach((th) => th.onclick = (e) => { if (e.target.classList.contains('rz')) return; columnMenu(b, th.dataset.colh, th); });
   el.querySelectorAll('.rz').forEach((rz) => rz.onmousedown = (e) => startResize(e, b, rz.dataset.rz, el));
   // mantener la posición horizontal de la tabla entre repintados
-  const tw = el.querySelector('#tw'); if (tw) { tw.scrollLeft = S.hscroll?.[b.id] || 0; tw.onscroll = () => { (S.hscroll ||= {})[b.id] = tw.scrollLeft; }; }
+  const tw = el.querySelector('#tw');
+  if (tw) {
+    const hb = el.querySelector('#hbar'), hrow = el.querySelector('.hrow');
+    const th = hb?.firstElementChild;
+    const paint = () => { if (!hb) return; const W = hb.clientWidth, ratio = tw.clientWidth / tw.scrollWidth; const tl = Math.max(40, W * ratio); const max = tw.scrollWidth - tw.clientWidth; th.style.width = tl + 'px'; th.style.left = (max > 0 ? (tw.scrollLeft / max) * (W - tl) : 0) + 'px'; };
+    const fit = () => { const top = tw.getBoundingClientRect().top; tw.style.maxHeight = Math.max(260, innerHeight - top - 14) + 'px'; if (hrow) hrow.hidden = tw.scrollWidth <= tw.clientWidth + 2; paint(); };
+    fit(); requestAnimationFrame(fit);
+    window.onresize = fit;
+    tw.scrollLeft = S.hscroll?.[b.id] || 0; paint();
+    tw.onscroll = () => { (S.hscroll ||= {})[b.id] = tw.scrollLeft; paint(); };
+    if (hb) {
+      const toScroll = (px) => { const W = hb.clientWidth, tl = th.offsetWidth; tw.scrollLeft = (Math.max(0, Math.min(px, W - tl)) / Math.max(1, W - tl)) * (tw.scrollWidth - tw.clientWidth); };
+      hb.onpointerdown = (e) => {
+        e.preventDefault(); const r = hb.getBoundingClientRect(); const onThumb = e.target === th;
+        const grab = onThumb ? e.clientX - th.getBoundingClientRect().left : th.offsetWidth / 2;
+        if (!onThumb) toScroll(e.clientX - r.left - grab);
+        hb.classList.add('drag'); hb.setPointerCapture(e.pointerId);
+        hb.onpointermove = (ev) => toScroll(ev.clientX - r.left - grab);
+        hb.onpointerup = () => { hb.classList.remove('drag'); hb.onpointermove = null; };
+      };
+    }
+    el.querySelectorAll('.hrow [data-hs]').forEach((x) => x.onclick = () => tw.scrollBy({ left: +x.dataset.hs * Math.max(200, tw.clientWidth * 0.6), behavior: 'smooth' }));
+  }
 }
 
 
@@ -1023,12 +1091,38 @@ async function addColumn(b) {
   const tw = document.getElementById('tw'); if (tw) tw.scrollLeft = tw.scrollWidth;
 }
 async function editOptions(b, key) {
-  const c = b.columns.find((x) => x.key === key);
-  const v = await formModal(`Etiquetas de «${c.title}»`, `<label class="field"><span>Una etiqueta por línea (el orden es el del desplegable)</span><textarea name="options" style="min-height:180px">${esc((c.options || []).map((o) => o.label).join('\n'))}</textarea></label>`);
-  if (!v) return;
-  const labels = v.options.split('\n').map((x) => x.trim()).filter(Boolean);
-  const options = labels.map((label, i) => ({ label, color: c.options?.find((o) => o.label === label)?.color || PALETTE[i % PALETTE.length] }));
-  await saveBoard(b, { columns: b.columns.map((x) => x.key === key ? { ...x, options } : x) }); renderMain();
+  const c = b.columns.find((x) => x.key === key); if (!c) return;
+  const its = topItems(b.id);
+  const used = (l) => its.filter((i) => i.data[key] === l).length;
+  let rows = (c.options || []).map((o) => ({ orig: o.label, label: o.label, color: o.color || PALETTE[0] }));
+  const r = document.getElementById('modal-root');
+  const draw = (focusLast) => {
+    r.innerHTML = `<div class="modal"><div class="box" style="width:min(460px,100%)"><h3>Etiquetas de «${esc(c.title)}»</h3>
+      <p class="msg" style="margin:0">Añade, renombra, cambia el color o quita etiquetas. Al renombrar, las fichas que la tenían se actualizan solas.</p>
+      <div class="optlist">${rows.map((o, i) => `<div class="or"><input type="color" data-c="${i}" value="${esc(o.color)}" title="Color"><input class="input" data-l="${i}" value="${esc(o.label)}" placeholder="Nombre de la etiqueta"><span class="n" title="Fichas con esta etiqueta">${o.orig ? used(o.orig) : 'nueva'}</span><button class="btn ghost sm danger" data-x="${i}" title="Quitar">✕</button></div>`).join('') || '<div class="empty">Sin etiquetas.</div>'}</div>
+      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" id="oa">+ Añadir etiqueta</button><span><button class="btn" id="cx">Cancelar</button> <button class="btn primary" id="ok">Guardar</button></span></div></div></div>`;
+    r.querySelectorAll('[data-l]').forEach((x) => x.oninput = () => { rows[+x.dataset.l].label = x.value; });
+    r.querySelectorAll('[data-c]').forEach((x) => x.oninput = () => { rows[+x.dataset.c].color = x.value; });
+    r.querySelectorAll('[data-x]').forEach((x) => x.onclick = () => { rows.splice(+x.dataset.x, 1); draw(); });
+    r.querySelector('#oa').onclick = () => { rows.push({ orig: null, label: '', color: PALETTE[rows.length % PALETTE.length] }); draw(true); };
+    r.querySelector('#cx').onclick = () => { r.innerHTML = ''; };
+    r.querySelector('#ok').onclick = save;
+    if (focusLast) r.querySelector('.optlist .or:last-child [data-l]')?.focus();
+  };
+  const save = async () => {
+    const clean = rows.map((o) => ({ ...o, label: o.label.trim() })).filter((o) => o.label);
+    const names = clean.map((o) => o.label.toLowerCase());
+    if (new Set(names).size !== names.length) return toast('Hay dos etiquetas con el mismo nombre');
+    const removed = (c.options || []).filter((o) => !clean.some((x) => x.orig === o.label)).map((o) => o.label).filter((l) => used(l));
+    if (removed.length && !(await confirmBox('Quitar etiquetas en uso', `${removed.map((l) => `«${l}» (${used(l)})`).join(', ')}: esas fichas conservarán el valor, pero ya no saldrá en el desplegable.`))) return draw();
+    r.innerHTML = '';
+    await saveBoard(b, { columns: b.columns.map((x) => x.key === key ? { ...x, options: clean.map((o) => ({ label: o.label, color: o.color })) } : x) });
+    const ren = clean.filter((o) => o.orig && o.orig !== o.label);
+    let n = 0;
+    for (const o of ren) { const list = its.filter((i) => i.data[key] === o.orig); for (let k = 0; k < list.length; k += 8) { await Promise.all(list.slice(k, k + 8).map((i) => setField(i.id, key, o.label, { noHist: true }))); } n += list.length; }
+    toast(n ? `Etiquetas guardadas · ${n} fichas actualizadas` : 'Etiquetas guardadas'); renderMain();
+  };
+  draw();
 }
 function columnMenu(b, key, th) {
   document.querySelector('.colmenu')?.remove();
@@ -1036,7 +1130,7 @@ function columnMenu(b, key, th) {
   const m = document.createElement('div'); m.className = 'colmenu';
   m.innerHTML = `<div class="cm-t">${esc(c.title)} <span>${esc(TYPES[c.type] || c.type)}</span></div>
     <button data-a="rename">Renombrar</button>
-    ${c.type === 'status' ? '<button data-a="opts">Editar etiquetas</button>' : ''}
+    ${c.type === 'status' ? '<button data-a="opts">Etiquetas: añadir, renombrar, colores</button>' : ''}
     <button data-a="left" ${i <= 0 ? 'disabled' : ''}>Mover a la izquierda</button>
     <button data-a="right" ${i >= vis.length - 1 ? 'disabled' : ''}>Mover a la derecha</button>
     <button data-a="width">Ancho automático</button>
@@ -1079,7 +1173,7 @@ async function columnsPanel(b) {
 }
 function statusSelect(c, it) {
   const v = it.data[c.key] || '';
-  return `<select class="stsel ${v ? '' : 'empty'}" data-id="${it.id}" data-k="${esc(c.key)}" style="${v ? `background:${optColor(c, v)}` : ''}" title="${esc(c.title)}"><option value="">—</option>${c.options.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}${v && !c.options.find((o) => o.label === v) ? `<option selected>${esc(v)}</option>` : ''}</select>`;
+  return `<select class="stsel ${v ? '' : 'empty'}" data-id="${it.id}" data-k="${esc(c.key)}" style="${v ? `background:${optColor(c, v)}` : ''}" title="${esc(c.title)}"><option value="">—</option>${c.options.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}${v && !c.options.find((o) => o.label === v) ? `<option selected>${esc(v)}</option>` : ''}<option value="__new">+ Nueva etiqueta…</option><option value="__edit">Editar etiquetas…</option></select>`;
 }
 function tableHtml(b, its, cols) {
   const f = boardFilter(b);
@@ -1087,7 +1181,7 @@ function tableHtml(b, its, cols) {
   if (!its.length && !groups.length) return '<div class="card empty">No hay elementos con estos filtros.</div>';
   const nw = b.settings?.name_width || 290;
   const tw = nw + cols.reduce((a, c) => a + colW(c), 0) + 56;
-  let h = `<div class="tablewrap" id="tw"><table class="grid" style="width:${tw}px"><colgroup><col data-c="__name" style="width:${nw}px">${cols.map((c) => `<col data-c="${esc(c.key)}" style="width:${colW(c)}px">`).join('')}<col style="width:56px"></colgroup>
+  let h = `<div class="hrow"><button data-hs="-1" title="Desplazar a la izquierda">◀</button><div class="hbar" id="hbar" title="Arrastra para moverte por las columnas"><div class="th"></div></div><button data-hs="1" title="Desplazar a la derecha">▶</button></div><div class="tablewrap" id="tw"><table class="grid" style="width:${tw}px"><colgroup><col data-c="__name" style="width:${nw}px">${cols.map((c) => `<col data-c="${esc(c.key)}" style="width:${colW(c)}px">`).join('')}<col style="width:56px"></colgroup>
     <thead><tr><th class="name"><span class="thl">Nombre</span><span class="rz" data-rz="__name" title="Arrastra para cambiar el ancho"></span></th>${cols.map((c) => `<th class="colh" data-colh="${esc(c.key)}" title="${esc(c.title)} · pulsa para opciones de la columna"><span class="thl">${esc(c.title)}</span><span class="rz" data-rz="${esc(c.key)}" title="Arrastra para cambiar el ancho"></span></th>`).join('')}<th class="addcol"><button class="btn ghost sm" id="addcol" title="Añadir columna">+</button></th></tr></thead><tbody>`;
   for (const g of groups) {
     const gi = its.filter((i) => i.group_id === g.id);
@@ -1097,15 +1191,15 @@ function tableHtml(b, its, cols) {
     for (const it of gi) {
       const subs = subsOf(it.id); const late = subs.some((s) => overdueOf(b, s, b.sub_columns)) || overdueOf(b, it, b.columns);
       const sdone = subs.filter((s) => isDoneVal(b.sub_columns.find((c) => c.key === 'estado'), s.data.estado)).length;
-      h += `<tr class="item" data-open="${it.id}"><td class="name" style="--gc:${g.color || '#579bfc'}"><div class="nm"><span class="t">${esc(it.name)}</span>${subs.length ? `<span class="cnt" title="Subtareas hechas / total">${sdone}/${subs.length}</span>` : ''}${late ? '<span class="tag late" title="Tiene fechas vencidas">vencido</span>' : ''}</div></td>`;
+      h += `<tr class="item" data-open="${it.id}"><td class="name" style="--gc:${g.color || '#579bfc'}" title="Pulsa para abrir la ficha"><div class="nm"><span class="t">${esc(it.name)}</span>${subs.length ? `<span class="cnt" title="Subtareas hechas / total">${sdone}/${subs.length}</span>` : ''}${late ? '<span class="tag late" title="Tiene fechas vencidas">vencido</span>' : ''}<button class="ren" data-ren="${it.id}" title="Renombrar aquí">✎</button></div></td>`;
       for (const c of cols) {
         const v = it.data[c.key];
         if (c.type === 'status') h += `<td>${statusSelect(c, it)}</td>`;
-        else h += `<td class="${c.type === 'number' ? 'num' : 'txt'}" title="${esc(Array.isArray(v) ? v.join(', ') : v ?? '')}">${cellHtml(c, v)}</td>`;
+        else h += `<td class="${c.type === 'number' ? 'num' : 'txt'} ed" data-cell="${it.id}" data-k="${esc(c.key)}" title="${esc(Array.isArray(v) ? v.join(', ') : v ?? '')}${c.type === 'files' ? '' : ' · pulsa para editar'}">${cellHtml(c, v)}</td>`;
       }
-      h += '<td></td></tr>';
+      h += `<td class="rm"><button data-rm="${it.id}" title="Más acciones (también con clic derecho en la fila)">⋯</button></td></tr>`;
     }
-    h += `<tr class="add"><td colspan="${cols.length + 2}"><button class="btn ghost sm addin" data-g="${esc(g.id)}">+ Añadir en ${esc(g.title)}</button></td></tr>`;
+    h += `<tr class="add"><td colspan="${cols.length + 2}"><input class="addinp" data-g="${esc(g.id)}" placeholder="+ Añadir ficha en ${esc(g.title)} (escribe y pulsa Intro)"></td></tr>`;
   }
   return h + '</tbody></table></div>';
 }
@@ -1126,18 +1220,21 @@ function kanbanHtml(b, its) {
 }
 
 /* ---------------- mutations ---------------- */
-async function updateItem(id, patch) {
+async function updateItem(id, patch, opts = {}) {
   const it = S.items.find((i) => i.id === id); if (!it) return;
-  const prev = { ...it }; Object.assign(it, patch); scheduleRender();
+  const prev = { ...it };
+  if (!opts.noHist) pushHist(histUpdate(it, patch));
+  Object.assign(it, patch); scheduleRender();
   const { data, error } = await sb.from('items').update(patch).eq('id', id).select().single();
   if (error) { Object.assign(it, prev); scheduleRender(); return err(error); }
   Object.assign(it, data);
 }
-async function setField(id, key, value) {
+async function setField(id, key, value, opts) {
   const it = S.items.find((i) => i.id === id); if (!it) return;
   const data = { ...it.data };
   if (value == null || value === '' || (Array.isArray(value) && !value.length)) delete data[key]; else data[key] = value;
-  await updateItem(id, { data });
+  if (JSON.stringify(data) === JSON.stringify(it.data)) return;
+  await updateItem(id, { data }, opts);
 }
 async function newItem(b, groupId, parentId = null) {
   const name = await ask(parentId ? 'Nueva subtarea' : `Nuevo elemento en ${b.name}`, parentId ? 'Nombre de la subtarea' : 'Nombre');
@@ -1148,14 +1245,17 @@ async function newItem(b, groupId, parentId = null) {
   const { data, error } = await sb.from('items').insert(row).select().single();
   if (error) return err(error);
   if (!S.items.find((i) => i.id === data.id)) S.items.push(data);
+  pushHist({ type: 'create', ids: [data.id], label: `alta de «${name}»` });
   renderMain();
   if (!parentId) openItem(data.id); else renderDrawer();
 }
 async function deleteItem(id) {
   const it = S.items.find((i) => i.id === id);
-  if (!(await confirmBox(`¿Eliminar «${it.name}»?`, it.parent_id ? 'Se borrará la subtarea.' : 'Se borrarán también sus subtareas y comentarios. No se puede deshacer.'))) return;
+  if (!(await confirmBox(`¿Eliminar «${it.name}»?`, it.parent_id ? 'Se borrará la subtarea. Puedes recuperarla con ↶ Deshacer.' : 'Se borrarán también sus subtareas y comentarios. Puedes recuperarlo con ↶ Deshacer mientras no cierres synqalia.'))) return;
+  const snap = await snapshotItems([id]);
   const { error } = await sb.from('items').delete().eq('id', id);
   if (error) return err(error);
+  pushHist({ type: 'delete', snap, label: `borrado de «${it.name}»` });
   S.items = S.items.filter((i) => i.id !== id && i.parent_id !== id);
   if (S.open === id) closeDrawer(); else renderDrawer();
   renderMain();
@@ -1198,7 +1298,7 @@ function fieldInput(c, it, prefix = '') {
   const attrs = `data-id="${it.id}" data-k="${esc(c.key)}" data-t="${c.type}" id="${id}"`;
   let inp;
   switch (c.type) {
-    case 'status': inp = `<select ${attrs}><option value="">—</option>${c.options.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}${v && !c.options.find((o) => o.label === v) ? `<option selected>${esc(v)}</option>` : ''}</select>`; break;
+    case 'status': inp = `<select ${attrs}><option value="">—</option>${c.options.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}${v && !c.options.find((o) => o.label === v) ? `<option selected>${esc(v)}</option>` : ''}<option value="__new">+ Nueva etiqueta…</option></select>`; break;
     case 'date': inp = `<input type="date" ${attrs} value="${esc(v || '')}">`; break;
     case 'number': inp = `<input type="number" step="any" inputmode="decimal" ${attrs} value="${v ?? ''}">`; break;
     case 'people': inp = `<select ${attrs}><option value="">—</option>${S.members.map((m) => `<option value="${esc(m.email)}" ${(v || []).map((x) => x.toLowerCase()).includes(m.email.toLowerCase()) ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>`; break;
@@ -1247,6 +1347,7 @@ function renderDrawer() {
   root.querySelectorAll('.tabs [data-tab]').forEach((t) => t.onclick = () => { S.drawerTab = t.dataset.tab; renderDrawer(); });
   root.querySelectorAll('[data-k]').forEach((inp) => inp.onchange = () => {
     const t = inp.dataset.t; let v = inp.value;
+    if (t === 'status' && v === '__new') { const sub = +inp.dataset.id !== it.id; return newLabel(b, inp.dataset.k, sub).then((lab) => lab ? setField(+inp.dataset.id, inp.dataset.k, lab) : renderDrawer()); }
     if (t === 'number') v = v === '' ? null : Number(v);
     else if (t === 'people') v = v ? [v] : null;
     else if (t === 'files') v = v.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -1310,6 +1411,176 @@ async function addMember() {
   const mem = await sb.from('members').select('email,name,role,color,activated'); S.members = mem.data;
   toast('Persona añadida. Marca a qué grupos de trabajo tiene acceso.'); renderMain();
 }
+
+/* ---------------- tabla: edición en la celda, etiquetas, menú de fila, deshacer ---------------- */
+const parseNum = (s) => { s = String(s ?? '').trim().replace(/[€\s]/g, ''); if (!s) return null; if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); const n = Number(s); return Number.isFinite(n) ? n : NaN; };
+function editCell(b, td) {
+  if (td.classList.contains('editing')) return;
+  const id = +td.dataset.cell, key = td.dataset.k; const it = S.items.find((i) => i.id === id); if (!it) return;
+  const c = b.columns.find((x) => x.key === key); if (!c) return;
+  if (c.type === 'files' || c.type === 'long_text') { openItem(id); return; }
+  const v = it.data[key];
+  td.classList.add('editing'); S.cellEdit = true;
+  if (c.type === 'people') td.innerHTML = `<select><option value="">—</option>${S.members.map((m) => `<option value="${esc(m.email)}" ${(v || []).map((x) => x.toLowerCase()).includes(m.email.toLowerCase()) ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>`;
+  else if (c.type === 'date') td.innerHTML = `<input type="date" value="${esc(v || '')}">`;
+  else if (c.type === 'number') td.innerHTML = `<input inputmode="decimal" value="${v ?? ''}" placeholder="0">`;
+  else td.innerHTML = `<input value="${esc(v ?? '')}">`;
+  const inp = td.firstElementChild; inp.focus(); if (inp.select && c.type !== 'date') inp.select();
+  if (c.type === 'date') { try { inp.showPicker(); } catch {} }
+  let done = false;
+  const finish = async (save) => {
+    if (done) return; done = true; S.cellEdit = false;
+    if (save) {
+      let nv = inp.value;
+      if (c.type === 'number') { nv = parseNum(nv); if (Number.isNaN(nv)) { toast('Eso no es un número'); nv = undefined; } }
+      else if (c.type === 'people') nv = nv ? [nv] : null;
+      else nv = nv.trim();
+      if (nv !== undefined) await setField(id, key, nv);
+    }
+    S.renderPending = false; renderMain();
+  };
+  inp.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    else if (e.key === 'Tab') { e.preventDefault(); const next = e.shiftKey ? td.previousElementSibling : td.nextElementSibling; finish(true).then(() => { const n = next && document.querySelector(`td.ed[data-cell="${id}"][data-k="${CSS.escape(next.dataset?.k || '')}"]`); if (n) editCell(b, n); }); }
+  };
+  if (c.type === 'people' || c.type === 'date') inp.onchange = () => finish(true);
+  inp.onblur = () => setTimeout(() => finish(true), 120);
+  inp.onclick = (e) => e.stopPropagation();
+}
+function renameInline(nm, id) {
+  const it = S.items.find((i) => i.id === id); if (!it) return;
+  S.cellEdit = true;
+  nm.innerHTML = `<input class="rename" value="${esc(it.name)}">`;
+  const inp = nm.firstElementChild; inp.focus(); inp.select(); inp.onclick = (e) => e.stopPropagation();
+  let done = false;
+  const finish = async (save) => { if (done) return; done = true; S.cellEdit = false; const v = inp.value.trim(); if (save && v && v !== it.name) await updateItem(id, { name: v }); S.renderPending = false; renderMain(); };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') finish(false); };
+  inp.onblur = () => finish(true);
+}
+async function statusChosen(b, key, id, value, sel) {
+  if (value === '__new') { const lab = await newLabel(b, key); if (lab) await setField(id, key, lab); else renderMain(); return; }
+  if (value === '__edit') { renderMain(); return editOptions(b, key); }
+  setField(id, key, value || null);
+}
+async function newLabel(b, key, sub = false) {
+  const cols = sub ? b.sub_columns : b.columns; const c = cols.find((x) => x.key === key); if (!c) return null;
+  const v = await formModal(`Nueva etiqueta en «${c.title}»`, `<label class="field"><span>Nombre</span><input name="label" required placeholder="p. ej. ${c.key === 'marca' ? 'Access' : 'En revisión'}"></label>
+    <label class="field"><span>Color</span><input type="color" name="color" value="${PALETTE[(c.options || []).length % PALETTE.length]}" style="width:60px;height:34px;padding:0"></label>`, 'Crear y aplicar');
+  if (!v || !v.label.trim()) return null;
+  const label = v.label.trim();
+  if (!(c.options || []).some((o) => o.label.toLowerCase() === label.toLowerCase())) {
+    const nc = { ...c, options: [...(c.options || []), { label, color: v.color || PALETTE[0] }] };
+    await saveBoard(b, sub ? { sub_columns: b.sub_columns.map((x) => x.key === key ? nc : x) } : { columns: b.columns.map((x) => x.key === key ? nc : x) });
+    toast(`Etiqueta «${label}» creada`);
+  }
+  return (c.options || []).find((o) => o.label.toLowerCase() === label.toLowerCase())?.label || label;
+}
+async function createItem(b, groupId, name, extra = {}) {
+  const sibs = topItems(b.id).filter((i) => i.group_id === groupId);
+  const pos = extra.position ?? (Math.max(0, ...sibs.map((s) => s.position || 0)) + 1);
+  const row = { board_id: b.id, group_id: groupId, parent_id: null, name, data: extra.data || {}, position: pos };
+  const { data, error } = await sb.from('items').insert(row).select().single();
+  if (error) { err(error); return null; }
+  if (!S.items.find((i) => i.id === data.id)) S.items.push(data);
+  pushHist({ type: 'create', ids: [data.id], label: `alta de «${name}»` });
+  renderMain(); return data;
+}
+function rowMenu(b, id, x, y) {
+  document.querySelector('.colmenu')?.remove();
+  const it = S.items.find((i) => i.id === id); if (!it) return;
+  const m = document.createElement('div'); m.className = 'colmenu';
+  m.innerHTML = `<div class="cm-t">${esc(it.name)} <span>${esc(groupOf(b, it.group_id)?.title || '')}</span></div>
+    <button data-a="open">Abrir ficha</button>
+    <button data-a="below">+ Nueva ficha debajo</button>
+    <button data-a="dup">Duplicar</button>
+    <button data-a="ren">Renombrar</button>
+    <div class="cm-t" style="border:0;margin:4px 0 0;padding-bottom:2px"><span>Mover a</span></div>
+    ${b.groups.filter((g) => g.id !== it.group_id).map((g) => `<button data-mv="${esc(g.id)}"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(g.color || '#579bfc')};margin-right:7px"></span>${esc(g.title)}</button>`).join('')}
+    <button data-a="del" class="danger" style="border-top:1px solid var(--line);margin-top:4px;border-radius:0 0 8px 8px">Eliminar</button>`;
+  m.style.maxHeight = '70vh'; m.style.overflow = 'auto';
+  document.body.appendChild(m);
+  const h = m.offsetHeight; m.style.left = Math.max(8, Math.min(x, innerWidth - 230)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - h - 8)) + 'px';
+  const close = (e) => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', close); } };
+  setTimeout(() => document.addEventListener('mousedown', close));
+  m.onclick = async (e) => {
+    const btn = e.target.closest('button'); if (!btn) return; m.remove(); document.removeEventListener('mousedown', close);
+    const a = btn.dataset.a;
+    if (btn.dataset.mv) return updateItem(id, { group_id: btn.dataset.mv });
+    if (a === 'open') return openItem(id);
+    if (a === 'del') return deleteItem(id);
+    if (a === 'ren') { const nm = document.querySelector(`tr.item[data-open="${id}"] .nm`); if (nm) return renameInline(nm, id); const t = await ask('Renombrar', 'Nombre', it.name); if (t) updateItem(id, { name: t }); return; }
+    const sibs = topItems(b.id).filter((i) => i.group_id === it.group_id).sort((p, q) => (p.position || 0) - (q.position || 0));
+    const nx = sibs[sibs.findIndex((i) => i.id === id) + 1];
+    const pos = nx ? ((it.position || 0) + (nx.position || 0)) / 2 : (it.position || 0) + 1;
+    if (a === 'below') { const name = await ask(`Nueva ficha en ${groupOf(b, it.group_id)?.title || b.name}`, 'Nombre'); if (name) createItem(b, it.group_id, name, { position: pos }); }
+    if (a === 'dup') createItem(b, it.group_id, `${it.name} (copia)`, { position: pos, data: { ...it.data } });
+  };
+}
+
+/* deshacer / rehacer (cambios en fichas de esta sesión) */
+S.hist = { undo: [], redo: [] };
+function fieldName(it, k) { const b = board(it.board_id); return (it.parent_id ? b?.sub_columns : b?.columns)?.find((c) => c.key === k)?.title || k; }
+function histUpdate(it, patch) {
+  const before = {}, after = {}; const labels = [];
+  for (const k of Object.keys(patch)) {
+    if (k === 'data') {
+      const nd = patch.data || {}, od = it.data || {};
+      const keys = [...new Set([...Object.keys(nd), ...Object.keys(od)])].filter((x) => JSON.stringify(nd[x]) !== JSON.stringify(od[x]));
+      if (!keys.length) continue;
+      before.data = Object.fromEntries(keys.map((x) => [x, od[x] ?? null])); after.data = Object.fromEntries(keys.map((x) => [x, nd[x] ?? null]));
+      labels.push(...keys.map((x) => fieldName(it, x)));
+    } else if (JSON.stringify(patch[k]) !== JSON.stringify(it[k])) { before[k] = it[k]; after[k] = patch[k]; labels.push(k === 'group_id' ? 'fase' : k === 'name' ? 'nombre' : k); }
+  }
+  if (!labels.length) return null;
+  return { type: 'update', id: it.id, before, after, label: `${labels.join(', ')} de «${it.name}»` };
+}
+function pushHist(h) { if (!h) return; S.hist.undo.push(h); if (S.hist.undo.length > 60) S.hist.undo.shift(); S.hist.redo = []; }
+function undoTitle(k) { const h = S.hist[k].at(-1); return h ? `${k === 'undo' ? 'Deshacer' : 'Rehacer'}: ${h.label} (${k === 'undo' ? 'Ctrl+Z' : 'Ctrl+Y'})` : (k === 'undo' ? 'Nada que deshacer' : 'Nada que rehacer'); }
+async function snapshotItems(ids) {
+  const all = S.items.filter((i) => ids.includes(i.id) || ids.includes(i.parent_id));
+  const { data } = await sb.from('comments').select('*').in('item_id', all.map((i) => i.id));
+  return { items: all.map((i) => ({ ...i, data: { ...i.data } })), comments: data || [] };
+}
+async function applyPatch(id, side) {
+  const it = S.items.find((i) => i.id === id); if (!it) { toast('Esa ficha ya no existe'); return false; }
+  const patch = { ...side }; if (side.data) { const d = { ...it.data }; for (const [k, v] of Object.entries(side.data)) { if (v == null) delete d[k]; else d[k] = v; } patch.data = d; }
+  await updateItem(id, patch, { noHist: true }); return true;
+}
+async function restoreSnap(snap) {
+  const strip = (i) => ({ id: i.id, board_id: i.board_id, parent_id: i.parent_id, group_id: i.group_id, name: i.name, data: i.data, position: i.position, created_at: i.created_at });
+  const tops = snap.items.filter((i) => !i.parent_id || !snap.items.some((x) => x.id === i.parent_id)), subs = snap.items.filter((i) => !tops.includes(i));
+  for (const set of [tops, subs]) if (set.length) { const { data, error } = await sb.from('items').insert(set.map(strip)).select(); if (error) { err(error); return false; } for (const r of data) if (!S.items.find((i) => i.id === r.id)) S.items.push(r); }
+  if (snap.comments.length) { const { error } = await sb.from('comments').insert(snap.comments.map(({ id, item_id, author_email, body, created_at }) => ({ id, item_id, author_email, body, created_at }))); if (error) err(error); else for (const c of snap.comments) if (S.comments[c.item_id]) S.comments[c.item_id].push(c); }
+  return true;
+}
+async function removeIds(ids) {
+  const { error } = await sb.from('items').delete().in('id', ids); if (error) { err(error); return false; }
+  S.items = S.items.filter((i) => !ids.includes(i.id) && !ids.includes(i.parent_id)); if (ids.includes(S.open)) closeDrawer(); return true;
+}
+let histBusy = false;
+async function runHist(from, to) {
+  if (histBusy) return; const h = S.hist[from].pop(); if (!h) return toast(from === 'undo' ? 'Nada que deshacer' : 'Nada que rehacer');
+  histBusy = true; let ok = false;
+  try {
+    const undoing = from === 'undo';
+    if (h.type === 'update') ok = await applyPatch(h.id, undoing ? h.before : h.after);
+    else if (h.type === 'create') { if (undoing) { h.snap = await snapshotItems(h.ids); ok = await removeIds(h.ids); } else ok = await restoreSnap(h.snap); }
+    else if (h.type === 'delete') { if (undoing) ok = await restoreSnap(h.snap); else ok = await removeIds(h.snap.items.filter((i) => !i.parent_id).map((i) => i.id)); }
+  } finally { histBusy = false; }
+  if (ok) { S.hist[to].push(h); toast(`${from === 'undo' ? 'Deshecho' : 'Rehecho'}: ${h.label}`); }
+  renderMain(); if (S.open) renderDrawer();
+}
+const undo = () => runHist('undo', 'redo');
+const redo = () => runHist('redo', 'undo');
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  if (document.getElementById('modal-root')?.innerHTML) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+});
 
 /* ---------------- grupos de trabajo ---------------- */
 function CTX() { return { S, sb, esc, fmtE, fmtD, ago, board, space, member, topItems, groupOf, optColor, pill, avatar, headHtml, go, openItem, toast, err, saveBoard, renderMain, renderHomeInto }; }
