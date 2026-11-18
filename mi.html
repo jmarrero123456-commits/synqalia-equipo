@@ -896,6 +896,7 @@
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="synqalia.css?v=20261117g">
+<link rel="stylesheet" href="mensajes.css?v=20261118a">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -1082,18 +1083,7 @@
   </main>
 
   <!-- NOTAS (libretas) -->
-  <main id="view-mensajes" class="view" hidden style="display:grid; gap:18px;">
-    <section class="card">
-      <div class="row-between"><span class="note">Conversaciones de Teams sincronizadas · WhatsApp, próximamente</span><span class="note" id="msg-updated"></span></div>
-      <div class="chips" id="msg-filter" role="group" aria-label="Filtrar mensajes">
-        <button class="chip" type="button" data-f="todas" aria-pressed="true">Todas <span class="count" id="msg-c-todas"></span></button>
-        <button class="chip" type="button" data-f="sinleer" aria-pressed="false">Sin leer <span class="count" id="msg-c-sinleer"></span></button>
-        <button class="chip chip-dec" type="button" data-f="pide" aria-pressed="false">Te piden algo <span class="count" id="msg-c-pide"></span></button>
-      </div>
-      <div class="mail-bar msg-bar"><input class="tk-search" id="msg-search" type="search" placeholder="Buscar persona o mensaje" aria-label="Buscar en mensajes"></div>
-      <div class="list inbox" id="msg-list"><p class="note">Cargando conversaciones…</p></div>
-    </section>
-  </main>
+  <main id="view-mensajes" class="view" hidden><p class="note">Cargando mensajes…</p></main>
   <main id="view-notas" class="view" hidden></main>
 </div>
 
@@ -4245,6 +4235,6 @@
 </script>
 <script src="notas.js" defer></script>
 <script src="graph-live.js?v=20261117d" defer></script>
-<script src="mensajes.js?v=20261117d" defer></script>
+<script src="mensajes.js?v=20261118a" defer></script>
 </body>
 </html>
