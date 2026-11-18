@@ -374,3 +374,5 @@ body:has(.login) .sq-bar { display: none; }
 .tsug-pri .pri-opt[aria-checked="true"].Baja { background: color-mix(in srgb, #5fe0cf 22%, transparent); color: #0b6e63; }
 .tsug-pri .pri-opt[aria-checked="true"].Mega { background: color-mix(in srgb, #7c3aed 16%, transparent); color: #6d28d9; }
 .tmsg-miss { font-size: 13px; padding: 8px 12px; margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.task-block { margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, #5fe0cf 8%, var(--panel)); }
+.task-block > .section-label { margin-top: 0; }
