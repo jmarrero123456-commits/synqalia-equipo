@@ -66,7 +66,7 @@
   const CANALES = {
     teams: { nombre: 'Teams', sub: 'Chats y grupos de Teams', letra: 'T' },
     whatsapp: { nombre: 'WhatsApp', sub: 'WhatsApp Business', letra: 'W' },
-    synqalia: { nombre: 'synqalia', sub: 'Tu equipo y grupos de trabajo', letra: '' },
+    synqalia: { nombre: 'Synqalia', sub: 'Tu equipo y grupos de trabajo', letra: '' },
   };
   const chIcon = (k, cls = '') => `<span class="sqm-ch sqm-ch-${k} ${cls}" aria-hidden="true">${k === 'synqalia' ? ICON.q : CANALES[k].letra}</span>`;
   const wide = () => matchMedia('(min-width: 1100px)').matches;
@@ -211,6 +211,7 @@
     const f = (id, t) => `<button type="button" class="chip" data-f="${id}" aria-pressed="${st.f === id}">${t}</button>`;
     root.innerHTML = `<div class="sqm-canal${st.open && wide() ? ' split' : ''}">
       <div class="sqm-side">
+        <div class="sqm-stick">
         <div class="sqm-head">
           <button type="button" class="sqm-ib" data-act="hub" aria-label="Volver a Mensajes">${ICON.back}</button>
           ${chIcon(k)}<h2>${C.nombre}</h2>
@@ -219,6 +220,7 @@
         <div class="sqm-switch" role="group" aria-label="Cambiar de mensajería">${sw}</div>
         ${k === 'whatsapp' ? '' : `<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') : ''}</div>
           <label class="sqm-search">${ICON.search}<span class="sr">Buscar</span><input type="search" placeholder="Buscar persona o mensaje" value="${esc(st.q)}"></label></div>`}
+        </div>
         <div class="sqm-list">${list}</div>
       </div>
       <div class="sqm-pane"></div>
@@ -278,7 +280,7 @@
     const bubbles = msgs && msgs.length
       ? msgs.map((m) => `<div class="sqm-b ${m.mio ? 'me' : ''}">${!m.mio && m.de ? `<span class="sqm-bwho">${esc(m.de)}</span>` : ''}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(m.hora || '')}</span></div>`).join('')
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
-         <p class="sqm-info">Por ahora synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.</p>`;
+         <p class="sqm-info">Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.</p>`;
     host.innerHTML = `<div class="sqm-conv">
       ${convHead(d.nombre || 'Chat de Teams', 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
       ${d.accion ? `<div class="sqm-ask${isTrue(d.pide) ? ' pide' : ''}"><span class="sqm-pide">${isTrue(d.pide) ? 'Te pide algo' : 'Resumen'}</span><p>${esc(d.accion)}</p></div>` : ''}
@@ -297,7 +299,7 @@
     if (!c) { closeConv(); return; }
     const msgs = st.msgs.get(id);
     const members = c.members || [];
-    const sub = c.kind === 'directo' ? 'Chat de synqalia' : `${c.kind === 'espacio' ? 'Grupo de trabajo' : 'Grupo'} · ${members.map((m) => (m.email === me ? 'tú' : m.name.split(' ')[0])).join(', ')}`;
+    const sub = c.kind === 'directo' ? 'Chat de Synqalia' : `${c.kind === 'espacio' ? 'Grupo de trabajo' : 'Grupo'} · ${members.map((m) => (m.email === me ? 'tú' : m.name.split(' ')[0])).join(', ')}`;
     let html = '';
     if (!msgs) html = '<p class="note">Cargando…</p>';
     else if (!msgs.length) html = `<p class="sqm-info">${c.kind === 'espacio' ? 'Este es el chat del grupo de trabajo. Todo lo que escribas aquí lo ven todas las personas del grupo.' : 'Aún no hay mensajes. Escribe el primero.'}</p>`;
@@ -342,8 +344,8 @@
         <div class="sqm-dlg-body">
           ${grupo ? '<label class="sqm-field"><span>Nombre del grupo</span><input id="sqm-gname" type="text" maxlength="80" placeholder="Ej.: Aperturas Valencia"></label>' : '<button type="button" class="sqm-row sqm-mk" data-grupo><span class="sqm-av grp sqm-av-synqalia">+</span><span class="sqm-rmain"><span class="sqm-name">Crear un grupo</span><span class="sqm-txt">Varias personas en el mismo chat</span></span></button>'}
           ${people.map((p) => grupo
-            ? `<label class="sqm-row sqm-pick"><input type="checkbox" value="${esc(p.email)}"><span class="sqm-av sqm-av-synqalia">${esc(ini(p.name))}</span><span class="sqm-rmain"><span class="sqm-name">${esc(p.name)}</span><span class="sqm-txt">${p.activated ? esc(p.email) : 'Aún no ha entrado en synqalia'}</span></span></label>`
-            : `<button type="button" class="sqm-row" data-to="${esc(p.email)}"><span class="sqm-av sqm-av-synqalia">${esc(ini(p.name))}</span><span class="sqm-rmain"><span class="sqm-name">${esc(p.name)}</span><span class="sqm-txt">${p.activated ? esc(p.email) : 'Aún no ha entrado en synqalia: lo verá al entrar'}</span></span></button>`).join('')}
+            ? `<label class="sqm-row sqm-pick"><input type="checkbox" value="${esc(p.email)}"><span class="sqm-av sqm-av-synqalia">${esc(ini(p.name))}</span><span class="sqm-rmain"><span class="sqm-name">${esc(p.name)}</span><span class="sqm-txt">${p.activated ? esc(p.email) : 'Aún no ha entrado en Synqalia'}</span></span></label>`
+            : `<button type="button" class="sqm-row" data-to="${esc(p.email)}"><span class="sqm-av sqm-av-synqalia">${esc(ini(p.name))}</span><span class="sqm-rmain"><span class="sqm-name">${esc(p.name)}</span><span class="sqm-txt">${p.activated ? esc(p.email) : 'Aún no ha entrado en Synqalia: lo verá al entrar'}</span></span></button>`).join('')}
         </div>
         ${grupo ? '<div class="sqm-foot"><button type="button" class="btn primary sqm-wide" data-crear>Crear grupo</button></div>' : ''}</div>`;
     };
@@ -375,9 +377,9 @@
   async function onClick(e) {
     const t = e.target;
     const canalBtn = t.closest('[data-canal]');
-    if (canalBtn) { st.canal = canalBtn.dataset.canal; st.nivel = 'canal'; st.f = 'todas'; st.q = ''; st.keep.clear(); if (st.open) closeConv(); else paint(); return; }
+    if (canalBtn) { st.canal = canalBtn.dataset.canal; st.nivel = 'canal'; st.f = 'todas'; st.q = ''; st.keep.clear(); if (st.open) closeConv(); else paint(); scrollTo(0, 0); return; }
     const act = t.closest('[data-act]')?.dataset.act;
-    if (act === 'hub') { if (st.open) closeConv(); st.nivel = 'hub'; paint(); return; }
+    if (act === 'hub') { if (st.open) closeConv(); st.nivel = 'hub'; paint(); scrollTo(0, 0); return; }
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }

@@ -35,6 +35,12 @@
 /* ---------- 2 · conversaciones de una mensajería ---------- */
 .sqm-canal { display: grid; gap: 0; }
 .sqm-side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+/* cabecera fija (atrás, nombre, selector, filtros y buscador): la lista pasa por debajo sin dejar faldón */
+.sqm-stick { position: sticky; top: var(--sq-bar, 52px); z-index: 6; display: grid; gap: 10px; background: var(--bg); padding: 6px 0 10px; margin-top: -6px; }
+.sqm-stick::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--line); opacity: 0; }
+/* html/body llevan overflow-x:hidden, que impide que la cabecera se quede fija: en Mensajes se cambia por clip (mismo efecto sin romper sticky) */
+html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) body { overflow-x: clip; }
+@media (max-width: 860px) { .sqm-stick { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; } }
 .sqm-head { display: flex; align-items: center; gap: 8px; }
 .sqm-head h2 { margin: 0; flex: 1; font: 800 21px/1.1 "Manrope", system-ui, sans-serif; letter-spacing: -.01em; }
 .sqm-ib { flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
@@ -82,10 +88,10 @@
 
 /* ---------- 3 · conversación ---------- */
 .sqm-overlay { position: fixed; inset: 0; z-index: 90; background: var(--bg); color: var(--ink); display: flex; flex-direction: column;
-  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); font-family: var(--font-body); }
+  font-family: var(--font-body); }
 body.sqm-lock { overflow: hidden; }
 .sqm-conv { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.sqm-chead { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 4px; color: #fff;
+.sqm-chead { flex: none; display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px 4px; color: #fff;
   background: linear-gradient(180deg, #172238, #0f1b2d); }
 .sqm-chead .sqm-ib { color: #fff; } .sqm-chead .sqm-ib:hover { background: rgba(255,255,255,.08); }
 .sqm-chead .sqm-av { width: 40px; height: 40px; font-size: 14px; background: rgba(255,255,255,.14); color: #fff; }
@@ -103,7 +109,7 @@ body.sqm-lock { overflow: hidden; }
 .sqm-bwho { display: block; font-size: 12px; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
 .sqm-bt { display: block; text-align: right; font-size: 11px; font-weight: 600; opacity: .7; margin-top: 2px; }
 .sqm-info { align-self: center; max-width: 92%; text-align: center; margin: 10px 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
-.sqm-foot { flex: none; display: grid; gap: 6px; padding: 8px 10px 10px; background: var(--panel); border-top: 1px solid var(--line); }
+.sqm-foot { flex: none; display: grid; gap: 6px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--panel); border-top: 1px solid var(--line); }
 .sqm-compose { display: flex; align-items: flex-end; gap: 8px; margin: 0; }
 .sqm-compose textarea { flex: 1; min-width: 0; min-height: 44px; max-height: 160px; resize: none; padding: 11px 14px; border-radius: 22px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.4; outline: none; }
 .sqm-compose textarea:focus { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
