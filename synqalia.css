@@ -445,3 +445,21 @@ body:has(.login) .sq-bar { display: none; }
   .item.mrow.mob-open .tsug-row { grid-template-columns: 1fr; grid-template-areas: 'title' 'when' 'btns'; }
   .item.mrow.mob-open .tsug-btns { flex-wrap: wrap; justify-content: flex-start; }
 }
+
+/* ---------- Correo en el móvil: todo el ancho, sin recuadros; «Gestionado» barra de lado a lado ---------- */
+.item.mrow.mob-open > .mob-foot { grid-column: 2; display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.item.mrow.mob-open > .mob-foot .mob-done { width: 100%; min-height: 48px; justify-content: center; border: 0; border-radius: 10px; background: #0b0e13; color: #5fe0cf; font-weight: 800; font-size: 15px; }
+.item.mrow.mob-open > .mob-foot .mob-later { align-self: flex-start; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 560px) {
+  .app:has(> #view-correo:not([hidden])) { padding-left: 0 !important; padding-right: 0 !important; }
+  #view-correo > :not(.mail-split):not(#mail-split) { padding-left: 10px; padding-right: 10px; }
+  #view-correo .list.inbox { border-left: 0; border-right: 0; border-radius: 0; }
+  #view-correo .item.mrow { gap: 0 8px; padding-right: 8px; }
+  #view-correo .item.mrow.mob-open { padding-bottom: 12px; }
+  .item.mrow.mob-open .pane-sum { border: 0; border-radius: 8px; background: color-mix(in srgb, var(--line) 35%, transparent); }
+  .item.mrow.mob-open .pane-sum .ps-row { grid-template-columns: 1fr; gap: 2px; padding: 8px 10px; }
+  .item.mrow.mob-open .task-block { border: 0; padding: 10px 0; background: none; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; }
+  .item.mrow.mob-open .tsug-row { padding: 8px 0; border: 0; background: none; }
+  .item.mrow.mob-open > .composer textarea { padding: 8px; }
+  .item.mrow.mob-open > .actions { grid-template-columns: 1fr 1fr !important; }
+}
