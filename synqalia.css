@@ -427,3 +427,21 @@ body:has(.login) .sq-bar { display: none; }
   .tab-mas[aria-expanded="true"] { color: #fff; background: rgba(255,255,255,.1); }
 }
 @keyframes sqMoreUp { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* ---------- Correo en el móvil: el correo abierto se ve como en el panel del PC (resumen, te piden, respuesta, botones) ---------- */
+.item.mrow.mob-open .pane-sum { margin-top: 10px; }
+.item.mrow.mob-open > .composer .prop-wrap > .section-label:first-child, .item.mrow.mob-open > .composer > .section-label { margin-top: 14px; }
+.item.mrow.mob-open .mail-full { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.item.mrow.mob-open .mail-full > summary { cursor: pointer; font-weight: 700; font-size: 14px; color: #0b6e63; list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
+.item.mrow.mob-open .mail-full > summary::-webkit-details-marker { display: none; }
+.item.mrow.mob-open .mail-full > summary::after { content: '›'; font-size: 20px; transition: transform .15s; }
+.item.mrow.mob-open .mail-full[open] > summary::after { transform: rotate(90deg); }
+.item.mrow.mob-open .task-block { margin: 12px 0 4px; }
+@media (max-width: 560px) {
+  .item.mrow.mob-open > .actions { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .item.mrow.mob-open > .actions > .btn, .item.mrow.mob-open > .actions > a.btn { min-height: 44px; justify-content: center; text-align: center; }
+  .item.mrow.mob-open > .composer .bar .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+  .item.mrow.mob-open > .composer .bar .btns > .btn { min-height: 44px; justify-content: center; text-align: center; }
+  .item.mrow.mob-open .tsug-row { grid-template-columns: 1fr; grid-template-areas: 'title' 'when' 'btns'; }
+  .item.mrow.mob-open .tsug-btns { flex-wrap: wrap; justify-content: flex-start; }
+}

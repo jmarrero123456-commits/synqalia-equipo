@@ -955,7 +955,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118y">
+<link rel="stylesheet" href="synqalia.css?v=20261118z">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -2692,7 +2692,7 @@
     const locked = r.estado === 'en_outlook' || r.estado === 'enviada';
     ta.readOnly = locked;
     box.appendChild(ta);
-    const grow = () => { if (!ta.isConnected) return; ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 300), Math.round(window.innerHeight * 0.72)) + 'px'; };
+    const grow = () => { if (!ta.isConnected) return; ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, window.innerWidth < 600 ? 170 : 300), Math.round(window.innerHeight * (window.innerWidth < 600 ? 0.6 : 0.72))) + 'px'; };
     ta.addEventListener('input', grow); requestAnimationFrame(grow);
     const status = el('span', 'status', locked ? (r.estado === 'enviada' ? 'Esta respuesta ya se envió.' : 'Está en tus Borradores de Outlook, dentro del hilo. Ábrela allí y pulsa Enviar.') : (m.cuerpo ? '' : 'Ojo: solo tengo la vista previa de este correo. La sugerencia será orientativa.'));
     const setStatus = (t, err) => { status.textContent = t; status.classList.toggle('err', !!err); };
@@ -2814,8 +2814,15 @@
       showProp = () => { if (prop.hidden) { prop.hidden = false; requestAnimationFrame(grow); } };
       // si te piden algo: primero la respuesta sugerida y debajo «¿Qué quieres contestar?»; si no, al revés (la respuesta sale debajo cuando la pides)
       if (isDecision(m)) box.insertBefore(askBox, prop.nextSibling); else box.insertBefore(askBox, prop);
-      box.appendChild(el('div', 'section-label', 'Correo'));
-      box.appendChild(full); if (adj) box.appendChild(adj);
+      if (o.mob) {
+        const dt = document.createElement('details'); dt.className = 'mail-full';
+        const su = document.createElement('summary'); su.textContent = 'Ver correo completo' + (m.mensajes > 1 ? ' · ' + m.mensajes + ' mensajes' : ''); dt.appendChild(su);
+        dt.appendChild(m.cuerpo ? threadView(m.cuerpo, m) : full); if (adj) dt.appendChild(adj);
+        box.appendChild(dt);
+      } else {
+        box.appendChild(el('div', 'section-label', 'Correo'));
+        box.appendChild(full); if (adj) box.appendChild(adj);
+      }
       if (tb) box.insertBefore(tb, box.firstChild);
     }
     return box;
@@ -2942,7 +2949,8 @@
       body.appendChild(el('div', 'detail', (meetingDone(m) ? dayName(m.reunion.fecha).replace(/^./, (c) => c.toUpperCase()) + ', ' + m.reunion.inicio + '–' + m.reunion.fin + ' · ' : '') + 'Convoca ' + (m.reunion.organiza || personaDe(m.de))));
     }
     else body.appendChild(el('div', 'detail', m.de + ' · ' + cuandoDe(m)));
-    if (!o.compact && !o.pane && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
+    const openMob = state.openReply === m.id && !o.compact && !o.split && !!o.inbox && !isMeeting(m);
+    if (!o.compact && !o.pane && !openMob && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
     if (snoozed(m)) body.appendChild(el('div', 'detail', 'Vuelve a tu lista el ' + dayName(m.posponer)));
     if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
     else if (r || dz) { const meta = el('div', 'meta'); if (r) meta.appendChild(el('span', 'rstate ' + r.estado, RLABEL[r.estado] || r.estado)); if (dz) meta.appendChild(el('span', 'rstate ' + (dz.estado === 'hecha' ? 'enviada' : 'lista'), (DLABEL[dz.decision] || dz.decision) + (dz.estado === 'hecha' ? ' · hecho en Outlook' : ' · decidida, falta aplicar en Outlook'))); body.appendChild(meta); }
@@ -2959,6 +2967,7 @@
       row.addEventListener('click', go); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
       return row;
     }
+    if (openMob) { const sm = sumBox(m); if (sm) body.appendChild(sm); row.classList.add('mob-open'); }
     row.appendChild(body);
     const act = el('div', 'actions');
     const open = state.openReply === m.id && !o.compact && !o.split;
@@ -2982,7 +2991,7 @@
         const toTask = el('button', 'btn', linked.has(m.id) ? 'Ya es tarea' : 'Pasar a tarea'); toTask.type = 'button';
         toTask.disabled = linked.has(m.id);
         toTask.addEventListener('click', async () => {
-          const ts = o.pane && document.querySelector('#mail-pane .tsug');
+          const ts = o.pane ? document.querySelector('#mail-pane .tsug') : open ? row.querySelector('.tsug') : null;
           if (ts && ts._addRow) { const tb = ts.closest('.task-block'); if (tb) tb.hidden = false; ts._addRow({titulo: m.asunto, vence: todayISO}); return; }
           toTask.disabled = true;
           const ok = await addTask({persona: personaDe(m.de), titulo: m.asunto, detalle: m.de + ' — ' + m.accion, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: m.prioridad === 'Alta' ? todayISO : null, origen: 'correo', ref: m.id});
@@ -3010,7 +3019,7 @@
       act.appendChild(undo);
     }
     row.appendChild(act);
-    if (open && !isMeeting(m)) row.appendChild(composer(m, o));
+    if (open && !isMeeting(m)) row.appendChild(composer(m, openMob ? {pane: true, mob: true} : o));
     if (o.inbox) {
       row.classList.add('mrow'); if (open) row.classList.add('open'); if (o.split && state.openReply === m.id) row.classList.add('sel'); if (isDecision(m)) row.classList.add('dec'); if (isUrgent(m)) row.classList.add('urg'); row.dataset.mid = m.id;
       const line = el('div', 'mline');
@@ -3081,6 +3090,15 @@
     });
     return wrap;
   }
+  // Recuadro «Resumen» + (solo si le piden algo) «Te piden»: el mismo en el panel del PC y en el correo abierto del móvil
+  function sumBox(m) {
+    const sm = el('div', 'pane-sum');
+    const rs = String(m.resumen || m.accion || '').trim();
+    if (rs) { const p1 = el('div', 'ps-row'); p1.appendChild(el('span', 'ps-k', 'Resumen')); p1.appendChild(el('span', 'ps-v', rs)); sm.appendChild(p1); }
+    const pd = isDecision(m) && m.estado !== 'gestionado' ? String(m.peticion || m.motivo || '').trim() : '';
+    if (pd) { const p2 = el('div', 'ps-row ps-pide' + (isUrgent(m) ? ' urg' : '')); p2.appendChild(el('span', 'ps-k', 'Te piden')); p2.appendChild(el('span', 'ps-v', pd)); sm.appendChild(p2); }
+    return sm.childNodes.length ? sm : null;
+  }
   function renderMailPane(rows) {
     const pane = $('#mail-pane'); if (!pane) return;
     const m = rows.find((x) => x.id === state.openReply);
@@ -3107,12 +3125,8 @@
     }
     // Resumen ya analizado y, solo si le piden algo a Jaime, qué le piden (campos resumen y peticion del barrido)
     if (!isMeeting(m)) {
-      const sm = el('div', 'pane-sum');
-      const rs = String(m.resumen || m.accion || '').trim();
-      if (rs) { const p1 = el('div', 'ps-row'); p1.appendChild(el('span', 'ps-k', 'Resumen')); p1.appendChild(el('span', 'ps-v', rs)); sm.appendChild(p1); }
-      const pd = isDecision(m) && m.estado !== 'gestionado' ? String(m.peticion || m.motivo || '').trim() : '';
-      if (pd) { const p2 = el('div', 'ps-row ps-pide' + (isUrgent(m) ? ' urg' : '')); p2.appendChild(el('span', 'ps-k', 'Te piden')); p2.appendChild(el('span', 'ps-v', pd)); sm.appendChild(p2); }
-      if (sm.childNodes.length) head.appendChild(sm);
+      const sm = sumBox(m);
+      if (sm) head.appendChild(sm);
     }
     pane.appendChild(head);
     const full = mailRow(m, {pane: true}); full.classList.add('pane-item');
