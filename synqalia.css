@@ -383,3 +383,10 @@ body:has(.login) .sq-bar { display: none; }
 .tsug-voice input[type=text] { padding-right: 46px; }
 .tsug-voice.listening input[type=text] { padding-right: 128px; border-bottom: 2px solid #d93636; box-shadow: none; }
 .tsug-row.pickdate .tsug-quick .chip { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2b4fd8) 45%, transparent); transition: box-shadow .2s; }
+
+/* ---------- Móvil: nada se sale por la derecha ---------- */
+/* Las rejillas no deben ensancharse por un texto largo en una sola línea (p. ej. «Notas de reuniones») */
+.card > *, .list > *, .item > *, #meet-notes-card > *, #meet-notes .mt-note > * { min-width: 0; }
+#meet-notes .mt-note .mt-snip, #meet-notes .mt-note .title { overflow: hidden; text-overflow: ellipsis; }
+/* Chips «Esperando a …» de las tareas: se recortan con … en vez de salirse */
+.tmeta .mc { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
