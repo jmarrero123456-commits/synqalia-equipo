@@ -397,3 +397,16 @@ body:has(.login) .sq-bar { display: none; }
   #view-tareas .list > .item { grid-template-columns: auto minmax(0, 1fr); }
   #view-tareas .list > .item > .actions { grid-column: 2 / -1; justify-content: flex-start; }
 }
+
+/* ---------- Móvil: barra de abajo fija y pegada al borde (no flotante); la pantalla queda entre la franja de arriba y esta barra ---------- */
+@media (max-width: 560px) {
+  :root { --sq-tabbar: 62px; }
+  .app .tabs { left: 0 !important; right: 0 !important; bottom: 0 !important; border-radius: 0 !important; border: 0 !important; border-top: 1px solid rgba(255,255,255,.1) !important;
+    background: #0b0e13 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important;
+    min-height: var(--sq-tabbar); padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 0px)) !important; z-index: 60; }
+  .app .tabs button { border-radius: 10px; }
+  .app { padding-bottom: calc(var(--sq-tabbar) + 18px + env(safe-area-inset-bottom, 0px)) !important; }
+  .sq-more-panel { left: 8px; right: 8px; bottom: calc(var(--sq-tabbar) + 8px + env(safe-area-inset-bottom, 0px)); }
+  .sqa-fab { display: none !important; }
+  .sqa-ask { bottom: calc(var(--sq-tabbar) + 6px + env(safe-area-inset-bottom, 0px)) !important; }
+}
