@@ -955,7 +955,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118z">
+<link rel="stylesheet" href="synqalia.css?v=20261119a">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -3020,6 +3020,16 @@
     }
     row.appendChild(act);
     if (open && !isMeeting(m)) row.appendChild(composer(m, openMob ? {pane: true, mob: true} : o));
+    if (openMob) {
+      // móvil: «Para mañana» aparte y «Gestionado» como barra de lado a lado que cierra el correo
+      const bs = [...act.querySelectorAll('button')];
+      const later = bs.find((b) => b.textContent === 'Para mañana' || b.textContent === 'Traer a hoy');
+      const done = bs.find((b) => b.textContent === 'Gestionado');
+      const ft = el('div', 'mob-foot');
+      if (later) { later.className = 'btn ghost mob-later'; if (later.textContent === 'Para mañana') later.textContent = 'Posponer a mañana'; ft.appendChild(later); }
+      if (done) { done.className = 'btn mob-done'; done.textContent = '✓ Gestionado'; done.addEventListener('click', () => { state.openReply = null; }); ft.appendChild(done); }
+      if (ft.childNodes.length) row.appendChild(ft);
+    }
     if (o.inbox) {
       row.classList.add('mrow'); if (open) row.classList.add('open'); if (o.split && state.openReply === m.id) row.classList.add('sel'); if (isDecision(m)) row.classList.add('dec'); if (isUrgent(m)) row.classList.add('urg'); row.dataset.mid = m.id;
       const line = el('div', 'mline');
