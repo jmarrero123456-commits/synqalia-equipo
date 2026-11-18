@@ -198,6 +198,22 @@
   .mc.late { color: #fff; border-color: var(--bad); background: var(--bad); }
   .mc.soft { color: var(--muted); background: transparent; }
   .mc.prio { color: var(--muted); background: transparent; }
+  .mc.prio.p-Mega { color: #fff; background: #d93636; border-color: #d93636; font-weight: 800; }
+  .mc.prio.p-Mega::before { content: "⚡ "; }
+  .mega-box { border-radius: 14px; border: 2px solid #d93636; background: color-mix(in srgb, #d93636 7%, var(--panel)); padding: 12px 14px; display: grid; gap: 8px; animation: megaBlink 1.6s ease-in-out infinite; }
+  .mega-box[hidden] { display: none; }
+  @keyframes megaBlink { 0%, 100% { box-shadow: 0 0 0 0 rgba(217,54,54,.45); border-color: #d93636; } 50% { box-shadow: 0 0 0 7px rgba(217,54,54,0); border-color: #ff8a8a; } }
+  .mega-head { display: flex; align-items: center; gap: 8px; color: #d93636; text-transform: uppercase; letter-spacing: .6px; font-size: 12.5px; }
+  .mega-bolt { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d93636; color: #fff; font-size: 13px; animation: megaBolt 1.6s ease-in-out infinite; }
+  @keyframes megaBolt { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .mega-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--panel); border: 1px solid color-mix(in srgb, #d93636 30%, var(--line)); }
+  .mega-item.go { cursor: pointer; } .mega-item.go:hover { border-color: #d93636; }
+  .mega-txt { flex: 1 1 auto; min-width: 0; }
+  .mega-title { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+  .mega-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .mega-done { flex: 0 0 auto; border: 0; border-radius: 8px; background: #d93636; color: #fff; font: 700 13px/1 var(--font-body); padding: 9px 12px; cursor: pointer; }
+  .mega-done:hover { filter: brightness(1.1); } .mega-done:disabled { opacity: .6; }
+  @media (prefers-reduced-motion: reduce) { .mega-box, .mega-bolt { animation: none; } }
   .mc.prio.p-Alta { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
   .mc.prio.p-Media { color: var(--muted); }
   .mc.prio.p-Baja { color: var(--muted); border-style: dashed; }
@@ -949,6 +965,7 @@
       <button class="stat" data-go="correo" data-mailc="urgente" type="button" title="Correos urgentes: alguien espera tu decisión"><b id="st-parati">–</b><span>Urgentes para ti</span></button>
       <button class="stat" data-go="reuniones" type="button" title="Reuniones por confirmar"><b id="st-reu">–</b><span>Por confirmar</span></button>
     </section>
+    <section class="mega-box" id="mega-hoy" aria-label="Tareas mega importantes" hidden></section>
 
     <section class="card">
       <div class="row-between"><h2>Correo</h2><button class="btn ghost" data-go="correo" type="button">Ir a Correo</button></div>
@@ -1007,13 +1024,14 @@
         <div class="field"><label for="tf-asig">Asignar a</label><select id="tf-asig"><option value="">Nadie (la hago yo)</option></select></div>
         <div class="field"><label for="tf-persona">Persona</label><input id="tf-persona" list="tf-personas" placeholder="La detecto sola"><datalist id="tf-personas"></datalist></div>
         <div class="field"><label for="tf-empresa">Empresa</label><select id="tf-empresa"><option value="">La detecto sola</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></div>
-        <div class="field"><label for="tf-prio">Prioridad</label><select id="tf-prio"><option value="">La detecto sola</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
+        <div class="field"><label for="tf-prio">Prioridad</label><select id="tf-prio"><option value="">La detecto sola</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
         <div class="field"><label for="tf-vence">Fecha límite</label><input id="tf-vence" type="date"></div>
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
       <label class="tk-find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="tk-q" type="search" autocomplete="off" placeholder="Buscar una tarea o persona…" aria-label="Buscar en mis tareas"></label>
     </div>
+    <section class="mega-box" id="mega-tk" aria-label="Tareas mega importantes" hidden></section>
     <section class="card tk-card">
       <div class="tk-row">
         <div class="tk-quick" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
@@ -1029,7 +1047,7 @@
         <div class="tk-bar">
         <label class="tk-sel">Ver<select id="tk-estado"><option value="abiertas">Abiertas</option><option value="vencidas">Vencidas</option><option value="hoy">Para hoy (vencen hoy o antes)</option><option value="semana">Esta semana</option><option value="sinfecha">Sin fecha</option><option value="hechas">Hechas</option><option value="todas">Todas</option></select></label>
         <label class="tk-sel">Pendiente de<select id="tk-who"><option value="">Todos</option><option value="mia">Mí</option><option value="tercero">Otros (espero respuesta)</option><option value="vercon">Ver con alguien</option></select></label>
-        <label class="tk-sel">Prioridad<select id="tk-prio"><option value="">Todas</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
+        <label class="tk-sel">Prioridad<select id="tk-prio"><option value="">Todas</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
         <label class="tk-sel">Empresa<select id="tk-emp"><option value="">Todas</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></label>
         <label class="tk-sel">Agrupar<select id="tk-group"><option value="persona">Por persona</option><option value="espera">Por quién lo tiene</option><option value="prioridad">Por prioridad</option><option value="fecha">Por fecha</option><option value="empresa">Por empresa</option><option value="">Sin agrupar</option></select></label>
         </div>
@@ -1352,7 +1370,7 @@
   const fmtStamp = new Intl.DateTimeFormat('es-ES', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
   $('#today-label').textContent = fmtLong.format(now).replace(/^./, (c) => c.toUpperCase());
 
-  const PRIO = {Alta: 0, Media: 1, Baja: 2};
+  const PRIO = {Mega: -1, Alta: 0, Media: 1, Baja: 2};
   const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: '', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'abiertas', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}, members: []};
   const RLABEL = {borrador: 'Borrador en synqalia', lista: 'En cola → Borradores de Outlook', cola_borrador: 'En cola → Borradores de Outlook', en_outlook: 'En Borradores de Outlook', enviada: 'Enviada', error: 'Revisar'};
   let db = null, sample = null, assets = null;
@@ -1786,7 +1804,7 @@
     const ti = document.createElement('input'); ti.id = 'te-titulo-' + t.id; ti.required = true; fld('Tarea', bind(ti, 'titulo'), 'wide');
     const pe = document.createElement('input'); pe.id = 'te-persona-' + t.id; pe.setAttribute('list', 'tf-personas'); pe.placeholder = 'Sin persona'; fld('Persona', bind(pe, 'persona'));
     const em = mkSel(['Provalliance', 'NEUPAREDIS', 'MSH', 'MIG', 'Personal'].map((x) => [x, x])); em.id = 'te-emp-' + t.id; fld('Empresa', bind(em, 'empresa'));
-    const pr = mkSel([['Alta', 'Alta'], ['Media', 'Media'], ['Baja', 'Baja']]); pr.id = 'te-prio-' + t.id; fld('Prioridad', bind(pr, 'prioridad'));
+    const pr = mkSel([['Mega', 'Mega ⚡'], ['Alta', 'Alta'], ['Media', 'Media'], ['Baja', 'Baja']]); pr.id = 'te-prio-' + t.id; fld('Prioridad', bind(pr, 'prioridad'));
     const ve = document.createElement('input'); ve.type = 'date'; ve.id = 'te-vence-' + t.id; fld('Fecha límite', bind(ve, 'vence'));
     const es = mkSel([['pendiente', 'Abierta'], ['hecha', 'Hecha']]); es.id = 'te-estado-' + t.id; fld('Estado', bind(es, 'estado'));
     const wq = mkSel([['mia', 'De mí'], ['vercon', 'De mí, a ver con alguien'], ['tercero', 'De otra persona']]); wq.id = 'te-espera-' + t.id; fld('Pendiente de', bind(wq, 'espera'));
@@ -1908,7 +1926,7 @@
       if (t.vence <= tomorrowISO) return 'Mañana';
       return 'Más adelante';
     };
-    const order = g === 'espera' ? ['Pendiente de mí', 'Para ver con alguien', 'Esperando a otros'] : g === 'prioridad' ? ['Alta', 'Media', 'Baja'] : g === 'fecha' ? ['Vencidas', 'Hoy', 'Mañana', 'Más adelante', 'Sin nueva fecha', 'Sin fecha'] : null;
+    const order = g === 'espera' ? ['Pendiente de mí', 'Para ver con alguien', 'Esperando a otros'] : g === 'prioridad' ? ['Mega', 'Alta', 'Media', 'Baja'] : g === 'fecha' ? ['Vencidas', 'Hoy', 'Mañana', 'Más adelante', 'Sin nueva fecha', 'Sin fecha'] : null;
     const groups = new Map();
     rows.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
     let keys = [...groups.keys()];
@@ -1939,6 +1957,7 @@
     $('#count-tareas').textContent = open.length ? String(open.length) : '';
     // Hoy
     { const nh = state.tasks.filter(forToday).length; const sh = $('#st-hoy'); sh.textContent = String(nh); sh.parentElement.classList.toggle('hot', nh > 0); }
+    renderMega();
     $('#st-mias').textContent = String(open.filter((t) => espOf(t) === 'mia').length);
     const top = $('#hoy-top'); top.replaceChildren();
     const firsts = open.slice().sort((a, b) => (isLate(b) - isLate(a)) || sortTasks(a, b)).slice(0, 6);
@@ -2027,7 +2046,7 @@
     if (sample) {
       st.textContent = 'Organizando la tarea…';
       try {
-        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null; "asignar": true si la nota pide asignar o encargar la tarea a esa persona para que la haga ella (dice «asigna», «asignar», «asígnale», «asignada a», «encárgale», «que se encargue»…), si no false}. Si la tarea se asigna, el título es lo que tiene que hacer esa persona (ej.: «asigna a Izaskun cerrar el salón el viernes por la mañana» → titulo «Cerrar el salón el viernes por la mañana», persona Izaskun, asignar true). Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw);
+        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Mega" solo si dice «mega» (o «prioridad mega», «mega importante», «mega urgente»), "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null; "asignar": true si la nota pide asignar o encargar la tarea a esa persona para que la haga ella (dice «asigna», «asignar», «asígnale», «asignada a», «encárgale», «que se encargue»…), si no false}. Si la tarea se asigna, el título es lo que tiene que hacer esa persona (ej.: «asigna a Izaskun cerrar el salón el viernes por la mañana» → titulo «Cerrar el salón el viernes por la mañana», persona Izaskun, asignar true). Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw);
         if (out && out.titulo) p = out;
       } catch (err) { /* se guarda tal cual */ }
     } else {
@@ -2056,6 +2075,35 @@
     btn.disabled = false;
     if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
   });
+
+  // ---------- prioridad Mega: recuadro parpadeante arriba en Hoy y en Tareas (no existe si no hay ninguna) ----------
+  function renderMega() {
+    const list = state.tasks.filter((t) => t.estado !== 'hecha' && t.prioridad === 'Mega').sort(sortTasks);
+    for (const id of ['mega-hoy', 'mega-tk']) {
+      const box = document.getElementById(id); if (!box) continue;
+      box.hidden = !list.length; if (!list.length) { box.replaceChildren(); continue; }
+      const head = el('div', 'mega-head');
+      head.appendChild(el('span', 'mega-bolt', '⚡'));
+      head.appendChild(el('b', null, list.length === 1 ? 'Mega importante' : list.length + ' mega importantes'));
+      const kids = [head];
+      for (const t of list) {
+        const row = el('div', 'mega-item');
+        const tx = el('div', 'mega-txt');
+        tx.appendChild(el('div', 'mega-title', t.titulo));
+        const bits = [];
+        const other = otherPerson(t); if (other) bits.push(t.asignadaA ? 'Asignada a ' + firstName(t.asignadaA.nombre) : t.asignadaPor ? 'Te la asigna ' + firstName(t.asignadaPor.nombre) : other);
+        if (t.vence) bits.push(isLate(t) ? 'Vencida' : (dueLabel(t.vence) || t.vence));
+        if (bits.length) tx.appendChild(el('div', 'mega-meta', bits.join(' · ')));
+        row.appendChild(tx);
+        const done = el('button', 'mega-done', 'Hecha'); done.type = 'button'; done.title = 'Marcar como hecha';
+        done.addEventListener('click', async (e) => { e.stopPropagation(); done.disabled = true; await write(() => db.collection('tareas').doc(t.id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Tarea mega hecha'); });
+        row.appendChild(done);
+        if (id === 'mega-hoy') { row.classList.add('go'); row.tabIndex = 0; row.title = 'Abrir en Tareas'; const go = () => { show('tareas'); }; row.addEventListener('click', go); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }); }
+        kids.push(row);
+      }
+      box.replaceChildren(...kids);
+    }
+  }
 
   // ---------- tareas asignadas (a y desde otras personas de synqalia) ----------
   function memberFor(name) {
