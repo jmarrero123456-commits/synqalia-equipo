@@ -2543,6 +2543,7 @@
     const askBox = el('div', 'ask'); box.appendChild(askBox);
     const propLbl = el('div', 'section-label', 'Propuesta de correo'); box.appendChild(propLbl);
     const ta = document.createElement('textarea'); ta.id = 'rp-' + m.id; ta.setAttribute('aria-label', 'Texto de la respuesta');
+    let showProp = () => {};
     const preSug = state.drafts[m.id] == null && !r.texto && !!m.sugerida;
     ta.value = state.drafts[m.id] != null ? state.drafts[m.id] : (r.texto || m.sugerida || '');
     ta.placeholder = 'Aquí aparece el correo que te propongo. También puedes escribirlo tú.';
@@ -2566,7 +2567,7 @@
 
       const run = async (instruction, btn) => {
         if (!sample) { setStatus('La redacción con Claude no está disponible aquí.', true); return; }
-        btn.disabled = true; setStatus('Claude está redactando…');
+        btn.disabled = true; showProp(); setStatus('Claude está redactando…');
         const actual = ta.value.trim();
         const prompt = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Cierra solo con «Un saludo,» y NO pongas su nombre ni firma debajo (Outlook añade su firma electrónica).\n\nCORREO AL QUE SE RESPONDE:\n' + mailContext(m) + '\n\n' + (actual ? 'BORRADOR ACTUAL:\n' + actual + '\n\nINSTRUCCIÓN DE JAIME PARA CAMBIARLO:\n' + instruction : (instruction ? 'INDICACIONES DE JAIME:\n' + instruction : 'Propón la respuesta más útil.')) + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en las indicaciones: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
         try {
@@ -2660,8 +2661,15 @@
     }
     if (inPane) {
       head.remove(); sumLbl.remove(); sumBar.remove(); sumOut.remove();
-      box.insertBefore(el('div', 'section-label', 'Respuesta sugerida'), ta); propLbl.remove();
-      box.appendChild(askBox);
+      // la respuesta sugerida (y sus botones) va en su propio bloque; si no te piden nada y no hay texto, no se enseña
+      // hasta que pidas un correo en «¿Qué quieres contestar?»
+      const prop = el('div', 'prop-wrap'); box.insertBefore(prop, propLbl); propLbl.remove();
+      prop.appendChild(el('div', 'section-label', 'Respuesta sugerida'));
+      let nx = prop.nextSibling; while (nx) { const nn = nx.nextSibling; if (nx !== askBox) prop.appendChild(nx); nx = nn; }
+      prop.hidden = !locked && !isDecision(m) && !ta.value.trim();
+      showProp = () => { if (prop.hidden) { prop.hidden = false; requestAnimationFrame(grow); } };
+      // si te piden algo: primero la respuesta sugerida y debajo «¿Qué quieres contestar?»; si no, al revés (la respuesta sale debajo cuando la pides)
+      if (isDecision(m)) box.insertBefore(askBox, prop.nextSibling); else box.insertBefore(askBox, prop);
       box.appendChild(el('div', 'section-label', 'Correo'));
       box.appendChild(full); if (adj) box.appendChild(adj);
     }
