@@ -390,3 +390,10 @@ body:has(.login) .sq-bar { display: none; }
 #meet-notes .mt-note .mt-snip, #meet-notes .mt-note .title { overflow: hidden; text-overflow: ellipsis; }
 /* Chips «Esperando a …» de las tareas: se recortan con … en vez de salirse */
 .tmeta .mc { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Textos largos (enlaces, nombres de archivo, palabras sin espacios): se parten en vez de salirse */
+.item .title, .item .detail, .prep-tx, .prep-li, .mail-body, .summary, .tmsg, .cu-notes, .note { overflow-wrap: anywhere; }
+/* Fold abierto / tablet (menú lateral + poco ancho): los botones de cada tarea bajan debajo del texto */
+@media (max-width: 1199px) {
+  #view-tareas .list > .item { grid-template-columns: auto minmax(0, 1fr); }
+  #view-tareas .list > .item > .actions { grid-column: 2 / -1; justify-content: flex-start; }
+}
