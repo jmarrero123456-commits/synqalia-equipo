@@ -452,7 +452,8 @@ body:has(.login) .sq-bar { display: none; }
 .item.mrow.mob-open > .mob-foot .mob-later { align-self: flex-start; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 560px) {
   .app:has(> #view-correo:not([hidden])) { padding-left: 0 !important; padding-right: 0 !important; }
-  #view-correo > :not(.mail-split):not(#mail-split) { padding-left: 10px; padding-right: 10px; }
+  #view-correo > .card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; padding: 10px 0 0 !important; }
+  #view-correo > .card > :not(#mail-split) { margin-left: 10px; margin-right: 10px; }
   #view-correo .list.inbox { border-left: 0; border-right: 0; border-radius: 0; }
   #view-correo .item.mrow { gap: 0 8px; padding-right: 8px; }
   #view-correo .item.mrow.mob-open { padding-bottom: 12px; }
