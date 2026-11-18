@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118g">
+<link rel="stylesheet" href="synqalia.css?v=20261118h">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -2543,7 +2543,7 @@
     const askBox = el('div', 'ask'); box.appendChild(askBox);
     const propLbl = el('div', 'section-label', 'Propuesta de correo'); box.appendChild(propLbl);
     const ta = document.createElement('textarea'); ta.id = 'rp-' + m.id; ta.setAttribute('aria-label', 'Texto de la respuesta');
-    let showProp = () => {};
+    let showProp = () => {}; let tLbl = null, tSug = null;
     const preSug = state.drafts[m.id] == null && !r.texto && !!m.sugerida;
     ta.value = state.drafts[m.id] != null ? state.drafts[m.id] : (r.texto || m.sugerida || '');
     ta.placeholder = 'Aquí aparece el correo que te propongo. También puedes escribirlo tú.';
@@ -2649,8 +2649,8 @@
       btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(replyOutlookBtn(m, ta, setStatus)); btns.appendChild(ready);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
       if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
-      box.appendChild(el('div', 'section-label', 'Tareas de este correo'));
-      box.appendChild(taskSuggester(m, setStatus));
+      tLbl = el('div', 'section-label', 'Pasar a tarea'); box.appendChild(tLbl);
+      tSug = taskSuggester(m, setStatus); box.appendChild(tSug);
       if (r.estado === 'error' && r.nota) { const n = el('p', 'status err', r.nota); box.appendChild(n); }
     } else {
       askBox.hidden = true;
@@ -2661,6 +2661,9 @@
     }
     if (inPane) {
       head.remove(); sumLbl.remove(); sumBar.remove(); sumOut.remove();
+      // «Pasar a tarea»: bloque propio justo debajo de los botones del correo; solo aparece al pulsar el botón (o si ya hay tareas a medias)
+      let tb = null;
+      if (tSug) { tb = el('div', 'task-block'); tb.appendChild(tLbl); tb.appendChild(tSug); tb.hidden = !((state.taskSugs || {})[m.id] || []).length; }
       // la respuesta sugerida (y sus botones) va en su propio bloque; si no te piden nada y no hay texto, no se enseña
       // hasta que pidas un correo en «¿Qué quieres contestar?»
       const prop = el('div', 'prop-wrap'); box.insertBefore(prop, propLbl); propLbl.remove();
@@ -2672,6 +2675,7 @@
       if (isDecision(m)) box.insertBefore(askBox, prop.nextSibling); else box.insertBefore(askBox, prop);
       box.appendChild(el('div', 'section-label', 'Correo'));
       box.appendChild(full); if (adj) box.appendChild(adj);
+      if (tb) box.insertBefore(tb, box.firstChild);
     }
     return box;
   }
@@ -2838,7 +2842,7 @@
         toTask.disabled = linked.has(m.id);
         toTask.addEventListener('click', async () => {
           const ts = o.pane && document.querySelector('#mail-pane .tsug');
-          if (ts && ts._addRow) { ts._addRow({titulo: m.asunto, vence: todayISO}); return; }
+          if (ts && ts._addRow) { const tb = ts.closest('.task-block'); if (tb) tb.hidden = false; ts._addRow({titulo: m.asunto, vence: todayISO}); return; }
           toTask.disabled = true;
           const ok = await addTask({persona: personaDe(m.de), titulo: m.asunto, detalle: m.de + ' — ' + m.accion, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: m.prioridad, vence: m.prioridad === 'Alta' ? todayISO : null, origen: 'correo', ref: m.id});
           if (!ok) toTask.disabled = false;
@@ -2851,7 +2855,7 @@
           back.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({posponer: null}), 'De vuelta a pendientes'));
           act.appendChild(back);
         } else if (!handled(m)) {
-          const later = el('button', 'btn ghost', 'Para mañana'); later.type = 'button';
+          const later = el('button', 'btn ghost', 'Para mañana'); later.type = 'button'; later.title = 'Lo quita de tu lista de pendientes y vuelve mañana (como posponer)';
           later.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Programado para mañana'));
           act.appendChild(later);
         }
