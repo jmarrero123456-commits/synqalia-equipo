@@ -912,7 +912,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261118i">
+<link rel="stylesheet" href="synqalia.css?v=20261118j">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118a">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -2448,6 +2448,50 @@
   }
 
   // Tareas sugeridas a partir de un correo: la IA propone de 1 a 4; Jaime las revisa, pone fecha y las crea una a una o todas
+  /* Micrófono en el título de una tarea («Pasar a tarea»): al pulsar borra la sugerencia y escucha;
+     ✓ deja lo dictado (si no se ha dicho nada, vuelve la sugerencia) · ✕ cancela y recupera la sugerencia. */
+  function tsugMic(ti, onDone) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const box = el('div', 'tf-voice tsug-voice'); box.appendChild(ti);
+    if (!SR) return box;
+    const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+    const ctl = el('div', 'tf-ctl');
+    const mic = el('button', 'tf-mic'); mic.type = 'button'; mic.title = 'Dictar otra tarea (borra la sugerida)'; mic.setAttribute('aria-label', 'Dictar la tarea'); mic.innerHTML = svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>');
+    const live = el('span', 'tf-live'); live.setAttribute('aria-hidden', 'true'); live.innerHTML = '<i></i><i></i><i></i><i></i>';
+    const x = el('button', 'tf-x'); x.type = 'button'; x.title = 'Cancelar (vuelve la sugerida)'; x.setAttribute('aria-label', 'Cancelar el dictado'); x.innerHTML = svg('<path d="M7 7l10 10M17 7 7 17"/>');
+    const ok = el('button', 'tf-ok'); ok.type = 'button'; ok.title = 'Listo'; ok.setAttribute('aria-label', 'Terminar el dictado'); ok.innerHTML = svg('<path d="m5.5 12.5 4.2 4.2L18.5 8"/>');
+    ctl.append(mic, live, x, ok); box.appendChild(ctl);
+    const S = { rec: null, want: false, prev: '', fin: '', idle: 0 };
+    const stop = (cancel) => {
+      if (!S.rec && !S.want) return;
+      if (S.rec) { S.rec.onresult = null; S.rec.onerror = null; S.rec.onend = null; }
+      S.want = false; clearTimeout(S.idle); window.__sqRecording = false;
+      try { S.rec && S.rec.stop(); } catch (e) { /* ya parado */ }
+      S.rec = null; box.classList.remove('listening');
+      const said = S.fin.replace(/\s+/g, ' ').trim();
+      ti.value = cancel || !said ? S.prev : said.charAt(0).toUpperCase() + said.slice(1);
+      ti.dispatchEvent(new Event('input'));
+      if (!cancel && said && onDone) onDone(); else ti.focus();
+    };
+    mic.addEventListener('click', () => {
+      if (window.__sqRecording) { alert('Hay una grabación o un dictado en marcha: páralo antes de dictar la tarea.'); return; }
+      S.prev = ti.value; S.fin = ''; ti.value = ''; S.want = true; window.__sqRecording = true;
+      const idle = () => { clearTimeout(S.idle); S.idle = setTimeout(() => stop(), 120000); };
+      const r = new SR(); r.lang = 'es-ES'; r.continuous = true; r.interimResults = true;
+      r.onresult = (ev) => { let interim = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) S.fin += t.trim() + ' '; else interim += t; } ti.value = (S.fin + interim).trimStart(); idle(); };
+      r.onerror = (e) => { if (['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].includes(e.error)) { stop(true); alert(e.error === 'network' ? 'El dictado necesita conexión a internet.' : 'No puedo usar el micrófono: revisa el permiso del navegador.'); } };
+      r.onend = () => { if (S.want && S.rec === r) { try { r.start(); } catch (e) { stop(); } } };
+      S.rec = r;
+      try { r.start(); } catch (e) { S.want = false; window.__sqRecording = false; ti.value = S.prev; return; }
+      box.classList.add('listening'); idle();
+    });
+    ok.addEventListener('click', () => stop(false));
+    x.addEventListener('click', () => stop(true));
+    ti.addEventListener('keydown', (e) => { if (S.want && e.key === 'Escape') { e.preventDefault(); stop(true); } });
+    box._stop = stop;
+    return box;
+  }
+
   function taskSuggester(m, setStatus) {
     const wrap = el('div', 'tsug');
     const list = el('div', 'tsug-list');
@@ -2468,6 +2512,7 @@
       const ok = el('button', 'btn primary', 'Crear'); ok.type = 'button';
       const no = el('button', 'btn ghost', '✕'); no.type = 'button'; no.title = 'Descartar'; no.setAttribute('aria-label', 'Descartar esta tarea');
       ok.addEventListener('click', async () => {
+        if (voice._stop && row.querySelector('.tf-voice.listening')) voice._stop(false);
         const titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
         if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
         row.classList.remove('needdate');
@@ -2479,10 +2524,12 @@
       no.addEventListener('click', () => { t.descartada = true; row.classList.add('done', 'gone'); row.replaceChildren(el('span', 'tsug-gone', 'Descartada: ' + (ti.value.trim() || 'tarea'))); refreshAll(); });
       di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); markQuick(); });
       ti.addEventListener('input', () => { t.titulo = ti.value; });
-      ti.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
+      ti.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !row.querySelector('.tf-voice.listening')) { e.preventDefault(); ok.click(); } });
+      // tras dictar, la fecha queda a mano: se resalta para elegir Hoy / Mañana / Viernes y pulsar «Crear»
+      const voice = tsugMic(ti, () => { row.classList.add('pickdate'); setTimeout(() => row.classList.remove('pickdate'), 2400); const q = quick.querySelector('.chip'); if (q) q.focus(); });
       if (t.creada) { list.appendChild(row); doneRow(row, t); return row; }
       if (t.descartada) { row.classList.add('done', 'gone'); row.appendChild(el('span', 'tsug-gone', 'Descartada: ' + (t.titulo || 'tarea'))); list.appendChild(row); return row; }
-      row.appendChild(ti); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
+      row.appendChild(voice); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
       const btns = el('div', 'tsug-btns'); btns.appendChild(pri); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
       list.appendChild(row); return row;
     };

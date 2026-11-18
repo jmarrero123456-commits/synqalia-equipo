@@ -377,3 +377,9 @@ body:has(.login) .sq-bar { display: none; }
 .task-block { margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, #5fe0cf 8%, var(--panel)); }
 .task-block > .section-label { margin-top: 0; }
 .tsug-quick .chip[aria-pressed="true"] { background: color-mix(in srgb, #5fe0cf 26%, transparent); border-color: #2bb3a3; color: #0b5f55; font-weight: 700; }
+
+/* «Pasar a tarea»: micrófono en el título de cada tarea (borra la sugerida y dicta otra) */
+.tsug-voice { grid-area: title; min-width: 0; }
+.tsug-voice input[type=text] { padding-right: 46px; }
+.tsug-voice.listening input[type=text] { padding-right: 128px; border-bottom: 2px solid #d93636; box-shadow: none; }
+.tsug-row.pickdate .tsug-quick .chip { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2b4fd8) 45%, transparent); transition: box-shadow .2s; }
