@@ -517,3 +517,17 @@ body:has(.login) .sq-bar { display: none; }
   #view-correo .mail-bar .tk-search input { min-height: 38px; width: 100%; box-sizing: border-box; }
   #view-correo .item.mrow { scroll-margin-top: 64px; }
 }
+
+/* ---------- Correo en el móvil: menos hueco arriba y esquinas ligeramente redondeadas ---------- */
+@media (max-width: 560px) {
+  .app:has(> #view-correo:not([hidden])) { padding-top: 0 !important; gap: 0 !important; }
+  #view-correo { gap: 0 !important; }
+  #view-correo > .card { padding-top: 8px !important; gap: 0 !important; }
+  #view-correo > .card > * { margin-top: 0 !important; }
+  #view-correo > .card > #mail-filter { margin-bottom: 6px !important; }
+  #view-correo .mail-bar { margin-bottom: 6px !important; }
+  #mail-filter > .chip { border-radius: 6px !important; height: 32px; min-height: 32px; }
+  #mail-filter .mf-btn { border-radius: 6px !important; height: 32px; }
+  #mail-filter.fopen .mf-more { border-radius: 8px; }
+  #view-correo .mail-bar .tk-search input { border-radius: 6px !important; min-height: 36px; }
+}
