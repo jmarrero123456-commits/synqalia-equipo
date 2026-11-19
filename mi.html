@@ -781,8 +781,8 @@
   @keyframes recPulse { 50% { opacity: .35; } }
   .rec-live { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #d93636 6%, var(--panel)); border: 1px solid color-mix(in srgb, #d93636 25%, var(--line)); font-size: 13px; color: var(--muted); }
   .rec-live[hidden] { display: none; }
-  .tabs .rec-tab { display: inline-block; width: 8px; height: 8px; margin-left: 7px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.28); vertical-align: middle; animation: recPulse 1.2s ease-in-out infinite; }
-  .tabs .rec-tab[hidden] { display: none; }
+  /* grabando: el nombre de la sección (y su icono) en rojo, fijo, sin parpadeo */
+  .tabs button.rec-on .tlab, .tabs button.rec-on .ti, .tabs button.rec-on[aria-selected="true"] .ti, .sq-side .tabs button.rec-on .ti, .sq-side .tabs button.rec-on[aria-selected="true"] .ti, .sq-more-panel button.rec-on, .sq-more-panel button.rec-on .ti, .tab-mas.rec-on .tlab, .tab-mas.rec-on .ti { color: #e5484d !important; }
   .cal-ev.rec { box-shadow: inset 0 0 0 2px #e5484d; padding-right: 22px; }
   .cal-ev.rec::after { content: ""; position: absolute; top: 7px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.25); animation: recPulse 1.2s ease-in-out infinite; }
   .cal-ev.rec.tiny::after { top: 50%; margin-top: -4px; width: 7px; height: 7px; }
@@ -793,7 +793,6 @@
   .rec-banner .rb-txt { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rec-banner .rb-txt small { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 6px; }
   .rec-banner .rb-stop { color: #b42323; }
-  @media (max-width: 560px) { .tabs .rec-tab { position: absolute; top: 4px; left: calc(50% - 18px); margin: 0; width: 7px; height: 7px; } }
   .rec-live .rl-dot { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: #d93636; animation: recPulse 1.2s ease-in-out infinite; }
   .rec-live .rl-txt { font-style: italic; }
   @media (max-width: 560px) { .rec-btn .t { display: none; } .rec-btn.on .t { display: inline; } }
@@ -975,9 +974,9 @@
     <button role="tab" id="tab-hoy" data-view="hoy" aria-selected="true"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg></span><span class="tlab">Hoy</span></button>
     <button role="tab" id="tab-correo" data-view="correo" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg></span><span class="tlab">Correo</span><span class="count" id="count-correo"></span></button>
     <button role="tab" id="tab-mensajes" data-view="mensajes" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/></svg></span><span class="tlab">Mensajes</span><span class="count" id="count-mensajes"></span></button>
-    <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="rec-tab" id="rec-tab-reuniones" hidden></span><span class="count" id="count-reuniones"></span></button>
+    <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Reuniones</span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
-    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="rec-tab" id="rec-tab-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
+    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="count" id="count-catchups"></span></button>
     <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
     <button role="tab" id="tab-asistente" data-view="asistente" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><span class="tlab">Asistente</span></button>
     <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="count" id="count-mas"></span></button>
@@ -4264,12 +4263,13 @@
       b.setAttribute('aria-pressed', String(on));
     });
     document.querySelectorAll('.rec-live').forEach((l) => { l.hidden = !(DICT.target && l.dataset.cu === DICT.target.id && DICT.state !== 'idle'); });
-    // punto rojo en el menú (Reuniones o Catch-ups) y aviso arriba en Reuniones mientras graba
+    // en el menú, «Reuniones» (o «Catch-ups») en rojo fijo mientras graba; en el móvil también en «Más». Aviso arriba en Reuniones
     const on = !!(DICT.target && DICT.state !== 'idle'); const inMt = on && DICT.target.pre === 'mt';
     const tip = on ? 'Grabando' + (DICT.t0 ? ' · ' + recFmt(Date.now() - DICT.t0) : '') : '';
-    const tr = $('#rec-tab-reuniones'), tc = $('#rec-tab-catchups');
-    if (tr) { tr.hidden = !inMt; tr.title = inMt ? tip : ''; }
-    if (tc) { tc.hidden = !(on && !inMt); tc.title = on && !inMt ? tip : ''; }
+    const recMark = (el, r) => { if (!el) return; el.classList.toggle('rec-on', r); if (r) el.title = tip; else if ((el.title || '').startsWith('Grabando')) el.title = ''; };
+    recMark($('#tab-reuniones'), inMt); recMark(document.querySelector('#sq-more [data-go="reuniones"]'), inMt);
+    recMark($('#tab-catchups'), on && !inMt); recMark(document.querySelector('#sq-more [data-go="catchups"]'), on && !inMt);
+    recMark($('#tab-mas'), on);
     // punto rojo en la propia reunión: en el calendario (Reuniones y Hoy) y en el título de la reunión abierta
     const mo0 = inMt && DICT.target.mo; const key = mo0 ? mo0.ev.fecha + '|' + mo0.ev.inicio : null;
     window.__sqRecKey = key;

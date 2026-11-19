@@ -182,7 +182,6 @@ body:has(.login) .sq-bar { display: none; }
 .item.mitem:not(.mrow) > .actions { grid-column: 2; justify-content: flex-start; }
 .item.mitem:not(.mrow) > .actions:empty { display: none; }
 .item.mitem:not(.mrow) > .composer { grid-column: 2; }
-@media (min-width: 861px) { body.sq-mini .sq-side .tabs .rec-tab { position: absolute; top: 6px; left: 10px; margin: 0; } }
 
 /* ---------- Mensajes (Teams; más canales después) ---------- */
 .app > main#view-mensajes { max-width: none; }
