@@ -765,6 +765,11 @@
   #cu-hist-card .cu-h-head .btn { padding: 6px 10px; margin-left: 0; }
   #cu-hist-card .cu-h-head .cu-h-st { margin-left: auto; }
   .cu-h-snip { margin: 4px 0 0 22px; font-size: 13px; color: var(--muted); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nf-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .nf-head label { margin: 0; }
+  .nf-toggle { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .nf-toggle:hover { color: var(--ink); }
+  .field.folded > :not(.nf-head) { display: none !important; }
   .pend-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 6px; }
   .pend-l { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
   .pend-chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
@@ -3911,6 +3916,14 @@
     nf.appendChild(mk); nf.appendChild(ta);
     const live = el('div', 'rec-live'); live.dataset.cu = id; live.hidden = true; live.appendChild(el('span', 'rl-dot')); live.appendChild(el('span', 'rl-txt', 'Escuchando…')); nf.appendChild(live);
     nf.appendChild(el('p', 'note pend-hint', 'Ponte en la línea y pulsa un nombre: queda como «→ Pendiente de …». Saldrá así en el resumen, en las tareas propuestas y en el correo.'));
+    // En la sala de la reunión: contraer/desplegar las notas y la transcripción (la grabación sigue escribiendo aunque esté contraído)
+    if (pre === 'mt') {
+      const lr = el('div', 'nf-head'); nf.insertBefore(lr, nl); lr.appendChild(nl);
+      const tg = el('button', 'nf-toggle'); tg.type = 'button';
+      const apply = () => { const c = !!state.mtNotesFolded; nf.classList.toggle('folded', c); tg.textContent = c ? 'Mostrar ▾' : 'Contraer ▴'; tg.title = c ? 'Desplegar las notas y la transcripción' : 'Contraer las notas y la transcripción'; tg.setAttribute('aria-expanded', String(!c)); };
+      tg.addEventListener('click', () => { state.mtNotesFolded = !state.mtNotesFolded; apply(); });
+      lr.appendChild(tg); apply();
+    }
     card.appendChild(nf);
     // Adjuntos: pegar imagen, arrastrar o elegir archivo
     const attBox = el('div', 'att-box'); card.appendChild(attBox);
