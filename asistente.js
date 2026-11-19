@@ -211,7 +211,7 @@
     S.inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) { e.preventDefault(); ask(S.inp.value); } });
     root.querySelector('.sqa-ask').addEventListener('submit', (e) => { e.preventDefault(); ask(S.inp.value); });
     const mic = root.querySelector('.sqa-mic'); if (mic) { if (S.rec) { mic.classList.add('on'); mic.innerHTML = IC.stop; } mic.addEventListener('click', () => toggleMic()); }
-    root.querySelectorAll('.sqa-new').forEach((b) => b.addEventListener('click', () => { if (S.busy) return; S.cur = null; S.showList = false; render(); toggleMic(); }));
+    root.querySelectorAll('.sqa-new').forEach((b) => b.addEventListener('click', () => { if (S.busy) return; S.cur = null; S.showList = false; render(); }));
     root.querySelector('.sqa-toggle').addEventListener('click', () => { S.showList = !S.showList; root.classList.toggle('list-open', S.showList); });
     root.querySelectorAll('.sqa-h').forEach((el) => {
       el.querySelector('.sqa-h-open').addEventListener('click', () => { if (S.busy) return; S.cur = S.chats.find((h) => h.id === el.dataset.id) || null; S.showList = false; render(); scrollEnd(); });
@@ -244,13 +244,14 @@
 
   await loadChats();
   render();
-  // Entrar en el Asistente (botón ✨, menú lateral o «Más»): consulta nueva, vacía, y empieza a escuchar.
+  // Entrar en el Asistente (botón ✨, menú lateral o «Más»): consulta nueva y vacía. No escucha hasta pulsar el micrófono;
+  // al pulsarlo otra vez se para y la pregunta se envía sola.
   // Las consultas anteriores siguen en «Consultas».
   window.__sqAsistenteGo = () => {
     if (S.busy) return;
     if (S.rec) { S.rec.want = false; S.rec.send = false; try { S.rec.r.stop(); } catch (e) {} }
     S.cur = null; S.showList = false; if (S.inp) S.inp.value = '';
-    render(); toggleMic();
+    render();
   };
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-view="asistente"], [data-go="asistente"]'); if (t) window.__sqAsistenteGo(); });
   // si se sale del Asistente con el micrófono abierto, se para sin enviar
