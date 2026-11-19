@@ -3031,7 +3031,13 @@
       const done = bs.find((b) => b.textContent === 'Gestionado');
       const ft = el('div', 'mob-foot');
       if (later) { later.className = 'btn ghost mob-later'; if (later.textContent === 'Para mañana') later.textContent = 'Posponer a mañana'; ft.appendChild(later); }
-      if (done) { done.className = 'btn mob-done'; done.textContent = '✓ Gestionado'; done.addEventListener('click', () => { const nx = row.nextElementSibling; state.scrollToMid = nx && nx.dataset.mid ? nx.dataset.mid : m.id; state.openReply = null; }); ft.appendChild(done); }
+      if (done) { done.className = 'btn mob-done'; done.textContent = '✓ Gestionado'; done.addEventListener('click', () => {
+          // antes que el propio «Gestionado»: recordar el correo siguiente y llevar la lista hasta él cuando se redibuje
+          const nx = row.nextElementSibling; const id = nx && nx.dataset.mid ? nx.dataset.mid : null;
+          state.scrollToMid = id; state.openReply = null;
+          const go = () => { const r = id && [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === id); if (r) r.scrollIntoView({block: 'start'}); };
+          [60, 400, 1200].forEach((t) => setTimeout(go, t));
+        }, {capture: true}); ft.appendChild(done); }
       // botones: solo «Outlook ↗» (copia la respuesta sugerida si la hay) y «Pasar a tarea»; sin «Cerrar» (se cierra tocando el remitente)
       bs.filter((b) => b.textContent === 'Cerrar' || b.textContent === 'Abrir').forEach((b) => b.remove());
       const comp = row.querySelector(':scope > .composer');
