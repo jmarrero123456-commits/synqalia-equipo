@@ -501,3 +501,19 @@ body:has(.login) .sq-bar { display: none; }
   .item.mrow.mob-open .tsug-pri .pri-opt { min-height: 40px; font-size: 13.5px; }
   .item.mrow.mob-open .tsug-btns > .btn.primary { min-height: 46px; justify-content: center; font-size: 15px; }
 }
+
+/* ---------- Correo en el móvil: filtros compactos en una línea ---------- */
+#mail-filter .lbl-s { display: none; }
+@media (max-width: 560px) {
+  #mail-filter .lbl-l { display: none; }
+  #mail-filter .lbl-s { display: inline; }
+  #mail-filter > .chip { flex: 1 1 0; min-width: 0; min-height: 34px; height: 34px; padding: 0 10px; font-size: 13.5px; white-space: nowrap; border-radius: 17px; gap: 6px; }
+  #mail-filter > .chip .count { margin: 0; }
+  #mail-filter .mf-btn { width: 40px; height: 34px; border-radius: 17px; }
+  #view-correo > .card { padding-top: 6px !important; }
+  #view-correo > .card > #mail-filter { margin-top: 0 !important; margin-bottom: 8px !important; }
+  #view-correo .mail-bar { margin: 0 10px 8px !important; width: auto !important; box-sizing: border-box; }
+  #view-correo .mail-bar .tk-search { min-width: 0; flex: 1 1 auto; box-sizing: border-box; }
+  #view-correo .mail-bar .tk-search input { min-height: 38px; width: 100%; box-sizing: border-box; }
+  #view-correo .item.mrow { scroll-margin-top: 64px; }
+}
