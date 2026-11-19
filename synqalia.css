@@ -18,7 +18,7 @@
 .app > * { order: 2; } .app > .top { order: 0; } .app .tabs { order: 1; }
 
 @media (min-width: 861px) {
-  body { overflow-x: hidden; }
+  body { overflow-x: clip; }
   .sq-side { display: flex; flex-direction: column; position: fixed; inset: 0 auto 0 0; width: 188px; z-index: 20; color: #fff;
     background: radial-gradient(900px 260px at 78% -30%, rgba(56,208,189,.16), transparent 60%), radial-gradient(700px 240px at 10% -50%, rgba(43,79,216,.22), transparent 60%), linear-gradient(180deg, var(--navy-2), var(--navy)); }
   .sq-side > .sq-brand { display: flex; align-items: center; gap: 12px; padding: 20px 18px 14px; }
