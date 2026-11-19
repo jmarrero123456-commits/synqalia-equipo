@@ -531,3 +531,15 @@ body:has(.login) .sq-bar { display: none; }
   #mail-filter.fopen .mf-more { border-radius: 8px; }
   #view-correo .mail-bar .tk-search input { border-radius: 6px !important; min-height: 36px; }
 }
+
+/* ---------- Correo en el móvil: el remitente y el asunto del correo abierto se quedan fijos arriba al bajar ---------- */
+@media (max-width: 560px) {
+  #view-correo .list.inbox, #view-correo #mail-split, #view-correo > .card { overflow: visible !important; }
+  #view-correo .item.mrow.mob-open > .mline {
+    position: sticky; top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px)); z-index: 5;
+    background: var(--panel, #fff); margin-left: -12px; padding-left: 12px; margin-right: -8px; padding-right: 8px;
+    box-shadow: 0 1px 0 var(--line), 0 6px 10px -8px rgba(0, 0, 0, .25);
+  }
+  #view-correo .item.mrow.mob-open > .mline .msub, #view-correo .item.mrow.mob-open > .mline b { white-space: normal; }
+  #view-correo .item.mrow { scroll-margin-top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px) + 4px); }
+}
