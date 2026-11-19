@@ -1077,6 +1077,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
+<link rel="stylesheet" href="lista.css?v=20261119">
 <link rel="stylesheet" href="synqalia.css?v=20261119t">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
@@ -1101,6 +1102,7 @@
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
     <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Catch-ups</span><span class="count" id="count-catchups"></span></button>
     <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
+    <button role="tab" id="tab-lista" data-view="lista" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2.2l2.2 11h10.4l2-8H6.3"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg></span><span class="tlab">Listas</span></button>
     <button role="tab" id="tab-asistente" data-view="asistente" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><span class="tlab">Asistente</span></button>
     <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="count" id="count-mas"></span></button>
     </nav>
@@ -1111,6 +1113,7 @@
       <button type="button" role="menuitem" data-go="reuniones">Reuniones <span class="count" id="more-c-reuniones"></span></button>
       <button type="button" role="menuitem" data-go="catchups">Catch-ups</button>
       <button type="button" role="menuitem" data-go="notas">Notas</button>
+      <button type="button" role="menuitem" data-go="lista">Listas</button>
       <button type="button" role="menuitem" data-go="asistente">Asistente</button>
     </div>
   </div>
@@ -1276,6 +1279,7 @@
   <!-- NOTAS (libretas) -->
   <main id="view-mensajes" class="view" hidden><p class="note">Cargando mensajes…</p></main>
   <main id="view-notas" class="view" hidden></main>
+  <main id="view-lista" class="view" hidden></main>
   <main id="view-asistente" class="view" hidden></main>
 </div>
 
@@ -1548,15 +1552,15 @@
   let db = null, sample = null, assets = null;
 
   // ---------- vistas ----------
-  const VIEWS = ['hoy', 'correo', 'mensajes', 'reuniones', 'tareas', 'catchups', 'notas', 'asistente'];
+  const VIEWS = ['hoy', 'correo', 'mensajes', 'reuniones', 'tareas', 'catchups', 'notas', 'lista', 'asistente'];
   function show(view) {
     if (view === 'captura') view = 'catchups';
     if (!VIEWS.includes(view)) view = 'hoy';
     state.view = view;
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
-    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'notas', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
+    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
+    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'notas', 'lista', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
   }
@@ -4823,6 +4827,7 @@
 })();
 </script>
 <script src="notas.js" defer></script>
+<script src="lista.js?v=20261119" defer></script>
 <script src="graph-live.js?v=20261117d" defer></script>
 <script src="mensajes.js?v=20261118b" defer></script>
 <script src="correo.js?v=20261118a" defer></script>

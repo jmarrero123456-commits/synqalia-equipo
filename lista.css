@@ -1,0 +1,86 @@
+/* Synqalia · Listas (compra por voz) */
+#view-lista { max-width: 760px; }
+#view-lista svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ls-home, .ls-list { display: grid; gap: 10px; }
+.ls-new { display: flex; align-items: center; gap: 14px; width: 100%; border: 0; border-radius: 16px; padding: 16px 18px; cursor: pointer; text-align: left;
+  background: var(--accent); color: #fff; box-shadow: var(--shadow, none); }
+.ls-new b { display: block; font-size: 18px; }
+.ls-new small { opacity: .85; font-size: 13px; }
+.ls-new-ic { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; flex: none; }
+.ls-new-ic svg { width: 26px !important; height: 26px !important; }
+.ls-card { display: flex; align-items: center; gap: 12px; width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 12px 14px; cursor: pointer; text-align: left; color: var(--ink); }
+.ls-card:hover { border-color: var(--accent); }
+.ls-card.done { opacity: .6; }
+.ls-card-ic { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.ls-card-main { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.ls-card-main b { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-card-main small { color: var(--muted); font-size: 12.5px; }
+.ls-bar { display: block; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; flex: 1; }
+.ls-bar i { display: block; height: 100%; background: var(--ok, #1f7a4c); border-radius: 3px; transition: width .25s; }
+.ls-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 8px; line-height: 1.5; }
+.ls-empty.ok { color: var(--ok, #1f7a4c); font-weight: 700; font-size: 16px; }
+
+.ls-head { display: flex; align-items: center; gap: 6px; position: relative; }
+.ls-back, .ls-more { border: 0; background: transparent; color: var(--ink); width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; flex: none; }
+.ls-back:hover, .ls-more:hover { background: var(--accent-soft); }
+.ls-title { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 21px; font-weight: 800; letter-spacing: -.01em; color: var(--ink); padding: 4px 2px; outline: none; }
+.ls-menu { position: absolute; right: 0; top: 44px; z-index: 30; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 6px; display: grid; min-width: 240px; }
+.ls-menu[hidden] { display: none; }
+.ls-menu button { border: 0; background: transparent; text-align: left; padding: 10px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; color: var(--ink); }
+.ls-menu button:hover { background: var(--accent-soft); }
+.ls-menu button.bad { color: var(--bad); }
+.ls-prog { display: flex; align-items: center; gap: 10px; }
+.ls-prog small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+.ls-mic { display: grid; gap: 10px; justify-items: center; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.ls-mic.on { border-color: #e5484d; background: color-mix(in srgb, #e5484d 6%, var(--panel)); }
+.ls-micbtn { position: relative; display: inline-flex; align-items: center; gap: 10px; border: 0; border-radius: 999px; padding: 14px 26px; font-size: 17px; cursor: pointer; background: var(--accent); color: #fff; min-height: 56px; }
+.ls-micbtn svg { width: 26px !important; height: 26px !important; }
+.ls-micbtn.on { background: #e5484d; }
+.ls-pulse { position: absolute; inset: -6px; border-radius: 999px; border: 3px solid #e5484d; animation: ls-pulse 1.4s ease-out infinite; pointer-events: none; }
+@keyframes ls-pulse { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(1.12); } }
+.ls-heard { width: 100%; max-height: 32vh; overflow: auto; font-size: 15px; line-height: 1.55; color: var(--ink); }
+.ls-heard i { color: var(--muted); }
+.ls-busy { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; padding: 10px; }
+.ls-spin { width: 18px; height: 18px; border: 2.5px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: ls-spin .8s linear infinite; }
+@keyframes ls-spin { to { transform: rotate(360deg); } }
+.ls-comment { display: flex; gap: 8px; align-items: flex-start; background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.ls-comment span { flex: 1; }
+.ls-comment button { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0; }
+.ls-comment svg { width: 16px !important; height: 16px !important; }
+
+.ls-add { display: flex; gap: 8px; }
+.ls-add-in { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 12px; padding: 11px 12px; font-size: 15px; }
+.ls-add .btn { display: grid; place-items: center; padding: 0 12px; }
+
+.ls-grp { display: grid; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.ls-grp h3, .ls-grp-t { margin: 0; padding: 9px 14px 7px; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 800; border: 0; background: transparent; text-align: left; cursor: default; }
+.ls-grp-t { cursor: pointer; width: 100%; }
+.ls-grp.ask { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
+.ls-grp.ask h3 { color: var(--warn); }
+.ls-it { display: flex; align-items: center; gap: 4px; padding: 0 6px 0 12px; border-top: 1px solid var(--line); min-height: 52px; flex-wrap: wrap; }
+.ls-ck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--muted); background: transparent; cursor: pointer; flex: none; position: relative; }
+.ls-ck[aria-pressed="true"] { background: var(--ok, #1f7a4c); border-color: var(--ok, #1f7a4c); }
+.ls-ck[aria-pressed="true"]::after { content: ''; position: absolute; left: 7px; top: 3px; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.ls-it-main { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: 0; background: transparent; text-align: left; padding: 12px 6px; cursor: pointer; color: var(--ink); }
+.ls-nm { font-size: 16px; font-weight: 600; }
+.ls-qty { font-size: 13.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 1px 7px; }
+.ls-note { font-size: 12.5px; color: var(--muted); width: 100%; }
+.ls-it.hecho .ls-nm { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.ls-it.hecho .ls-qty { opacity: .5; }
+.ls-del { border: 0; background: transparent; color: var(--muted); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; opacity: .55; }
+.ls-del:hover { opacity: 1; color: var(--bad); }
+.ls-del svg { width: 16px !important; height: 16px !important; }
+.ls-it.mirar .ls-ck, .ls-it.duda .ls-ck { border-style: dashed; border-color: var(--warn); }
+.ls-ask { display: flex; align-items: center; gap: 6px; width: 100%; padding: 0 0 10px 34px; flex-wrap: wrap; }
+.ls-q { font-size: 13px; color: var(--warn); font-weight: 700; margin-right: 4px; }
+.ls-ask button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 13px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ls-ask .ls-yes { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.ls-toast { position: fixed; left: 50%; bottom: calc(var(--sq-bar, 0px) + 24px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 200; display: flex; gap: 12px; align-items: center; max-width: 92vw; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.ls-toast button { border: 0; background: transparent; color: var(--accent-soft); font-weight: 800; cursor: pointer; }
+@media (max-width: 560px) {
+  #view-lista { padding-bottom: 90px; }
+  .ls-title { font-size: 19px; }
+  .ls-micbtn { width: 100%; justify-content: center; }
+}
