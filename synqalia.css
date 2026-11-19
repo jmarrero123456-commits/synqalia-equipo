@@ -543,3 +543,11 @@ body:has(.login) .sq-bar { display: none; }
   #view-correo .item.mrow.mob-open > .mline .msub, #view-correo .item.mrow.mob-open > .mline b { white-space: normal; }
   #view-correo .item.mrow { scroll-margin-top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px) + 4px); }
 }
+
+/* ---------- Correo en el móvil: texto de los filtros centrado (sin hueco del contador vacío) ---------- */
+@media (max-width: 560px) {
+  #mail-filter > .chip { display: inline-flex !important; align-items: center; justify-content: center; line-height: 1; padding-top: 0; padding-bottom: 0; }
+  #mail-filter > .chip > span { line-height: 1; }
+  #mail-filter .count:empty { display: none; }
+  #view-correo #mail-list > .empty, #view-correo #mail-list > p, #view-correo #mail-list > .note { padding: 12px 10px; margin: 0; }
+}
