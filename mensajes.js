@@ -8,6 +8,7 @@
    si llega uno nuevo, la firma cambia y vuelve a «Sin leer». Si el doc trae «mensajes» (lista), se pinta el hilo.
    Synqalia: mensajería interna propia (tablas chats, chat_members, chat_messages; funciones chat_list, chat_open_direct,
    chat_create_group, chat_mark_read, chat_people). Tiempo real con Realtime.
+   Synqalia admite fotos (se revisan antes de enviar), notas de voz y emoticonos: ver «fotos, notas de voz y emoticonos».
    WhatsApp: solo con WhatsApp Business (API oficial); de momento se muestra sin conectar. */
 (async () => {
   const view = document.getElementById('view-mensajes');
@@ -61,6 +62,13 @@
     send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-6 16-3-7Z"/><path d="m11 13 9-9"/></svg>',
     ext: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>',
+    cam: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    smile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="3"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z" fill="currentColor"/></svg>',
+    down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
     q: '<svg viewBox="0 0 48 48" aria-hidden="true" class="q"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="30.5" cy="44" r="3.6" class="dot"/></svg>',
   };
   const CANALES = {
@@ -128,7 +136,7 @@
     }));
   }
   async function loadMsgs(id) {
-    const { data, error } = await sb.from('chat_messages').select('id,chat_id,from_email,body,ref,created_at').eq('chat_id', id).order('created_at', { ascending: false }).limit(300);
+    const { data, error } = await sb.from('chat_messages').select('id,chat_id,from_email,body,ref,kind,media,created_at').eq('chat_id', id).order('created_at', { ascending: false }).limit(300);
     if (error) { console.warn(error); return; }
     st.msgs.set(id, (data || []).reverse());
   }
@@ -209,6 +217,7 @@
           ${c.pide ? `<span class="sqm-pide">${esc(c.pide.length > 70 ? c.pide.slice(0, 68) + '…' : c.pide)}</span>` : ''}</span></button>`).join('');
     }
     const f = (id, t) => `<button type="button" class="chip" data-f="${id}" aria-pressed="${st.f === id}">${t}</button>`;
+    const oldPane = root.querySelector('.sqm-pane');
     root.innerHTML = `<div class="sqm-canal${st.open && wide() ? ' split' : ''}">
       <div class="sqm-side">
         <div class="sqm-stick">
@@ -225,6 +234,7 @@
       </div>
       <div class="sqm-pane"></div>
     </div>`;
+    if (oldPane && st.open && wide()) root.querySelector('.sqm-pane').replaceWith(oldPane);
     if (st.open) paintConv();
   }
 
@@ -239,12 +249,14 @@
     return overlay;
   }
   function closeConv(fromPop) {
+    media.reset();
     st.open = null; st.keep.clear();
     if (overlay) { overlay.remove(); overlay = null; document.body.classList.remove('sqm-lock'); }
     if (!fromPop && history.state && history.state.sqm) history.back();
     paint();
   }
-  addEventListener('popstate', () => { if (st.open && !wide()) closeConv(true); });
+  let viewerClose = null; // visor de fotos abierto: el botón atrás del móvil lo cierra a él, no la conversación
+  addEventListener('popstate', () => { if (viewerClose) { viewerClose(true); return; } if (st.open && !wide()) closeConv(true); });
 
   async function openConv(id) {
     st.open = id; st.keep.add(id);
@@ -281,6 +293,7 @@
       ? msgs.map((m) => `<div class="sqm-b ${m.mio ? 'me' : ''}">${!m.mio && m.de ? `<span class="sqm-bwho">${esc(m.de)}</span>` : ''}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(m.hora || '')}</span></div>`).join('')
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
          <p class="sqm-info">Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.</p>`;
+    host.dataset.cid = 't:' + id;
     host.innerHTML = `<div class="sqm-conv">
       ${convHead(d.nombre || 'Chat de Teams', 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
       ${d.accion ? `<div class="sqm-ask${isTrue(d.pide) ? ' pide' : ''}"><span class="sqm-pide">${isTrue(d.pide) ? 'Te pide algo' : 'Resumen'}</span><p>${esc(d.accion)}</p></div>` : ''}
@@ -294,41 +307,88 @@
       </div></div>`;
   }
 
+  function msgHtml(m, c, mine, showWho, seen) {
+    const who = showWho ? `<span class="sqm-bwho">${esc(personName(m.from_email))}</span>` : '';
+    const tm = `<span class="sqm-bt">${m.sending ? (m.sending === 'error' ? 'No se ha enviado' : 'Enviando…') : hhmm(m.created_at) + seen}</span>`;
+    const md = m.media || {};
+    if (m.kind === 'foto' && md.path) {
+      const ratio = md.w && md.h ? Math.max(0.5, Math.min(1.6, md.h / md.w)) : 0.75;
+      return `<div class="sqm-b sqm-bfoto ${mine ? 'me' : ''}">${who}<button type="button" class="sqm-photo" data-path="${esc(md.path)}" aria-label="Ver la foto" style="aspect-ratio: 1 / ${ratio.toFixed(3)}"><img alt="Foto" data-src="${esc(md.path)}"${m.local ? ` src="${esc(m.local)}"` : ''}></button>${m.body ? `<p>${esc(m.body)}</p>` : ''}${tm}</div>`;
+    }
+    if (m.kind === 'audio' && md.path) {
+      const peaks = Array.isArray(md.peaks) && md.peaks.length ? md.peaks : Array.from({ length: 36 }, (_, i) => 0.3 + 0.25 * Math.abs(Math.sin(i * 1.7)));
+      return `<div class="sqm-b sqm-baudio ${mine ? 'me' : ''}">${who}<div class="sqm-audio" data-path="${esc(md.path)}" data-dur="${Number(md.dur) || 0}">
+        <button type="button" class="sqm-play" aria-label="Reproducir nota de voz">${ICON.play}</button>
+        <span class="sqm-wave" aria-hidden="true">${peaks.map((v) => `<i style="height:${Math.round(18 + 82 * Math.max(0, Math.min(1, v)))}%"></i>`).join('')}</span>
+        <span class="sqm-adur">${fmtDur(md.dur)}</span></div>${tm}</div>`;
+    }
+    return `<div class="sqm-b ${mine ? 'me' : ''}">${who}<p>${esc(m.body)}</p>${tm}</div>`;
+  }
+  const fmtDur = (d) => { d = Math.max(0, Math.round(Number(d) || 0)); return Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0'); };
+
+  function threadHtml(c) {
+    const msgs = st.msgs.get(c.id);
+    const members = c.members || [];
+    if (!msgs) return '<p class="note">Cargando…</p>';
+    if (!msgs.length) return `<p class="sqm-info">${c.kind === 'espacio' ? 'Este es el chat del grupo de trabajo. Todo lo que escribas aquí lo ven todas las personas del grupo.' : 'Aún no hay mensajes. Escribe el primero.'}</p>`;
+    let html = '', lastDay = '', lastFrom = '';
+    const others = members.filter((m) => m.email !== me);
+    const myLast = [...msgs].reverse().find((m) => m.from_email === me && !m.sending);
+    msgs.forEach((m) => {
+      const day = new Date(m.created_at).toDateString();
+      if (day !== lastDay) { html += `<p class="sqm-day">${esc(diaDe(m.created_at))}</p>`; lastDay = day; lastFrom = ''; }
+      const mine = m.from_email === me;
+      let seen = '';
+      if (mine && myLast && m.id === myLast.id && others.length) {
+        const who = others.filter((o) => o.read && new Date(o.read) >= new Date(m.created_at)).map((o) => o.name.split(' ')[0]);
+        seen = who.length ? (who.length === others.length && others.length > 1 ? ' · Visto por todos' : ' · Visto por ' + who.join(' y ')) : ' · Enviado';
+      }
+      html += msgHtml(m, c, mine, !mine && c.kind !== 'directo' && m.from_email !== lastFrom, seen);
+      lastFrom = m.from_email;
+    });
+    return html;
+  }
+
   function paintSynqConv(host) {
     const id = st.open, c = st.chats.find((x) => x.id === id);
     if (!c) { closeConv(); return; }
-    const msgs = st.msgs.get(id);
     const members = c.members || [];
     const sub = c.kind === 'directo' ? 'Chat de Synqalia' : `${c.kind === 'espacio' ? 'Grupo de trabajo' : 'Grupo'} · ${members.map((m) => (m.email === me ? 'tú' : m.name.split(' ')[0])).join(', ')}`;
-    let html = '';
-    if (!msgs) html = '<p class="note">Cargando…</p>';
-    else if (!msgs.length) html = `<p class="sqm-info">${c.kind === 'espacio' ? 'Este es el chat del grupo de trabajo. Todo lo que escribas aquí lo ven todas las personas del grupo.' : 'Aún no hay mensajes. Escribe el primero.'}</p>`;
-    else {
-      let lastDay = '', lastFrom = '';
-      const others = members.filter((m) => m.email !== me);
-      const myLast = [...msgs].reverse().find((m) => m.from_email === me);
-      msgs.forEach((m) => {
-        const day = new Date(m.created_at).toDateString();
-        if (day !== lastDay) { html += `<p class="sqm-day">${esc(diaDe(m.created_at))}</p>`; lastDay = day; lastFrom = ''; }
-        const mine = m.from_email === me;
-        let seen = '';
-        if (mine && myLast && m.id === myLast.id && others.length) {
-          const who = others.filter((o) => o.read && new Date(o.read) >= new Date(m.created_at)).map((o) => o.name.split(' ')[0]);
-          seen = who.length ? (who.length === others.length && others.length > 1 ? ' · Visto por todos' : ' · Visto por ' + who.join(' y ')) : ' · Enviado';
-        }
-        html += `<div class="sqm-b ${mine ? 'me' : ''}">${!mine && c.kind !== 'directo' && m.from_email !== lastFrom ? `<span class="sqm-bwho">${esc(personName(m.from_email))}</span>` : ''}<p>${esc(m.body)}</p><span class="sqm-bt">${hhmm(m.created_at)}${seen}</span></div>`;
-        lastFrom = m.from_email;
-      });
+    if (host.dataset.cid !== id || !host.querySelector('.sqm-compose')) {
+      host.dataset.cid = id;
+      host.innerHTML = `<div class="sqm-conv">
+        ${convHead(chatTitle(c), sub, 'synqalia')}
+        <div class="sqm-thread"></div>
+        <div class="sqm-foot">
+          <div class="sqm-emo" hidden></div>
+          <div class="sqm-tray" hidden></div>
+          <form class="sqm-compose" data-act="synq-send">
+            <button type="button" class="sqm-cb" data-act="emoji" aria-label="Emoticonos" aria-expanded="false">${ICON.smile}</button>
+            <button type="button" class="sqm-cb" data-act="foto" aria-label="Enviar fotos">${ICON.cam}</button>
+            <input type="file" class="sqm-file" accept="image/*" multiple hidden>
+            <label class="sr" for="sqm-in">Mensaje</label>
+            <textarea id="sqm-in" rows="1" placeholder="${c.kind === 'directo' ? 'Escribe un mensaje…' : 'Escribe al grupo…'}"></textarea>
+            <button type="button" class="sqm-send sqm-mic" data-act="grabar" aria-label="Grabar nota de voz">${ICON.mic}</button>
+            <button type="submit" class="sqm-send sqm-go" aria-label="Enviar">${ICON.send}</button>
+          </form>
+          <div class="sqm-rec" hidden>
+            <button type="button" class="sqm-ib sqm-rec-x" data-act="rec-cancel" aria-label="Cancelar la grabación">${ICON.trash}</button>
+            <span class="sqm-rec-dot" aria-hidden="true"></span><span class="sqm-rec-t" aria-live="off">0:00</span>
+            <span class="sqm-rec-wave" aria-hidden="true"></span>
+            <button type="button" class="sqm-send" data-act="rec-send" aria-label="Enviar la nota de voz">${ICON.send}</button>
+          </div>
+        </div></div>`;
+      media.syncCompose(host);
+      media.paintTray(host);
+    } else {
+      const sp = host.querySelector('.sqm-ctit span'); if (sp) sp.textContent = sub;
     }
-    const prevIn = host.querySelector('#sqm-in')?.value || '';
-    host.innerHTML = `<div class="sqm-conv">
-      ${convHead(chatTitle(c), sub, 'synqalia')}
-      <div class="sqm-thread">${html}</div>
-      <div class="sqm-foot"><form class="sqm-compose" data-act="synq-send"><label class="sr" for="sqm-in">Mensaje</label>
-        <textarea id="sqm-in" rows="1" placeholder="${c.kind === 'directo' ? 'Escribe un mensaje…' : 'Escribe al grupo…'}"></textarea>
-        <button type="submit" class="sqm-send" aria-label="Enviar">${ICON.send}</button></form></div></div>`;
-    const ta = host.querySelector('#sqm-in'); if (prevIn) { ta.value = prevIn; grow(ta); }
-    const th = host.querySelector('.sqm-thread'); th.scrollTop = th.scrollHeight;
+    const th = host.querySelector('.sqm-thread');
+    const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 80 || !th.dataset.done;
+    th.innerHTML = threadHtml(c);
+    th.dataset.done = '1';
+    media.hydrate(th);
+    if (atBottom) th.scrollTop = th.scrollHeight;
   }
 
   function grow(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; }
@@ -373,6 +433,251 @@
     });
   }
 
+
+  /* ---------- fotos, notas de voz y emoticonos (chat de Synqalia) ----------
+     Archivos en Storage, cubo privado «chat», ruta <id del chat>/<uuid>.<ext> (solo lo ven los integrantes del chat).
+     El mensaje lleva kind ('foto' | 'audio') y media {path, mime, w, h, size | dur, peaks}. Se muestran con enlaces firmados de 1 h. */
+  const EMOJIS = {
+    'Caras': '😀 😃 😄 😁 😆 😅 😂 🤣 😊 🙂 😉 😍 😘 😎 🤩 🥳 🤔 🤨 😐 😶 🙄 😏 😬 😮 😯 😲 😴 😌 😜 🤪 😝 🤤 😒 😓 😔 😕 🙃 🤑 😷 🤒 🤕 🤧 🥵 🥶 😱 😨 😰 😥 😢 😭 😤 😡 🤬 🤯 😳 🥺 🤗 🤭 🤫 😇 🫡 🫠 🙈 🙉 🙊',
+    'Gestos': '👍 👎 👌 🤌 ✌️ 🤞 🤝 🙏 👏 🙌 👐 💪 👋 🤙 👊 ✊ 👉 👈 👆 👇 ☝️ ✋ 🖐️ 🫶 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 ❣️ 💯 🔥 ✨ ⭐ 🌟 🎉 🎊',
+    'Trabajo': '✅ ☑️ ❌ ⚠️ ❗ ❓ ⏰ ⏳ 📅 📆 📌 📍 📎 📝 📊 📈 📉 💼 📁 📂 🗂️ 📧 📞 📱 💻 🖥️ 🖨️ 💡 🔑 🔒 💶 💰 🧾 🏢 🏬 🚗 ✈️ 🚀 🏁 🎯 🛒 📦 🧴 💇 💇‍♂️ 💈 ✂️ 💅 🪮',
+    'Otros': '☕ 🍵 🥐 🍕 🍔 🍷 🍾 🥂 🎂 🎁 🌞 🌧️ ⛅ 🌈 🌴 🏖️ ⚽ 🏆 🎵 📷 🐶 🐱 🌹 🌻 🍀 👀 💤 🆗 🆕 🔝 ➡️ ⬅️ 🔄 ➕ ➖',
+  };
+  const media = (() => {
+    const urls = new Map(); // ruta → {url, exp}
+    const tray = []; // fotos preparadas para enviar: {blob, url, w, h}
+    let rec = null; // grabación en curso
+    let audio = null, audioPath = null, audioEl = null;
+
+    async function signed(path) {
+      const hit = urls.get(path);
+      if (hit && hit.exp > Date.now() + 60000) return hit.url;
+      const { data, error } = await sb.storage.from('chat').createSignedUrl(path, 3600);
+      if (error || !data) throw error || new Error('sin enlace');
+      urls.set(path, { url: data.signedUrl, exp: Date.now() + 3600 * 1000 });
+      return data.signedUrl;
+    }
+    function hydrate(scope) {
+      scope.querySelectorAll('img[data-src]').forEach(async (img) => {
+        if (img.getAttribute('src') && !img.getAttribute('src').startsWith('blob:')) return;
+        try { const u = await signed(img.dataset.src); const pre = new Image(); pre.onload = () => { img.src = u; }; pre.src = u; } catch { img.alt = 'No se ha podido cargar la foto'; }
+      });
+      if (audioPath) { const el = scope.querySelector(`.sqm-audio[data-path="${CSS.escape(audioPath)}"]`); if (el) { audioEl = el; setPlayUI(); } }
+    }
+
+    /* --- redacción: micrófono si no hay nada que enviar, flecha si hay texto o fotos --- */
+    function syncCompose(host) {
+      const f = host?.querySelector('.sqm-compose[data-act="synq-send"]'); if (!f) return;
+      const has = !!f.querySelector('textarea').value.trim() || tray.length > 0;
+      f.classList.toggle('has', has);
+    }
+
+    /* --- emoticonos --- */
+    const recent = () => { try { return JSON.parse(localStorage.getItem('sq-emoji-recent') || '[]'); } catch { return []; } };
+    function toggleEmoji(host, force) {
+      const box = host.querySelector('.sqm-emo'), btn = host.querySelector('[data-act="emoji"]');
+      const open = force ?? box.hidden;
+      if (open) {
+        const r = recent();
+        const cats = (r.length ? [['Recientes', r]] : []).concat(Object.entries(EMOJIS).map(([k, v]) => [k, v.split(' ')]));
+        box.innerHTML = `<div class="sqm-emo-tabs" role="tablist">${cats.map(([k], i) => `<button type="button" role="tab" data-emocat="${i}" aria-selected="${i === 0}">${esc(k)}</button>`).join('')}</div>
+          <div class="sqm-emo-grid">${cats.map(([k, list], i) => `<div class="sqm-emo-sec" data-sec="${i}"${i ? ' hidden' : ''}>${list.map((e) => `<button type="button" data-emo="${esc(e)}" aria-label="${esc(e)}">${esc(e)}</button>`).join('')}</div>`).join('')}</div>`;
+      }
+      box.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    }
+    function insertEmoji(host, e) {
+      const ta = host.querySelector('#sqm-in');
+      const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? ta.value.length;
+      ta.value = ta.value.slice(0, a) + e + ta.value.slice(b);
+      ta.selectionStart = ta.selectionEnd = a + e.length;
+      if (matchMedia('(pointer: fine)').matches) ta.focus();
+      grow(ta); syncCompose(host);
+      try { const r = [e, ...recent().filter((x) => x !== e)].slice(0, 24); localStorage.setItem('sq-emoji-recent', JSON.stringify(r)); } catch {}
+    }
+
+    /* --- fotos: se reducen a 1600 px (JPEG) antes de subir; se revisan en la bandeja antes de enviar --- */
+    async function shrink(file) {
+      const bmp = await (window.createImageBitmap ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null) : null);
+      let w, h, src = bmp;
+      if (!bmp) { src = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = URL.createObjectURL(file); }); }
+      w = src.width; h = src.height;
+      const k = Math.min(1, 1600 / Math.max(w, h)); const W = Math.round(w * k), H = Math.round(h * k);
+      if (file.type === 'image/gif' && file.size < 8e6) return { blob: file, w, h, mime: 'image/gif', ext: 'gif' };
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      cv.getContext('2d').drawImage(src, 0, 0, W, H);
+      const blob = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.84));
+      return { blob, w: W, h: H, mime: 'image/jpeg', ext: 'jpg' };
+    }
+    async function addFiles(host, files) {
+      const list = [...files].filter((f) => /^image\//.test(f.type)).slice(0, Math.max(0, 10 - tray.length));
+      if (!list.length) return;
+      for (const f of list) {
+        try { const r = await shrink(f); r.url = URL.createObjectURL(r.blob); tray.push(r); } catch (e) { console.warn(e); alert('No se ha podido abrir una de las fotos.'); }
+      }
+      paintTray(host); syncCompose(host);
+    }
+    function paintTray(host) {
+      const box = host?.querySelector('.sqm-tray'); if (!box) return;
+      box.hidden = !tray.length;
+      box.innerHTML = tray.length ? `<div class="sqm-tray-row">${tray.map((t, i) => `<span class="sqm-thumb"><img src="${esc(t.url)}" alt="Foto ${i + 1}"><button type="button" data-untray="${i}" aria-label="Quitar la foto ${i + 1}">${ICON.x}</button></span>`).join('')}
+        ${tray.length < 10 ? `<button type="button" class="sqm-thumb add" data-act="foto" aria-label="Añadir más fotos">+</button>` : ''}</div>
+        <p class="sqm-hint">${tray.length === 1 ? '1 foto lista' : tray.length + ' fotos listas'}. Si escribes algo, va como pie de foto. Pulsa enviar cuando las hayas revisado.</p>` : '';
+    }
+    function untray(host, i) { const t = tray.splice(i, 1)[0]; if (t) URL.revokeObjectURL(t.url); paintTray(host); syncCompose(host); }
+
+    async function upload(chatId, blob, mime, ext) {
+      const path = `${chatId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await sb.storage.from('chat').upload(path, blob, { contentType: mime, upsert: false });
+      if (error) throw error;
+      return path;
+    }
+    async function insertMsg(row) {
+      const { data, error } = await sb.from('chat_messages').insert(row).select('id,chat_id,from_email,body,ref,kind,media,created_at').single();
+      if (error) throw error;
+      return data;
+    }
+    function pushLocal(id, m) { st.msgs.set(id, [...(st.msgs.get(id) || []), m]); paintConv(); }
+    function settle(id, tempId, data) {
+      const arr = (st.msgs.get(id) || []).filter((m) => m.id !== tempId);
+      if (data && !arr.some((m) => m.id === data.id)) arr.push(data);
+      st.msgs.set(id, arr);
+      const c = st.chats.find((x) => x.id === id);
+      if (c && data) { c.last_at = data.created_at; c.last_text = data.kind === 'foto' ? '📷 ' + (data.body || 'Foto') : data.kind === 'audio' ? '🎤 Nota de voz' : data.body; c.last_from = me; }
+    }
+    function fail(id, tempId) { const m = (st.msgs.get(id) || []).find((x) => x.id === tempId); if (m) m.sending = 'error'; paintConv(); }
+
+    async function sendTray(id, caption) {
+      const items = tray.splice(0); paintTray(convHost()); syncCompose(convHost());
+      for (let i = 0; i < items.length; i++) {
+        const t = items[i], temp = 'tmp' + Date.now() + i, body = i === 0 ? caption : '';
+        pushLocal(id, { id: temp, chat_id: id, from_email: me, body, kind: 'foto', media: { path: 'local', w: t.w, h: t.h }, local: t.url, created_at: new Date().toISOString(), sending: true });
+        try {
+          const path = await upload(id, t.blob, t.mime, t.ext);
+          urls.set(path, { url: t.url, exp: Date.now() + 3000 * 1000 }); // mientras tanto se ve la copia local
+          const data = await insertMsg({ chat_id: id, body, kind: 'foto', media: { path, mime: t.mime, w: t.w, h: t.h, size: t.blob.size } });
+          settle(id, temp, data);
+        } catch (e) { console.warn(e); fail(id, temp); alert('No se ha podido enviar una foto: ' + (e.message || e)); }
+      }
+      paint();
+    }
+
+    /* --- notas de voz --- */
+    const pickMime = () => ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+    async function startRec(host) {
+      if (rec) return;
+      if (window.__sqRecording) { alert('Hay una grabación o un dictado en marcha en otra sección: páralo antes de grabar una nota de voz.'); return; }
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { alert('Este navegador no permite grabar audio.'); return; }
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+      catch { alert('Synqalia necesita permiso para usar el micrófono. Actívalo en el candado de la barra de direcciones.'); return; }
+      const mime = pickMime();
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      rec = { mr, stream, ctx, an, buf, chunks: [], levels: [], t0: Date.now(), host, cancel: false, raf: 0, tick: 0 };
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) rec?.chunks.push(e.data); };
+      mr.start(250);
+      window.__sqRecording = true;
+      host.querySelector('.sqm-compose').hidden = true;
+      host.querySelector('.sqm-emo').hidden = true;
+      const box = host.querySelector('.sqm-rec'); box.hidden = false;
+      const wave = box.querySelector('.sqm-rec-wave'); wave.innerHTML = '<i></i>'.repeat(28);
+      const bars = [...wave.children], tEl = box.querySelector('.sqm-rec-t');
+      const loop = () => {
+        if (!rec) return;
+        an.getByteTimeDomainData(buf);
+        let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+        const lvl = Math.min(1, Math.sqrt(sum / buf.length) * 3.2);
+        if (++rec.tick % 3 === 0) { rec.levels.push(lvl); const last = rec.levels.slice(-bars.length); bars.forEach((b, i) => { const v = last[i - (bars.length - last.length)] ?? 0; b.style.height = Math.round(12 + 88 * v) + '%'; }); }
+        const secs = (Date.now() - rec.t0) / 1000; tEl.textContent = fmtDur(secs);
+        if (secs >= 300) { stopRec(true); return; } // máximo 5 minutos: se envía sola
+        rec.raf = requestAnimationFrame(loop);
+      };
+      loop();
+    }
+    async function stopRec(send) {
+      if (!rec) return;
+      const r = rec; rec = null;
+      cancelAnimationFrame(r.raf);
+      const dur = (Date.now() - r.t0) / 1000;
+      const done = new Promise((ok) => { r.mr.onstop = ok; });
+      try { r.mr.stop(); } catch {}
+      await done;
+      r.stream.getTracks().forEach((t) => t.stop()); r.ctx.close().catch(() => {});
+      window.__sqRecording = false;
+      const host = convHost();
+      if (host) { const box = host.querySelector('.sqm-rec'); if (box) box.hidden = true; const f = host.querySelector('.sqm-compose'); if (f) f.hidden = false; }
+      if (!send || !st.open || dur < 0.8) return;
+      const id = st.open;
+      const mime = (r.mr.mimeType || r.chunks[0]?.type || 'audio/webm').split(';')[0];
+      const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
+      const blob = new Blob(r.chunks, { type: mime });
+      const n = 36, L = r.levels.length || 1, peaks = Array.from({ length: n }, (_, i) => { const seg = r.levels.slice(Math.floor(i * L / n), Math.floor((i + 1) * L / n) || undefined); return Math.round(100 * (seg.length ? Math.max(...seg) : 0.2)) / 100; });
+      const temp = 'tmp' + Date.now();
+      const localUrl = URL.createObjectURL(blob);
+      pushLocal(id, { id: temp, chat_id: id, from_email: me, body: '', kind: 'audio', media: { path: 'local:' + temp, dur: Math.round(dur), peaks }, created_at: new Date().toISOString(), sending: true });
+      try {
+        const path = await upload(id, blob, mime, ext);
+        urls.set(path, { url: localUrl, exp: Date.now() + 3000 * 1000 });
+        const data = await insertMsg({ chat_id: id, body: '', kind: 'audio', media: { path, mime, dur: Math.round(dur), peaks, size: blob.size } });
+        settle(id, temp, data); paint();
+      } catch (e) { console.warn(e); fail(id, temp); alert('No se ha podido enviar la nota de voz: ' + (e.message || e)); }
+    }
+
+    /* --- reproducir --- */
+    function setPlayUI() {
+      document.querySelectorAll('.sqm-audio.on').forEach((el) => { if (el !== audioEl) { el.classList.remove('on'); el.querySelector('.sqm-play').innerHTML = ICON.play; el.querySelectorAll('.sqm-wave i.done').forEach((b) => b.classList.remove('done')); el.querySelector('.sqm-adur').textContent = fmtDur(el.dataset.dur); } });
+      if (!audioEl || !audio) return;
+      const playing = !audio.paused;
+      audioEl.classList.toggle('on', true);
+      audioEl.querySelector('.sqm-play').innerHTML = playing ? ICON.pause : ICON.play;
+      audioEl.querySelector('.sqm-play').setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir nota de voz');
+      const d = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Number(audioEl.dataset.dur) || 1;
+      const p = Math.min(1, audio.currentTime / d), bars = audioEl.querySelectorAll('.sqm-wave i');
+      bars.forEach((b, i) => b.classList.toggle('done', (i + 0.5) / bars.length <= p));
+      audioEl.querySelector('.sqm-adur').textContent = fmtDur(playing || audio.currentTime ? audio.currentTime : audioEl.dataset.dur);
+    }
+    async function togglePlay(el) {
+      const path = el.dataset.path; if (!path || path.startsWith('local')) return;
+      if (audio && audioPath === path) { if (audio.paused) audio.play(); else audio.pause(); return; }
+      if (audio) { audio.pause(); audio = null; }
+      audioPath = path; audioEl = el;
+      try {
+        audio = new Audio(await signed(path));
+        audio.ontimeupdate = audio.onplay = audio.onpause = setPlayUI;
+        audio.onended = () => { audio.currentTime = 0; setPlayUI(); if (audioEl) { audioEl.querySelectorAll('.sqm-wave i.done').forEach((b) => b.classList.remove('done')); audioEl.querySelector('.sqm-adur').textContent = fmtDur(audioEl.dataset.dur); } };
+        await audio.play();
+      } catch (e) { console.warn(e); alert('No se ha podido reproducir la nota de voz.'); }
+    }
+    function seek(el, x) {
+      if (!audio || audioPath !== el.dataset.path || !isFinite(audio.duration)) return;
+      const r = el.querySelector('.sqm-wave').getBoundingClientRect();
+      audio.currentTime = Math.max(0, Math.min(1, (x - r.left) / r.width)) * audio.duration;
+    }
+
+    /* --- ver una foto a pantalla completa --- */
+    async function viewPhoto(path) {
+      const v = document.createElement('div'); v.className = 'sqm-viewer sqm'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', 'Foto');
+      v.innerHTML = `<div class="sqm-vbar"><button type="button" class="sqm-ib" data-vx aria-label="Cerrar">${ICON.x}</button><span></span><a class="sqm-ib" data-vdl aria-label="Descargar la foto" download>${ICON.down}</a></div><img alt="Foto">`;
+      document.body.appendChild(v);
+      history.pushState({ sqm: 1, sqmv: 1 }, '');
+      const close = (fromPop) => { if (!v.isConnected) return; v.remove(); viewerClose = null; removeEventListener('keydown', onKey, true); if (!fromPop && history.state?.sqmv) history.back(); };
+      viewerClose = close;
+      const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(false); } };
+      addEventListener('keydown', onKey, true);
+      v.addEventListener('click', (e) => { if (e.target.closest('[data-vx]') || e.target === v) close(false); });
+      try { const u = await signed(path); v.querySelector('img').src = u; const a = v.querySelector('[data-vdl]'); a.href = u; a.setAttribute('download', path.split('/').pop()); } catch { v.querySelector('img').alt = 'No se ha podido cargar la foto'; }
+    }
+
+    function reset() {
+      if (rec) stopRec(false);
+      tray.splice(0).forEach((t) => URL.revokeObjectURL(t.url));
+      if (audio) { audio.pause(); audio = null; audioPath = null; audioEl = null; }
+    }
+    return { hydrate, syncCompose, toggleEmoji, insertEmoji, addFiles, paintTray, untray, sendTray, startRec, stopRec, togglePlay, seek, viewPhoto, reset, hasTray: () => tray.length > 0, recording: () => !!rec };
+  })();
+
   /* ---------- eventos ---------- */
   async function onClick(e) {
     const t = e.target;
@@ -383,6 +688,21 @@
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
+    const host = st.open ? convHost() : null;
+    if (host && host.contains(t)) {
+      if (act === 'emoji') { media.toggleEmoji(host); return; }
+      if (act === 'foto') { host.querySelector('.sqm-file')?.click(); return; }
+      if (act === 'grabar') { media.startRec(host); return; }
+      if (act === 'rec-cancel') { media.stopRec(false); return; }
+      if (act === 'rec-send') { media.stopRec(true); return; }
+      const emo = t.closest('[data-emo]'); if (emo) { media.insertEmoji(host, emo.dataset.emo); return; }
+      const cat = t.closest('[data-emocat]');
+      if (cat) { host.querySelectorAll('[data-emocat]').forEach((b) => b.setAttribute('aria-selected', String(b === cat))); host.querySelectorAll('.sqm-emo-sec').forEach((sec) => { sec.hidden = sec.dataset.sec !== cat.dataset.emocat; }); return; }
+      const un = t.closest('[data-untray]'); if (un) { media.untray(host, Number(un.dataset.untray)); return; }
+      const ph = t.closest('.sqm-photo'); if (ph && !ph.dataset.path.startsWith('local')) { media.viewPhoto(ph.dataset.path); return; }
+      const pl = t.closest('.sqm-play'); if (pl) { media.togglePlay(pl.closest('.sqm-audio')); return; }
+      const wv = t.closest('.sqm-wave'); if (wv) { media.seek(wv.closest('.sqm-audio'), e.clientX); return; }
+    }
     const chip = t.closest('.chips .chip');
     if (chip) { st.f = chip.dataset.f; st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const row = t.closest('.sqm-list .sqm-row');
@@ -390,8 +710,11 @@
   }
   root.addEventListener('click', onClick);
   document.addEventListener('click', (e) => { if (overlay && overlay.contains(e.target)) onClick(e); });
+  document.addEventListener('change', (e) => { if (e.target.matches('.sqm-file')) { const host = convHost(); media.addFiles(host, e.target.files); e.target.value = ''; } });
+  // pegar una imagen en el chat también la prepara para enviar
+  document.addEventListener('paste', (e) => { if (e.target.id !== 'sqm-in' || st.canal !== 'synqalia') return; const fs = [...(e.clipboardData?.files || [])].filter((f) => /^image\//.test(f.type)); if (fs.length) { e.preventDefault(); media.addFiles(convHost(), fs); } });
   root.addEventListener('input', (e) => { if (e.target.matches('.sqm-search input')) { st.q = e.target.value; const pos = e.target.selectionStart; paintCanal(); const i = root.querySelector('.sqm-search input'); i.focus(); i.setSelectionRange(pos, pos); } });
-  const onInput = (e) => { if (e.target.id === 'sqm-in') grow(e.target); };
+  const onInput = (e) => { if (e.target.id === 'sqm-in') { grow(e.target); media.syncCompose(e.target.closest('.sqm-conv')?.parentElement); } };
   document.addEventListener('input', onInput);
   document.addEventListener('keydown', (e) => {
     if (e.target.id === 'sqm-in' && e.key === 'Enter' && !e.shiftKey && matchMedia('(pointer: fine)').matches) { e.preventDefault(); e.target.form.requestSubmit(); }
@@ -407,13 +730,17 @@
       window.open(url, '_blank', 'noopener');
       return;
     }
-    if (!body || !st.open) return;
-    const id = st.open, temp = { id: 'tmp' + Date.now(), chat_id: id, from_email: me, body, created_at: new Date().toISOString() };
+    if (!st.open) return;
+    const id = st.open;
+    const hostC = convHost(); const emo = hostC?.querySelector('.sqm-emo'); if (emo && !emo.hidden) media.toggleEmoji(hostC, false);
+    if (media.hasTray()) { ta.value = ''; grow(ta); await media.sendTray(id, body); return; }
+    if (!body) return;
+    const temp = { id: 'tmp' + Date.now(), chat_id: id, from_email: me, body, kind: 'texto', created_at: new Date().toISOString(), sending: true };
     st.msgs.set(id, [...(st.msgs.get(id) || []), temp]);
-    ta.value = ''; grow(ta); paintConv();
-    const { data, error } = await sb.from('chat_messages').insert({ chat_id: id, body }).select('id,chat_id,from_email,body,ref,created_at').single();
+    ta.value = ''; grow(ta); media.syncCompose(hostC); paintConv();
+    const { data, error } = await sb.from('chat_messages').insert({ chat_id: id, body }).select('id,chat_id,from_email,body,ref,kind,media,created_at').single();
     const arr = (st.msgs.get(id) || []).filter((m) => m.id !== temp.id);
-    if (error) { alert('No se ha podido enviar: ' + error.message); ta.value = body; }
+    if (error) { alert('No se ha podido enviar: ' + error.message); ta.value = body; grow(ta); media.syncCompose(hostC); }
     else if (!arr.some((m) => m.id === data.id)) arr.push(data);
     st.msgs.set(id, arr);
     const c = st.chats.find((x) => x.id === id); if (c && data) { c.last_at = data.created_at; c.last_text = data.body; c.last_from = me; }
@@ -431,11 +758,11 @@
     if (row.col === 'teams_visto') { if (p.eventType === 'DELETE') st.visto.delete(row.id); else st.visto.set(row.id, row.data || {}); }
     else if (row.col === 'teams') { if (p.eventType === 'DELETE') st.teams.delete(row.id); else { st.teams.set(row.id, row.data || {}); st.teamsAt = row.data?.capturado || st.teamsAt; } }
     else return;
-    if (!document.activeElement || document.activeElement.id !== 'sqm-in') paint(); else paintCounts();
+    paint();
   }).subscribe();
 
   let reloadT = null;
-  const reloadChats = () => { clearTimeout(reloadT); reloadT = setTimeout(async () => { await loadChats(); if (!document.activeElement || document.activeElement.id !== 'sqm-in' || st.canal !== 'synqalia') paint(); else paintCounts(); }, 250); };
+  const reloadChats = () => { clearTimeout(reloadT); reloadT = setTimeout(async () => { await loadChats(); paint(); }, 250); };
   sb.channel('sq-chat-' + uid)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, async (p) => {
       const m = p.new; if (!m) return;
@@ -453,6 +780,6 @@
     if (document.hidden) return;
     await Promise.all([loadTeams(), loadChats()]);
     if (st.open && st.canal === 'synqalia') { await loadMsgs(st.open); markRead(st.open); }
-    if (!document.activeElement || document.activeElement.id !== 'sqm-in') paint();
+    paint();
   });
 })();
