@@ -173,7 +173,22 @@
   .task-edit { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
   .task-edit .wide { grid-column: 1 / -1; }
   .task-edit .bar { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
-  @media (max-width: 700px) { .task-edit { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 700px) {
+    .task-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; gap: 8px; }
+    .task-edit .field, .prog-add > * { min-width: 0; }
+    .task-edit input, .task-edit select, .task-edit textarea, .prog-add input, .prog-add select, .prog-add textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .task-edit .te-pers { grid-column: 1 / -1; }
+    .task-edit .bar { flex-wrap: wrap; justify-content: stretch; }
+    .task-edit .bar .status { flex: 1 1 100%; }
+    .task-edit .bar .te-del { order: 3; flex: 1 1 100%; margin: 2px 0 0; text-align: center; }
+    .task-edit .bar .btn:not(.te-del) { flex: 1 1 0; justify-content: center; }
+    .prog { padding: 10px; }
+    .prog-add label { white-space: normal; }
+  }
+  .te-mail { margin: 0 0 4px; height: 44px; font-size: 14px; }
+  .task-edit .bar .te-del { color: #c0392b; }
+  .prog .te-mail { margin-bottom: 10px; }
+  #task-list .item .detail, #task-list .item .last-prog, .prog, .task-edit { overflow-wrap: anywhere; }
   .item .title.editable { cursor: pointer; }
   .item .title.editable:hover { text-decoration: underline; }
   .tag.wait { background: color-mix(in srgb, #d98b1c 16%, transparent); border-color: color-mix(in srgb, #d98b1c 45%, transparent); }
@@ -1822,6 +1837,7 @@
   function progressPanel(t) {
     const d = state.progDraft[t.id] || (state.progDraft[t.id] = {texto: '', seg: '', esp: espOf(t)});
     const box = el('div', 'prog');
+    { const ml = mailLinkEl(t); if (ml) box.appendChild(ml); }
     const form = el('form', 'prog-add');
     const w1 = el('div', 'w'); const l1 = el('label', null, '¿Qué has hecho o qué ha pasado?'); const ta = document.createElement('textarea'); ta.id = 'pg-txt-' + t.id; ta.rows = 2; l1.htmlFor = ta.id;
     ta.placeholder = 'Ej.: «He enviado la plantilla para que me manden la documentación; como máximo mañana me tienen que responder»';
@@ -2001,14 +2017,28 @@
     renderTasks();
     setTimeout(() => { const f = document.getElementById('te-titulo-' + t.id); if (f) { f.scrollIntoView({block: 'center', behavior: 'smooth'}); f.focus(); } }, 30);
   }
+  // Enlace al correo de origen de una tarea (Outlook), para la ficha y los avances
+  function mailLinkEl(t) {
+    if (t.origen !== 'correo' || !t.ref) return null;
+    const src = state.mails.find((x) => x.id === t.ref); if (!src) return null;
+    const url = mailLink(src);
+    const a = el(url ? 'a' : 'button', 'ts-mail te-mail');
+    a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>';
+    a.appendChild(el('span', null, url ? 'Abrir el correo en Outlook ↗' : 'Ver el correo'));
+    a.title = 'Correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
+    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; }
+    else { a.type = 'button'; a.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); }); }
+    return a;
+  }
   function taskEditor(t) {
     const d = state.editDraft;
     const box = el('form', 'task-edit'); box.setAttribute('aria-label', 'Editar tarea');
+    { const ml = mailLinkEl(t); if (ml) { ml.classList.add('wide'); box.appendChild(ml); } }
     const fld = (label, input, cls) => { const f = el('div', 'field' + (cls ? ' ' + cls : '')); const l = el('label', null, label); l.htmlFor = input.id; f.appendChild(l); f.appendChild(input); box.appendChild(f); return input; };
     const bind = (inp, key) => { inp.value = d[key]; inp.addEventListener('input', () => { d[key] = inp.value; }); inp.addEventListener('change', () => { d[key] = inp.value; }); return inp; };
     const mkSel = (opts) => { const x = document.createElement('select'); opts.forEach((o) => x.appendChild(new Option(o[1], o[0]))); return x; };
     const ti = document.createElement('input'); ti.id = 'te-titulo-' + t.id; ti.required = true; fld('Tarea', bind(ti, 'titulo'), 'wide');
-    const pe = document.createElement('input'); pe.id = 'te-persona-' + t.id; pe.setAttribute('list', 'tf-personas'); pe.placeholder = 'Sin persona'; fld('Persona', bind(pe, 'persona'));
+    const pe = document.createElement('input'); pe.id = 'te-persona-' + t.id; pe.setAttribute('list', 'tf-personas'); pe.placeholder = 'Sin persona'; fld('Persona', bind(pe, 'persona'), 'te-pers');
     const em = mkSel(['Provalliance', 'NEUPAREDIS', 'MSH', 'MIG', 'Personal'].map((x) => [x, x])); em.id = 'te-emp-' + t.id; fld('Empresa', bind(em, 'empresa'));
     const pr = mkSel([['Mega', 'Mega ⚡'], ['Alta', 'Alta'], ['Media', 'Media'], ['Baja', 'Baja']]); pr.id = 'te-prio-' + t.id; fld('Prioridad', bind(pr, 'prioridad'));
     const ve = document.createElement('input'); ve.type = 'date'; ve.id = 'te-vence-' + t.id; fld('Fecha límite', bind(ve, 'vence'));
