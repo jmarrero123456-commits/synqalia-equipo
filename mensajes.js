@@ -1,6 +1,6 @@
 /* Synqalia · Mensajes
    Tres niveles, como en el mockup del Z Fold cerrado:
-   1) «Mensajes»: una tarjeta por mensajería (Teams, WhatsApp, Synqalia) con sus sin leer y lo que te piden.
+   1) «Mensajes»: una tarjeta por mensajería (Teams, Synqalia) con sus sin leer y lo que te piden.
    2) Una mensajería: sus conversaciones (Todas · Sin leer · Te piden algo, buscador) y arriba un selector para saltar a otra.
    3) Una conversación: a pantalla completa en el móvil (panel a la derecha en el PC), con el hilo y la caja de respuesta.
 
@@ -9,7 +9,7 @@
    Synqalia: mensajería interna propia (tablas chats, chat_members, chat_messages; funciones chat_list, chat_open_direct,
    chat_create_group, chat_mark_read, chat_people). Tiempo real con Realtime.
    Synqalia admite fotos (se revisan antes de enviar), notas de voz y emoticonos: ver «fotos, notas de voz y emoticonos».
-   WhatsApp: solo con WhatsApp Business (API oficial); de momento se muestra sin conectar. */
+   WhatsApp: descartado por ahora (19/11/2026); no se muestra. */
 (async () => {
   const view = document.getElementById('view-mensajes');
   if (!view || window.__sqMensajes) return;
@@ -73,7 +73,6 @@
   };
   const CANALES = {
     teams: { nombre: 'Teams', sub: 'Chats y grupos de Teams', letra: 'T' },
-    whatsapp: { nombre: 'WhatsApp', sub: 'WhatsApp Business', letra: 'W' },
     synqalia: { nombre: 'Synqalia', sub: 'Tu equipo y grupos de trabajo', letra: '' },
   };
   const chIcon = (k, cls = '') => `<span class="sqm-ch sqm-ch-${k} ${cls}" aria-hidden="true">${k === 'synqalia' ? ICON.q : CANALES[k].letra}</span>`;
@@ -166,9 +165,6 @@
     const tot = sinLeer('teams') + sinLeer('synqalia'), pid = piden('teams') + piden('synqalia');
     const card = (k) => {
       const C = CANALES[k];
-      if (k === 'whatsapp') return `<button type="button" class="sqm-card off" data-canal="whatsapp">
-        <span class="sqm-card-top">${chIcon(k, 'lg')}<span class="sqm-card-name"><b>${C.nombre}</b><span>${C.sub}</span></span><span class="sqm-card-n"><span class="off">Sin conectar</span></span><span class="sqm-chev">${ICON.next}</span></span>
-        <span class="sqm-card-prev">Para recibir y contestar WhatsApp hace falta un número de WhatsApp Business.</span></button>`;
       const cs = convsDe(k).sort((a, b) => (b.unread - a.unread) || String(b.orden).localeCompare(String(a.orden)));
       const top = cs[0], n = cs.filter((c) => c.unread).length, p = cs.filter((c) => c.pide).length;
       return `<button type="button" class="sqm-card" data-canal="${k}">
@@ -179,7 +175,7 @@
     };
     root.innerHTML = `<div class="sqm-hub">
       <p class="sqm-sum">${tot ? `<b>${tot}</b> conversaciones sin leer` : 'Todo leído'}${pid ? ` · <b>${pid}</b> te piden algo` : ''}</p>
-      <div class="sqm-cards">${card('teams')}${card('synqalia')}${card('whatsapp')}</div>
+      <div class="sqm-cards">${card('teams')}${card('synqalia')}</div>
       ${st.teamsAt ? `<p class="note sqm-upd">Teams sincronizado: ${esc(new Date(st.teamsAt).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</p>` : ''}
     </div>`;
   }
@@ -196,17 +192,13 @@
 
   function paintCanal() {
     const k = st.canal, C = CANALES[k];
-    const sw = ['teams', 'synqalia', 'whatsapp'].map((x) => {
-      const n = x === 'whatsapp' ? '' : sinLeer(x);
+    const sw = ['teams', 'synqalia'].map((x) => {
+      const n = sinLeer(x);
       return `<button type="button" data-canal="${x}" aria-pressed="${x === k}">${CANALES[x].nombre}${n ? ` <span>${n}</span>` : ''}</button>`;
     }).join('');
     const rows = rowsDe();
     let list;
-    if (k === 'whatsapp') {
-      list = `<div class="sqm-empty">${chIcon('whatsapp', 'lg')}<b>WhatsApp aún no está conectado</b>
-        <p>WhatsApp solo deja conectar aplicaciones con un número de <b>WhatsApp Business</b> (la API oficial de Meta). Con tu WhatsApp personal no hay forma oficial y Meta puede bloquear el número.</p>
-        <p>Cuando decidas el número (de la empresa o de NEUPAREDIS), lo conectamos y aparecerá aquí como Teams.</p></div>`;
-    } else if (!rows.length) {
+    if (!rows.length) {
       const all = convsDe(k).length;
       list = `<p class="note sqm-none">${all ? 'Nada en esta vista.' : k === 'teams' ? 'Aún no hay chats de Teams sincronizados.' : 'Todavía no tienes conversaciones. Pulsa «Nuevo» para escribir a alguien.'}</p>`;
     } else {
@@ -227,7 +219,7 @@
           ${k === 'synqalia' ? `<button type="button" class="sqm-new" data-act="nuevo">${ICON.pen}<span>Nuevo</span></button>` : ''}
         </div>
         <div class="sqm-switch" role="group" aria-label="Cambiar de mensajería">${sw}</div>
-        ${k === 'whatsapp' ? '' : `<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') : ''}</div>
+        ${`<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') : ''}</div>
           <label class="sqm-search">${ICON.search}<span class="sr">Buscar</span><input type="search" placeholder="Buscar persona o mensaje" value="${esc(st.q)}"></label></div>`}
         </div>
         <div class="sqm-list">${list}</div>
@@ -682,7 +674,7 @@
   async function onClick(e) {
     const t = e.target;
     const canalBtn = t.closest('[data-canal]');
-    if (canalBtn) { st.canal = canalBtn.dataset.canal; st.nivel = 'canal'; st.f = 'todas'; st.q = ''; st.keep.clear(); if (st.open) closeConv(); else paint(); scrollTo(0, 0); return; }
+    if (canalBtn) { st.canal = CANALES[canalBtn.dataset.canal] ? canalBtn.dataset.canal : 'teams'; st.nivel = 'canal'; st.f = 'todas'; st.q = ''; st.keep.clear(); if (st.open) closeConv(); else paint(); scrollTo(0, 0); return; }
     const act = t.closest('[data-act]')?.dataset.act;
     if (act === 'hub') { if (st.open) closeConv(); st.nivel = 'hub'; paint(); scrollTo(0, 0); return; }
     if (act === 'cerrar') { closeConv(); return; }
