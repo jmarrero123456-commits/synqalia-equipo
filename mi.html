@@ -453,7 +453,8 @@
   .tchk > * { display: none; }
   .tmore { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center; cursor: pointer; padding: 0; color: var(--ink); }
   .tmore:hover { border-color: var(--muted); }
-  .tmore svg { width: 18px; height: 4px; fill: currentColor; }
+  .tmore svg { width: 18px; height: 4px; fill: currentColor; } .tmore .dv { display: none; }
+  @media (max-width: 700px) { .tmore .dh { display: none; } .tmore .dv { display: block; width: 4px; height: 16px; } }
   .mc.tag .mi svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
   .mc.prio.p-Alta::before { content: "⌃"; font-weight: 800; margin-right: 1px; }
   .mc.prio.p-Media::before { content: "="; font-weight: 800; margin-right: 1px; }
@@ -487,10 +488,48 @@
     #task-list .item.tcard > .actions { align-self: center; }
     #task-list .item.tcard .tmore { display: none; }
   }
+  .nt-find { display: none; } .qt-short { display: none; }
+  /* Propuesta B en el móvil: lupa, pestañas en una línea, filtros dentro del botón y tarjetas finas */
+  @media (max-width: 700px) {
+    .nt-strip { gap: 7px; }
+    .nt-find { display: grid; }
+    .nt-find, .nt-flt { background: var(--panel) !important; color: var(--ink) !important; border: 1px solid var(--line) !important; box-shadow: none !important; }
+    #view-tareas .tk-find { display: none; }
+    #view-tareas .tk-find.open, #view-tareas .tk-find:has(input:not(:placeholder-shown)) { display: flex; }
+    .tk-tiles { display: flex !important; gap: 3px; padding: 3px; border-radius: 11px; background: color-mix(in srgb, var(--ink) 9%, var(--bg)); margin: 0 0 8px; }
+    .qv.qt { flex: 1 1 0; flex-direction: row; gap: 5px; height: 34px; padding: 0 4px; border: 0 !important; border-radius: 8px; background: transparent !important; box-shadow: none !important; }
+    .qv.qt[aria-pressed="true"] { background: var(--panel) !important; box-shadow: 0 1px 3px rgba(20,26,46,.14) !important; }
+    .qv.qt .qt-ic { display: none; }
+    .qv.qt .qt-long { display: none; } .qv.qt .qt-short { display: inline; }
+    .qv.qt .qt-l { font-size: 12.5px; }
+    .qv.qt .qn { font-size: 14px !important; }
+    .qt-pend .qn { color: #1f9d55 !important; }
+    #view-tareas .tk-dd { display: none !important; }
+    #view-tareas:has(#tk-adv:not([hidden])) .tk-dd { display: flex !important; }
+    #task-list .group-head { margin-top: 6px; padding: 2px 2px 4px; font-size: 12px !important; }
+    #task-list .item.tcard { gap: 4px 6px; margin: 0 0 5px; padding: 6px 4px 6px 10px; border-radius: 11px; }
+    #task-list .item.tcard .title { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #task-list .item.tcard .tmeta { margin-top: 3px; gap: 0; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+    #task-list .item.tcard .tmeta .mc { padding: 0; border: 0 !important; background: none !important; font-size: 12px; font-weight: 600; color: var(--muted); }
+    #task-list .item.tcard .tmeta .mc .mi { display: none; }
+    #task-list .item.tcard .tmeta .mc + .mc::before { content: "·"; margin: 0 5px; color: var(--muted); font-weight: 600; }
+    #task-list .item.tcard .tmeta .mc.prio::before { content: none !important; }
+    #task-list .item.tcard .tmeta .mc.tag { display: none; }
+    #task-list .item.tcard .tmeta .mc.prio.p-Alta, #task-list .item.tcard .tmeta .mc.prio.p-Mega { color: #c42b2b; }
+    #task-list .item.tcard .tmeta .mc.prio.p-Media { color: #a35b00; }
+    #task-list .item.tcard .tmeta .mc.prio.p-Baja { color: #1b7a4b; }
+    #task-list .item.tcard .tmeta .mc.late { color: #c42b2b; }
+    #task-list .item.tcard .tmeta .mc.today { color: #9a6400; }
+    #task-list .item.tcard .tmeta .mc.asig { color: #5b3fc4; }
+    #task-list .item.tcard > .tside { gap: 2px; }
+    .tchk { width: 40px !important; height: 40px !important; }
+    .tmore { width: 32px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); }
+    .tmore svg { width: 4px; height: 16px; }
+  }
   @media (max-width: 380px) {
     .tk-tiles { gap: 6px; } .qv.qt { padding: 8px 2px; } .qv.qt .qt-l { font-size: 11.5px; } .qv.qt .qn { font-size: 21px; }
     .tk-pill select { font-size: 12.5px; padding-left: 8px; }
-    .tchk, .tmore { width: 40px !important; height: 40px !important; }
+    .tchk { width: 40px !important; height: 40px !important; }
   }
   @media (max-width: 560px) {
     .app { padding-left: 12px; padding-right: 12px; }
@@ -1071,7 +1110,7 @@
 
   <!-- HOY -->
   <main id="view-hoy" class="view" style="display:grid; gap:18px;">
-    <div class="nt-top"><div class="nt-strip"><button type="button" class="nt-wide" id="hoy-nt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span>Nueva tarea</span></button><button type="button" class="nt-mic" id="hoy-nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-flt" id="hoy-nt-flt" aria-label="Filtros de tareas" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div></div>
+    <div class="nt-top"><div class="nt-strip"><button type="button" class="nt-wide" id="hoy-nt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span>Nueva tarea</span></button><button type="button" class="nt-mic" id="hoy-nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-find" id="hoy-nt-find" aria-label="Buscar tarea" title="Buscar tarea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button><button type="button" class="nt-mic nt-flt" id="hoy-nt-flt" aria-label="Filtros de tareas" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div></div>
     <section class="stats mini" aria-label="Resumen">
       <button class="stat key" data-quick="hoy" type="button" title="Tareas que vencen hoy o ya vencidas"><b id="st-hoy">–</b><span>Resolver hoy</span></button>
       <button class="stat" data-quick="mias" type="button" title="Tareas que dependen de ti"><b id="st-mias">–</b><span>Dependen de mí</span></button>
@@ -1129,7 +1168,7 @@
 
     <h2 class="sr-only">Mis tareas</h2>
     <div class="nt-top">
-      <div class="nt-strip"><button type="button" class="nt-wide" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button><button type="button" class="nt-mic" id="nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-flt" id="nt-flt" aria-label="Filtros de tareas" aria-controls="tk-adv" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div>
+      <div class="nt-strip"><button type="button" class="nt-wide" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button><button type="button" class="nt-mic" id="nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-find" id="nt-find" aria-label="Buscar tarea" aria-controls="tk-q" title="Buscar tarea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button><button type="button" class="nt-mic nt-flt" id="nt-flt" aria-label="Filtros de tareas" aria-controls="tk-adv" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div>
       <span class="note nt-saved" id="nt-saved" aria-live="polite"></span>
       <div class="nt-panel" id="nt-panel" hidden>
       <form id="task-form" class="form-grid">
@@ -1142,7 +1181,7 @@
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
-      <label class="tk-find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="tk-q" type="search" autocomplete="off" placeholder="Buscar tarea, persona o etiqueta…" aria-label="Buscar en mis tareas"></label>
+      <label class="tk-find" id="tk-find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="tk-q" type="search" autocomplete="off" placeholder="Buscar tarea, persona o etiqueta…" aria-label="Buscar en mis tareas"></label>
     </div>
     <section class="mega-box" id="mega-tk" aria-label="Tareas mega importantes" hidden></section>
     <section class="card tk-card">
@@ -1708,7 +1747,7 @@
     chk.classList.add('tchk'); side.appendChild(chk);
     if (!compact) {
       const more = el('button', 'tmore'); more.type = 'button'; more.setAttribute('aria-label', 'Más acciones: ' + t.titulo); more.title = 'Más acciones';
-      more.innerHTML = '<svg viewBox="0 0 18 4" aria-hidden="true"><circle cx="2" cy="2" r="2"/><circle cx="9" cy="2" r="2"/><circle cx="16" cy="2" r="2"/></svg>';
+      more.innerHTML = '<svg class="dh" viewBox="0 0 18 4" aria-hidden="true"><circle cx="2" cy="2" r="2"/><circle cx="9" cy="2" r="2"/><circle cx="16" cy="2" r="2"/></svg><svg class="dv" viewBox="0 0 4 18" aria-hidden="true"><circle cx="2" cy="2" r="2"/><circle cx="2" cy="9" r="2"/><circle cx="2" cy="16" r="2"/></svg>';
       more.addEventListener('click', () => taskSheet(t, {mailAct, dateActs, avN: av.length}));
       side.appendChild(more);
     }
@@ -2013,9 +2052,9 @@
   const forToday = (t) => t.estado !== 'hecha' && (t.vence === todayISO || isLate(t));
   const QUICK = [
     {k: 'hoy', label: 'Hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
-    {k: 'mias', label: 'Mis tareas', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
-    {k: 'pend', label: 'Pendientes', set: {}, test: (t) => t.estado !== 'hecha'},
-    {k: 'venc', label: 'Vencidas', set: {taskF: 'vencidas'}, test: (t) => t.estado !== 'hecha' && isLate(t)},
+    {k: 'mias', label: 'Mis tareas', short: 'Mis', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
+    {k: 'pend', label: 'Pendientes', short: 'Pend.', set: {}, test: (t) => t.estado !== 'hecha'},
+    {k: 'venc', label: 'Vencidas', short: 'Venc.', set: {taskF: 'vencidas'}, test: (t) => t.estado !== 'hecha' && isLate(t)},
   ];
   const QICON = {
     hoy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/></svg>',
@@ -2038,7 +2077,7 @@
       const b = el('button', 'qv qt qt-' + qv.k + (qv.hot && n ? ' hot' : '')); b.type = 'button';
       const on = cur(qv); b.setAttribute('aria-pressed', String(on));
       const ic = el('span', 'qt-ic'); ic.innerHTML = QICON[qv.k] || ''; b.appendChild(ic);
-      b.appendChild(el('span', 'qt-l', qv.label));
+      const ql = el('span', 'qt-l'); ql.appendChild(el('span', 'qt-long', qv.label)); ql.appendChild(el('span', 'qt-short', qv.short || qv.label)); b.appendChild(ql);
       b.appendChild(el('b', 'qn', String(n)));
       b.addEventListener('click', () => applyQuick(on ? null : qv));
       box.appendChild(b);
@@ -2157,6 +2196,16 @@
   $('#hoy-nt').addEventListener('click', () => ntQuick(false));
   const openFilters = () => { if (state.view !== 'tareas') show('tareas'); const adv = $('#tk-adv'); if (adv.hidden) $('#tk-more').click(); setTimeout(() => { adv.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }, 30); };
   $('#hoy-nt-flt').addEventListener('click', openFilters);
+  // Lupa (móvil): enseña u oculta el buscador de Tareas
+  const findToggle = (forceOpen) => {
+    if (state.view !== 'tareas') show('tareas');
+    const box = $('#tk-find'); const open = forceOpen || !box.classList.contains('open');
+    box.classList.toggle('open', open); $('#nt-find').setAttribute('aria-expanded', String(open));
+    if (open) setTimeout(() => $('#tk-q').focus(), 30);
+    else if ($('#tk-q').value) { $('#tk-q').value = ''; $('#tk-q').dispatchEvent(new Event('input')); }
+  };
+  $('#hoy-nt-find').addEventListener('click', () => findToggle(true));
+  $('#nt-find').addEventListener('click', () => findToggle(false));
   $('#nt-flt').addEventListener('click', () => $('#tk-more').click());
   $('#hoy-nt-mic').addEventListener('click', () => ntQuick(true));
   $('#nt-mic').addEventListener('click', () => ntQuick(true));
