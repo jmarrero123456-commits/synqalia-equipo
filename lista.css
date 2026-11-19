@@ -84,3 +84,8 @@
   .ls-title { font-size: 19px; }
   .ls-micbtn { width: 100%; justify-content: center; }
 }
+
+/* Listas va en el menú «Más» del móvil, nunca en la barra inferior fija */
+#view-lista, #view-lista * { box-sizing: border-box; }
+#view-lista { min-width: 0; overflow-x: hidden; }
+@media (max-width: 560px) { .app .tabs #tab-lista { display: none !important; } }
