@@ -26,6 +26,9 @@
     more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
     cart: '<path d="M3 4h2.2l2.2 11h10.4l2-8H6.3"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
   };
   const SECCIONES = ['Fruta y verdura', 'Panadería', 'Carne', 'Pescado', 'Charcutería y quesos', 'Lácteos y huevos', 'Despensa', 'Conservas y salsas', 'Desayuno y dulces', 'Congelados', 'Bebidas', 'Limpieza', 'Higiene y cuidado', 'Bebé y mascotas', 'Otros'];
   const secIdx = (s) => { const i = SECCIONES.indexOf(s); return i < 0 ? SECCIONES.length : i; };
@@ -36,7 +39,7 @@
 
   const userId = (() => { try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) { const v = JSON.parse(localStorage.getItem(k)); const u = v && (v.user || (v.currentSession && v.currentSession.user)); if (u && u.id) return u.id; } } } catch (e) {} return 'anon'; })();
   const LS = 'sq-listas-' + userId;
-  const S = { lists: new Map(), dirty: new Set(), open: null, db: null, ai: null, rec: null, live: '', heard: '', busy: false, showDone: true };
+  const S = { lists: new Map(), dirty: new Set(), open: null, db: null, ai: null, rec: null, live: '', heard: '', busy: false, showClosed: false };
 
   /* ---------- datos ---------- */
   const persistLocal = () => { try { localStorage.setItem(LS, JSON.stringify({ lists: [...S.lists.values()], dirty: [...S.dirty] })); } catch (e) {} };
@@ -166,19 +169,57 @@
     save(l); S.open = l.id; render(); startRec(l);
   }
 
+  /* cerrar = la doy por terminada (sale de las abiertas, queda en «Cerradas» por si acaso); borrar = desaparece */
+  const isEmpty = (l) => !(l.items || []).length && !(l.dictados || []).length;
+  function closeList(l) {
+    if (S.rec && S.rec.list === l.id) stopRec();
+    if (isEmpty(l)) { removeList(l.id); S.open = null; render(); toast('Lista vacía descartada'); return; }
+    l.cerrada = nowIso(); save(l); S.open = null; render(); window.scrollTo(0, 0);
+    toastAction('«' + (l.titulo || 'Lista') + '» cerrada', 'Deshacer', () => { delete l.cerrada; save(l); render(); });
+  }
+  function reopenList(l) { delete l.cerrada; save(l); S.open = l.id; render(); window.scrollTo(0, 0); }
+  function deleteList(l) {
+    if (S.rec && S.rec.list === l.id) stopRec();
+    const copy = JSON.parse(JSON.stringify(l));
+    removeList(l.id); if (S.open === l.id) S.open = null; render();
+    toastAction('«' + (l.titulo || 'Lista') + '» borrada', 'Deshacer', () => { save(copy); render(); });
+  }
+  // listas que se quedaron vacías (se abrió «Nueva lista» y no se dictó nada): fuera
+  function pruneEmpty() {
+    const lim = Date.now() - 2 * 60 * 1000;
+    for (const l of [...S.lists.values()]) if (l.id !== S.open && isEmpty(l) && new Date(l.creada || 0).getTime() < lim) removeList(l.id);
+  }
+
+  function listCard(l) {
+    const c = counts(l); const pct = c.total ? Math.round(c.hechos / c.total * 100) : 0;
+    const closed = !!l.cerrada;
+    const open = () => { S.open = l.id; render(); window.scrollTo(0, 0); };
+    const sub = closed ? 'Cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + (c.total ? ' · ' + c.hechos + ' de ' + c.total + ' comprados' : '')
+      : c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' en el carro' : c.total + (c.total === 1 ? ' producto' : ' productos')) + (c.dudas ? ' · ' + c.dudas + ' por decidir' : '') : 'Vacía';
+    return h('div', { class: 'ls-card' + (closed ? ' closed' : '') + (c.total && c.hechos === c.total ? ' done' : '') },
+      h('button', { type: 'button', class: 'ls-card-open', onclick: open, 'aria-label': 'Abrir ' + (l.titulo || 'lista') },
+        h('span', { class: 'ls-card-ic', html: svg(I.cart) }),
+        h('span', { class: 'ls-card-main' }, h('b', { text: l.titulo || 'Lista' }), h('small', { text: sub }),
+          c.total && !closed ? h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + pct + '%' })) : null)),
+      closed
+        ? h('button', { type: 'button', class: 'ls-card-act', title: 'Volver a abrirla', 'aria-label': 'Volver a abrir ' + (l.titulo || 'lista'), html: svg(I.undo), onclick: () => reopenList(l) })
+        : h('button', { type: 'button', class: 'ls-card-act ok', title: 'Cerrar (ya está)', 'aria-label': 'Cerrar ' + (l.titulo || 'lista'), html: svg(I.check), onclick: () => closeList(l) }),
+      h('button', { type: 'button', class: 'ls-card-act bad', title: 'Borrar', 'aria-label': 'Borrar ' + (l.titulo || 'lista'), html: svg(I.trash), onclick: () => deleteList(l) }));
+  }
+
   function renderHome() {
-    const lists = [...S.lists.values()].sort((a, b) => String(b.editada || b.creada).localeCompare(String(a.editada || a.creada)));
+    pruneEmpty();
+    const by = (a, b) => String(b.cerrada || b.editada || b.creada).localeCompare(String(a.cerrada || a.editada || a.creada));
+    const all = [...S.lists.values()];
+    const abiertas = all.filter((l) => !l.cerrada).sort(by), cerradas = all.filter((l) => l.cerrada).sort(by);
     const wrap = h('div', { class: 'ls-home' },
       h('button', { type: 'button', class: 'ls-new', onclick: newList, html: '<span class="ls-new-ic">' + svg(I.mic) + '</span><span><b>Nueva lista</b><small>Pulsa y dímela en voz alta</small></span>' }));
-    if (!lists.length) wrap.append(h('p', { class: 'ls-empty', text: 'Aún no tienes listas. Pulsa «Nueva lista», di lo que necesitas («plátanos, yogures, 250 de chorizo… a ver si queda leche») y pulsa «Terminar».' }));
-    lists.forEach((l) => {
-      const c = counts(l); const pct = c.total ? Math.round(c.hechos / c.total * 100) : 0;
-      wrap.append(h('button', { type: 'button', class: 'ls-card' + (c.total && c.hechos === c.total ? ' done' : ''), onclick: () => { S.open = l.id; render(); window.scrollTo(0, 0); } },
-        h('span', { class: 'ls-card-ic', html: svg(I.cart) }),
-        h('span', { class: 'ls-card-main' }, h('b', { text: l.titulo || 'Lista' }),
-          h('small', { text: c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' en el carro' : c.total + (c.total === 1 ? ' producto' : ' productos')) + (c.dudas ? ' · ' + c.dudas + ' por decidir' : '') : 'Vacía' }),
-          c.total ? h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + pct + '%' })) : null)));
-    });
+    if (!abiertas.length) wrap.append(h('p', { class: 'ls-empty', text: cerradas.length ? 'No tienes listas abiertas.' : 'Aún no tienes listas. Pulsa «Nueva lista», di lo que necesitas («plátanos, yogures, 250 de chorizo… a ver si queda leche») y pulsa «Terminar».' }));
+    abiertas.forEach((l) => wrap.append(listCard(l)));
+    if (cerradas.length) {
+      wrap.append(h('button', { type: 'button', class: 'ls-closed-t', onclick: () => { S.showClosed = !S.showClosed; render(); }, text: 'Cerradas · ' + cerradas.length + (S.showClosed ? ' ▴' : ' ▾') }));
+      if (S.showClosed) cerradas.forEach((l) => wrap.append(listCard(l)));
+    }
     return wrap;
   }
 
@@ -199,6 +240,11 @@
         h('button', { type: 'button', class: 'ls-no', text: it.estado === 'mirar' ? 'Sí, hay' : 'No', onclick: () => { l.items = l.items.filter((x) => x !== it); save(l); render(); } })));
     }
     return row;
+  }
+  function toastAction(msg, label, fn) {
+    document.querySelectorAll('.ls-toast').forEach((t) => t.remove());
+    const t = h('div', { class: 'ls-toast', role: 'status' }, h('span', { text: msg }), h('button', { type: 'button', text: label, onclick: () => { t.remove(); fn(); } }));
+    document.body.append(t); setTimeout(() => t.remove(), 6000);
   }
   function toastUndo(l, it) {
     document.querySelectorAll('.ls-toast').forEach((t) => t.remove());
@@ -224,12 +270,14 @@
       mi('Quitar lo que ya está en el carro', () => { l.items = l.items.filter((it) => !it.hecho); save(l); render(); }),
       mi('Duplicar para otra compra', () => { const n = { ...JSON.parse(JSON.stringify(l)), id: newId('ls'), titulo: (l.titulo || 'Lista') + ' (copia)', creada: nowIso(), dictados: [] }; n.items.forEach((it) => { it.hecho = false; it.id = newId('i'); }); save(n); S.open = n.id; render(); }),
       mi('Ver lo que dicté', () => { const d = (l.dictados || []).map((x) => '— ' + new Date(x.fecha).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) + ':\n' + x.texto).join('\n\n'); alert(d || 'No hay dictados en esta lista.'); }),
-      mi('Borrar la lista', () => { if (confirm('¿Borrar «' + (l.titulo || 'Lista') + '»?')) { removeList(l.id); S.open = null; render(); } }, 'bad'));
+      l.cerrada ? mi('Volver a abrirla', () => reopenList(l)) : mi('Cerrar la lista (ya está)', () => closeList(l)),
+      mi('Borrar la lista', () => deleteList(l), 'bad'));
     wrap.append(h('div', { class: 'ls-head' },
-      h('button', { type: 'button', class: 'ls-back', 'aria-label': 'Volver a las listas', html: svg(I.back), onclick: () => { if (recOn) stopRec(); S.open = null; render(); } }),
+      h('button', { type: 'button', class: 'ls-back', 'aria-label': 'Volver a las listas', html: svg(I.back), onclick: () => { if (recOn) stopRec(); if (isEmpty(l) && !recOn) removeList(l.id); S.open = null; render(); } }),
       title,
       h('button', { type: 'button', class: 'ls-more', 'aria-label': 'Opciones', html: svg(I.more), onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } }),
       menu));
+    if (l.cerrada) wrap.append(h('div', { class: 'ls-closed-note', text: 'Lista cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + '. Puedes volver a abrirla o borrarla abajo.' }));
     if (c.total) wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' en el carro' })));
 
     // micrófono
@@ -261,18 +309,19 @@
     // productos
     const items = sorted(l);
     const decide = items.filter((it) => !it.hecho && it.estado !== 'comprar');
-    const buy = items.filter((it) => !it.hecho && it.estado === 'comprar');
-    const done = items.filter((it) => it.hecho);
+    const buy = items.filter((it) => it.hecho || it.estado === 'comprar');
+    const pendientes = items.filter((it) => !it.hecho && it.estado === 'comprar');
     if (!items.length && !recOn && !S.busy) wrap.append(h('p', { class: 'ls-empty', text: 'Lista vacía. Pulsa el micro y di lo que necesitas; cuando acabes, «Terminar».' }));
     if (decide.length) { const g = h('section', { class: 'ls-grp ask' }, h('h3', { text: 'Por decidir · ' + decide.length })); decide.forEach((it) => g.append(itemRow(l, it))); wrap.append(g); }
     let sec = null, g = null;
     buy.forEach((it) => { if (it.seccion !== sec) { sec = it.seccion; g = h('section', { class: 'ls-grp' }, h('h3', { text: sec })); wrap.append(g); } g.append(itemRow(l, it)); });
-    if (done.length) {
-      const dg = h('section', { class: 'ls-grp carro' }, h('button', { type: 'button', class: 'ls-grp-t', onclick: () => { S.showDone = !S.showDone; render(); }, text: 'En el carro · ' + done.length + (S.showDone ? ' ▴' : ' ▾') }));
-      if (S.showDone) done.forEach((it) => dg.append(itemRow(l, it)));
-      wrap.append(dg);
-    }
-    if (c.total && !buy.length && !decide.length) wrap.append(h('p', { class: 'ls-empty ok', text: '¡Todo en el carro! 🛒' }));
+    if (c.total && !pendientes.length && !decide.length && !l.cerrada) wrap.append(h('p', { class: 'ls-empty ok', text: '¡Todo en el carro! 🛒 Ya puedes cerrarla.' }));
+    // cerrar o borrar desde la propia lista (aunque no esté todo marcado)
+    if (!recOn) wrap.append(h('div', { class: 'ls-foot' },
+      l.cerrada
+        ? h('button', { type: 'button', class: 'ls-foot-main', html: svg(I.undo) + '<b>Volver a abrirla</b>', onclick: () => reopenList(l) })
+        : h('button', { type: 'button', class: 'ls-foot-main' + (c.total && !pendientes.length && !decide.length ? ' ready' : ''), html: svg(I.check) + '<b>Cerrar lista</b>', onclick: () => closeList(l) }),
+      h('button', { type: 'button', class: 'ls-foot-del', 'aria-label': 'Borrar la lista', title: 'Borrar la lista', html: svg(I.trash), onclick: () => deleteList(l) })));
     return wrap;
   }
   const sorted = (l) => [...(l.items || [])].sort((a, b) => secIdx(a.seccion) - secIdx(b.seccion) || String(a.creado || '').localeCompare(String(b.creado || '')));
