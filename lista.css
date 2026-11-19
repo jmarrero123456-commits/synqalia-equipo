@@ -114,3 +114,36 @@
 .ls-mic { overflow: hidden; }
 .ls-micbtn { max-width: 100%; }
 .ls-add .btn { flex: none; }
+
+/* Enviar a… */
+.ls-sendbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; margin-top: 6px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-size: 16px; cursor: pointer; }
+.ls-sendbtn + .ls-foot { margin-top: 0; }
+.ls-sheet-bg { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.42); display: flex; align-items: flex-end; justify-content: center; }
+.ls-sheet { width: 100%; max-width: 560px; max-height: 86vh; overflow: auto; background: var(--panel); color: var(--ink); border-radius: 20px 20px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); display: grid; gap: 8px; box-shadow: 0 -10px 30px rgba(0,0,0,.25); animation: ls-up .18s ease-out; }
+@keyframes ls-up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+.ls-sheet svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ls-sheet-h { display: flex; align-items: center; justify-content: space-between; }
+.ls-sheet-h b { font-size: 19px; }
+.ls-sheet-x { border: 0; background: transparent; color: var(--muted); width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; }
+.ls-sheet-p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.ls-sheet-sub { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 800; padding: 6px 2px 0; }
+.ls-search-w { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; color: var(--muted); background: var(--bg); }
+.ls-search { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-size: 16px; padding: 12px 0; outline: none; }
+.ls-people { display: grid; gap: 2px; min-height: 60px; }
+.ls-person { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; color: var(--ink); text-align: left; padding: 9px 6px; border-radius: 12px; cursor: pointer; font: inherit; }
+.ls-person:hover, .ls-person:active { background: var(--accent-soft); }
+.ls-person[disabled] { opacity: .5; }
+.ls-person.other { border-top: 1px solid var(--line); border-radius: 0; padding-top: 12px; }
+.ls-av { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 14px; flex: none; }
+.ls-pn { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.ls-pn b { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-pn small { color: var(--muted); font-size: 12.5px; }
+.ls-pgo { color: var(--accent); }
+
+/* enviadas y recibidas */
+.ls-card.sent .ls-card-ic { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.ls-card.sent.st-borrada small, .ls-closed-note.st-borrada { color: var(--bad, #c4314b); }
+.ls-card.sent.st-cerrada small { color: var(--ok, #1f7a4c); }
+.ls-card.rx { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ls-grp.ro .ls-ck { cursor: default; }
+.ls-grp.ro .ls-it-main { cursor: default; }
