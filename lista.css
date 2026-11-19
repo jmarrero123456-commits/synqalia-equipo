@@ -141,6 +141,7 @@
 .ls-pgo { color: var(--accent); }
 
 /* enviadas y recibidas */
+.ls-card-ic.emo { font-size: 22px; line-height: 1; }
 .ls-card.sent .ls-card-ic { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
 .ls-card.sent.st-borrada small, .ls-closed-note.st-borrada { color: var(--bad, #c4314b); }
 .ls-card.sent.st-cerrada small { color: var(--ok, #1f7a4c); }

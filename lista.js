@@ -1,8 +1,10 @@
-/* Synqalia · Listas — listas de la compra (y de lo que sea) dictadas por voz.
+/* Synqalia · Listas — listas de lo que sea dictadas por voz: compra, pedido a la ferretería o la farmacia,
+   material de un proyecto… La IA detecta de qué va la lista, le pone nombre y la agrupa según el tipo.
    «Nueva lista» → se abre y empieza a escuchar. Hablas libremente (incluso pensando en voz alta:
    «a ver si queda leche…», «no sé si pedir pan»). Al pulsar «Terminar», la IA saca solo lo que es de la
-   compra, con cantidades, ordenado por pasillos del súper; lo dudoso queda marcado para decidir.
-   En el súper: tocar un producto lo pasa al carro.
+   lista, desglosado y con cantidades, agrupado según el tipo (pasillos del súper, familias de la tienda, partes
+   del proyecto); lo dudoso queda marcado para decidir. Tocar un elemento lo marca (en el carro / listo / hecho).
+   Un pedido se envía como mensaje de pedido (WhatsApp, correo…) o a otra persona de Synqalia.
    Datos privados en personal_docs, col «listas». Copia en el dispositivo (localStorage) para abrir sin conexión. */
 (() => {
   const root = document.getElementById('view-lista');
@@ -24,6 +26,8 @@
     back: '<path d="M15 5l-7 7 7 7"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+    box: '<path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9"/>',
+    list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r="1.2"/><circle cx="4.8" cy="12" r="1.2"/><circle cx="4.8" cy="17.5" r="1.2"/>',
     cart: '<path d="M3 4h2.2l2.2 11h10.4l2-8H6.3"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -35,7 +39,19 @@
   };
   const first = (n) => String(n || '').trim().split(/\s+/)[0] || '';
   const SECCIONES = ['Fruta y verdura', 'Panadería', 'Carne', 'Pescado', 'Charcutería y quesos', 'Lácteos y huevos', 'Despensa', 'Conservas y salsas', 'Desayuno y dulces', 'Congelados', 'Bebidas', 'Limpieza', 'Higiene y cuidado', 'Bebé y mascotas', 'Otros'];
-  const secIdx = (s) => { const i = SECCIONES.indexOf(s); return i < 0 ? SECCIONES.length : i; };
+  /* Vocabulario según el tipo de lista que detecta la IA */
+  const VOC = {
+    compra: { hechos: 'en el carro', adj: 'comprados', marcar: 'Al carro', desmarcar: 'Sacar del carro', mirar: '¿Lo tienes en casa?', mirarSi: 'No, comprar', mirarNo: 'Sí, hay', duda: '¿Lo compras?', todo: '¡Todo en el carro! 🛒 Ya puedes cerrarla.', desmarcarTodo: 'Vaciar el carro (desmarcar todo)', quitarHechos: 'Quitar lo que ya está en el carro', icon: 'cart' },
+    pedido: { hechos: 'listos', adj: 'listos', marcar: 'Marcar como listo', desmarcar: 'Desmarcar', mirar: '¿Lo tienes ya?', mirarSi: 'No, pedir', mirarNo: 'Sí, hay', duda: '¿Lo pides?', todo: '¡Pedido completo! ✅ Ya puedes cerrarla.', desmarcarTodo: 'Desmarcar todo', quitarHechos: 'Quitar lo marcado', icon: 'box' },
+    otra: { hechos: 'hechos', adj: 'hechos', marcar: 'Marcar como hecho', desmarcar: 'Desmarcar', mirar: '¿Lo tienes ya?', mirarSi: 'No, añadir', mirarNo: 'Sí, ya lo tengo', duda: '¿Lo incluyes?', todo: '¡Todo hecho! ✅ Ya puedes cerrarla.', desmarcarTodo: 'Desmarcar todo', quitarHechos: 'Quitar lo marcado', icon: 'list' },
+  };
+  const tipoOf = (l) => (l.tipo === 'pedido' ? 'pedido' : l.tipo && l.tipo !== 'compra' ? 'otra' : 'compra');
+  const V = (l) => VOC[tipoOf(l)];
+  const secIdx = (s, l) => {
+    const g = (l && l.grupos) || [];
+    if (g.length) { const i = g.indexOf(s); return i < 0 ? (s === 'Otros' ? 999 : 900) : i; }
+    const i = SECCIONES.indexOf(s); return i < 0 ? SECCIONES.length : i;
+  };
   const newId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const nowIso = () => new Date().toISOString();
   const fmtD = new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -79,19 +95,25 @@
   }
   async function interpret(l, text) {
     const actual = (l.items || []).map((it) => '- ' + it.nombre + (it.cantidad ? ' (' + it.cantidad + ')' : '') + (it.estado !== 'comprar' ? ' [' + it.estado + ']' : '')).join('\n') || '(vacía)';
-    const prompt = 'Eres el asistente de una persona que dicta su lista de la compra en voz alta, en español, mientras revisa la nevera y la despensa. Lo que dice es un texto de dictado sin puntuación, con errores de reconocimiento de voz, muletillas, pensamientos en voz alta y a veces conversación que no tiene nada que ver (con otra persona, por teléfono…).\n'
-      + 'Tu trabajo: sacar SOLO lo que hay que comprar y devolver los cambios sobre la lista.\n'
+    const grupos = (l.grupos || []).length ? l.grupos : [...new Set((l.items || []).map((it) => it.seccion).filter(Boolean))];
+    const prompt = 'Eres el asistente de una persona que dicta una lista en voz alta, en español. Puede ser la compra del súper, un pedido (ferretería, farmacia, papelería, proveedor…), las cosas que necesita para un proyecto o una obra, lo que hay que llevar a un viaje, o cualquier otra lista. Lo que dice es un texto de dictado sin puntuación, con errores de reconocimiento de voz, muletillas, pensamientos en voz alta y a veces conversación que no tiene nada que ver.\n'
+      + 'Tu trabajo: entender cuál es la idea general de la lista y sacar SOLO los elementos que van en ella, desglosados, y devolver los cambios sobre la lista.\n'
       + 'Reglas:\n'
-      + '- Ignora todo lo que no sea de la compra.\n'
-      + '- Corrige errores evidentes del dictado («yogurt»→«Yogur», «250 de chorizo»→ Chorizo, cantidad «250 g»). Nombre corto, en singular o como se diga en el súper, con mayúscula inicial.\n'
-      + '- Cantidad: tal como la diga («2 kg», «250 g», «una docena», «3», «un paquete»); vacía si no la dice. Si dice algo como «de los de siempre», «del bueno» o una marca, ponlo en "nota".\n'
-      + '- estado: "comprar" si lo pide claro; "mirar" si duda si lo tiene en casa («a ver si tengo…», «creo que queda…», «mira si hay…») y no llega a decidir; "duda" si duda si comprarlo («no sé si pedir…», «igual…», «¿cojo…?») y no decide. Si después decide («sí, apúntalo», «no, sí que hay»), aplica lo que decida: compra, o no lo pongas / quítalo.\n'
+      + '- tipo: "compra" (súper, mercado, comida y casa), "pedido" (lo va a pedir o encargar a una tienda o proveedor concreto: ferretería, farmacia, papelería…) u "otra" (proyecto, obra, viaje, regalos, tareas, ideas…). ' + (l.tipo ? 'La lista ya es de tipo "' + l.tipo + '": mantenlo salvo que quede claro que es otra cosa.' : '') + '\n'
+      + '- titulo: nombre corto y claro de la lista (máx. 40 caracteres), p. ej. «Compra semanal», «Pedido ferretería», «Farmacia», «Reforma del baño», «Maleta Madrid»; si dice un sitio o un motivo, úsalo.\n'
+      + '- emoji: un emoji que represente la lista (🛒, 🔩, 💊, 🛠️, 🧳, 🎁, 📋…).\n'
+      + '- Ignora todo lo que no sea de la lista.\n'
+      + '- Desglosa: si dice algo general que en realidad son varias cosas concretas («lo de la cisterna: el flotador y la goma»), pon cada cosa por separado. No te inventes elementos que no ha dicho.\n'
+      + '- Corrige errores evidentes del dictado («yogurt»→«Yogur», «250 de chorizo»→ Chorizo con cantidad «250 g», «tacos del 8»→ Tacos, nota «del 8»). Nombre corto, como se pediría en la tienda, con mayúscula inicial.\n'
+      + '- cantidad: tal como la diga («2 kg», «250 g», «una caja», «3», «10 m»); vacía si no la dice. Medidas, marcas, modelos, dosis o detalles («de los de siempre», «del 8», «de 1 gramo», «blanco mate») van en "nota".\n'
+      + '- estado: "comprar" si lo quiere claro; "mirar" si duda si ya lo tiene («a ver si tengo…», «creo que queda…», «mira si hay…») y no llega a decidir; "duda" si duda si incluirlo («no sé si pedir…», «igual…», «¿cojo…?») y no decide. Si después decide, aplica lo que decida: lo incluye, o no lo pongas / quítalo.\n'
+      + '- grupo: agrupa los elementos de forma útil para ese tipo de lista. Compra: por pasillos del súper (' + SECCIONES.join(', ') + '). Pedido: por familias de la tienda (ferretería: Tornillería y fijación, Herramientas, Fontanería, Electricidad, Pintura…; farmacia: Medicamentos, Parafarmacia, Higiene…). Otra: por partes o categorías del proyecto (Material, Herramientas, Gestiones, Por hacer…). Pocos grupos (de 1 a 7), nombres cortos; si todo es de lo mismo, un único grupo. ' + (grupos.length ? 'Grupos que ya tiene la lista (reutilízalos si encajan): ' + grupos.join(', ') + '.' : '') + '\n'
+      + '- orden_grupos: todos los grupos de la lista (los que ya tiene y los nuevos) en el orden más práctico (en la compra, el recorrido del súper).\n'
       + '- Si pide quitar o cambiar algo de la lista actual («quita el queso», «el chorizo mejor 500»), devuélvelo en "quitar" o vuelve a darlo en "items" con el mismo nombre y los datos nuevos.\n'
       + '- No repitas lo que ya está en la lista salvo para cambiarlo.\n'
-      + '- seccion: una de ' + SECCIONES.join(', ') + '.\n'
       + '- Si en lo dicho hay una pregunta para ti sobre la lista, contéstala en "comentario" (una frase); si no, deja "comentario" vacío.\n'
-      + 'Devuelve SOLO JSON: {"titulo": nombre corto de la lista si lo dice («para la barbacoa», «Mercadona»), si no "", "items": [{"nombre", "cantidad", "nota", "seccion", "estado"}], "quitar": [nombres], "comentario": ""}\n\n'
-      + 'LISTA ACTUAL:\n' + actual + '\n\nLO QUE HA DICHO:\n' + text;
+      + 'Devuelve SOLO JSON: {"tipo": "compra"|"pedido"|"otra", "titulo": "", "emoji": "", "lugar": tienda o destinatario si lo dice (p. ej. «Ferretería Pérez»), si no "", "items": [{"nombre", "cantidad", "nota", "grupo", "estado"}], "orden_grupos": [], "quitar": [nombres], "comentario": ""}\n\n'
+      + 'LISTA ACTUAL' + (l.titulo ? ' («' + l.titulo + '»)' : '') + ':\n' + actual + '\n\nLO QUE HA DICHO:\n' + text;
     const out = await S.ai.json(prompt);
     return typeof out === 'string' ? JSON.parse((out.match(/\{[\s\S]*\}/) || ['{}'])[0]) : (out || {});
   }
@@ -103,12 +125,18 @@
     (res.items || []).forEach((r) => {
       if (!r || !r.nombre) return;
       const estado = ['comprar', 'mirar', 'duda'].includes(r.estado) ? r.estado : 'comprar';
-      const seccion = SECCIONES.includes(r.seccion) ? r.seccion : 'Otros';
+      const seccion = String(r.grupo || r.seccion || 'Otros').trim().slice(0, 40) || 'Otros';
       const ex = find(r.nombre);
       if (ex) { Object.assign(ex, { cantidad: r.cantidad || ex.cantidad || '', nota: r.nota || ex.nota || '', seccion, estado }); chg++; }
       else { l.items.push({ id: newId('i'), nombre: String(r.nombre).slice(0, 80), cantidad: String(r.cantidad || ''), nota: String(r.nota || ''), seccion, estado, hecho: false, creado: nowIso() }); add++; }
     });
-    if (res.titulo && /^Compra/.test(l.titulo || '')) l.titulo = String(res.titulo).replace(/^./, (c) => c.toUpperCase()).slice(0, 50);
+    if (['compra', 'pedido', 'otra'].includes(res.tipo)) l.tipo = res.tipo;
+    if (res.emoji) l.emoji = String(res.emoji).slice(0, 4);
+    if (res.lugar) l.lugar = String(res.lugar).slice(0, 60);
+    if (res.titulo && (l.autoTitulo || /^Compra /.test(l.titulo || ''))) { l.titulo = String(res.titulo).replace(/^./, (c) => c.toUpperCase()).slice(0, 50); l.autoTitulo = false; }
+    const used = new Set(l.items.map((it) => it.seccion));
+    const ord = (Array.isArray(res.orden_grupos) ? res.orden_grupos.map(String) : []).concat(l.grupos || [], [...used]);
+    l.grupos = [...new Set(ord)].filter((g) => used.has(g));
     return { add, chg };
   }
   async function processText(l, text) {
@@ -133,7 +161,7 @@
       l.comentario = res.comentario || '';
       save(l);
       const dudas = l.items.filter((it) => !it.hecho && it.estado !== 'comprar').length;
-      toast((add ? add + (add === 1 ? ' producto añadido' : ' productos añadidos') : chg ? 'Lista actualizada' : 'No he encontrado nada nuevo para la compra') + (dudas ? ' · ' + dudas + ' por decidir' : ''));
+      toast((add ? add + (add === 1 ? ' añadido' : ' añadidos') + ' a «' + (l.titulo || 'la lista') + '»' : chg ? 'Lista actualizada' : 'No he encontrado nada nuevo para la lista') + (dudas ? ' · ' + dudas + ' por decidir' : ''));
     } catch (e) {
       toast('No he podido ordenarlo (' + (e.message || e) + '). Lo apunto tal cual.');
       merge(l, { items: fallbackParse(pend.map((d) => d.texto).join(', ')) });
@@ -171,14 +199,14 @@
   const counts = (l) => { const it = (l.items || []); return { total: it.length, hechos: it.filter((x) => x.hecho).length, dudas: it.filter((x) => !x.hecho && x.estado !== 'comprar').length }; };
   function newList() {
     const d = new Date();
-    const l = { id: newId('ls'), titulo: 'Compra ' + fmtD.format(d).replace(/\./g, ''), creada: nowIso(), items: [], dictados: [] };
+    const l = { id: newId('ls'), titulo: 'Lista ' + fmtD.format(d).replace(/\./g, ''), autoTitulo: true, creada: nowIso(), items: [], dictados: [] };
     save(l); S.open = l.id; render(); startRec(l);
   }
 
   /* ---------- enviar a otra persona de Synqalia ---------- */
   function sentState(l) {
     const n = first(l.enviadaA && l.enviadaA.nombre), c = counts(l);
-    return ({ pendiente: 'le llegará cuando entre en Synqalia', entregada: c.hechos ? c.hechos + ' de ' + c.total + ' comprados' : 'recibida', cerrada: n + ' la ha cerrado' + (c.total ? ' (' + c.hechos + ' de ' + c.total + ')' : ''), borrada: n + ' la ha borrado' })[l.envEstado || 'pendiente'] || '';
+    return ({ pendiente: 'le llegará cuando entre en Synqalia', entregada: c.hechos ? c.hechos + ' de ' + c.total + ' ' + V(l).adj : 'recibida', cerrada: n + ' la ha cerrado' + (c.total ? ' (' + c.hechos + ' de ' + c.total + ')' : ''), borrada: n + ' la ha borrado' })[l.envEstado || 'pendiente'] || '';
   }
   function cancelSend(l) {
     if (!confirm('¿Anular el envío a ' + first(l.enviadaA.nombre) + '? La lista desaparece de su Synqalia y vuelve a tus listas.')) return;
@@ -215,6 +243,18 @@
     toast('Enviada a ' + first(p.name) + (data === 'pendiente' ? ': le llegará cuando entre en Synqalia' : '') + '. Te queda en «Enviadas».');
     return true;
   }
+  function shareText(l) {
+    const its = sorted(l).filter((it) => !it.hecho && it.estado === 'comprar');
+    const multi = new Set(its.map((it) => it.seccion)).size > 1;
+    let sec = null; const lines = [];
+    its.forEach((it) => { if (multi && it.seccion !== sec) { sec = it.seccion; if (lines.length) lines.push(''); lines.push(sec + ':'); } lines.push('• ' + it.nombre + (it.cantidad ? ' — ' + it.cantidad : '') + (it.nota ? ' (' + it.nota + ')' : '')); });
+    const dudas = sorted(l).filter((it) => !it.hecho && it.estado !== 'comprar');
+    if (dudas.length) lines.push('', 'Por confirmar:', ...dudas.map((it) => '• ' + it.nombre + (it.cantidad ? ' — ' + it.cantidad : '') + ' ¿?'));
+    if (tipoOf(l) === 'pedido') return 'Hola' + (l.lugar ? ', ' + l.lugar : '') + '. Os paso este pedido:\n\n' + lines.join('\n') + '\n\nGracias.';
+    return (l.emoji ? l.emoji + ' ' : '') + (l.titulo || 'Lista') + '\n\n' + lines.join('\n');
+  }
+  async function shareOut(l) { const txt = shareText(l); try { if (navigator.share) await navigator.share({ text: txt }); else { await navigator.clipboard.writeText(txt); toast('Lista copiada'); } } catch (e) {} }
+  window.__sqListShareText = shareText;
   function openSend(l) {
     if (!(l.items || []).length) { toast('La lista está vacía: añade algo antes de enviarla.'); return; }
     document.querySelectorAll('.ls-sheet-bg').forEach((x) => x.remove());
@@ -236,10 +276,8 @@
       hits.slice(0, 8).forEach((p) => res.append(row(p)));
     };
     q.addEventListener('input', paint);
-    const other = h('button', { type: 'button', class: 'ls-person other', onclick: async () => {
-      const txt = (l.titulo || 'Lista') + '\n' + sorted(l).filter((it) => !it.hecho).map((it) => '• ' + it.nombre + (it.cantidad ? ' — ' + it.cantidad : '') + (it.nota ? ' (' + it.nota + ')' : '')).join('\n');
-      try { if (navigator.share) await navigator.share({ text: txt }); else { await navigator.clipboard.writeText(txt); toast('Lista copiada'); } } catch (e) {}
-    } }, h('span', { class: 'ls-av ic', html: svg(I.share) }), h('span', { class: 'ls-pn' }, h('b', { text: 'Otras apps' }), h('small', { text: 'WhatsApp, correo… (solo el texto)' })));
+    const other = h('button', { type: 'button', class: 'ls-person other', onclick: () => shareOut(l) },
+      h('span', { class: 'ls-av ic', html: svg(I.share) }), h('span', { class: 'ls-pn' }, h('b', { text: tipoOf(l) === 'pedido' ? 'Enviar el pedido por WhatsApp, correo…' : 'Otras apps' }), h('small', { text: tipoOf(l) === 'pedido' ? 'Va como mensaje de pedido, agrupado' : 'WhatsApp, correo… (solo el texto)' })));
     bg.append(h('div', { class: 'ls-sheet', role: 'dialog', 'aria-label': 'Enviar la lista' },
       h('div', { class: 'ls-sheet-h' }, h('b', { text: 'Enviar a…' }), h('button', { type: 'button', class: 'ls-sheet-x', 'aria-label': 'Cerrar', html: svg(I.x), onclick: close })),
       h('p', { class: 'ls-sheet-p', text: 'Le llega «' + (l.titulo || 'Lista') + '» a sus Listas y un mensaje en Synqalia. Tú la sigues como propietario en «Enviadas».' }),
@@ -274,8 +312,8 @@
     const c = counts(l); const pct = c.total ? Math.round(c.hechos / c.total * 100) : 0;
     const closed = !!l.cerrada, sent = !!l.enviadaA;
     const open = () => { S.open = l.id; render(); window.scrollTo(0, 0); };
-    const prog = c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' en el carro' : c.total + (c.total === 1 ? ' producto' : ' productos')) : 'Vacía';
-    let sub = closed ? 'Cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + (c.total ? ' · ' + c.hechos + ' de ' + c.total + ' comprados' : '')
+    const prog = c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' ' + V(l).hechos : c.total + (c.total === 1 ? ' elemento' : ' elementos')) : 'Vacía';
+    let sub = closed ? 'Cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + (c.total ? ' · ' + c.hechos + ' de ' + c.total + ' ' + V(l).adj : '')
       : prog + (c.dudas ? ' · ' + c.dudas + ' por decidir' : '');
     if (sent) sub = 'A ' + first(l.enviadaA.nombre) + ' · ' + sentState(l);
     else if (l.enviadaPor && !closed) sub = 'De ' + first(l.enviadaPor.nombre) + ' · ' + prog;
@@ -288,7 +326,7 @@
       h('button', { type: 'button', class: 'ls-card-act bad', title: 'Borrar', 'aria-label': 'Borrar ' + (l.titulo || 'lista'), html: svg(I.trash), onclick: () => deleteList(l) }));
     return h('div', { class: 'ls-card' + (closed ? ' closed' : '') + (l.enviadaPor ? ' rx' : '') + (c.total && c.hechos === c.total ? ' done' : '') },
       h('button', { type: 'button', class: 'ls-card-open', onclick: open, 'aria-label': 'Abrir ' + (l.titulo || 'lista') },
-        h('span', { class: 'ls-card-ic', html: svg(I.cart) }),
+        l.emoji ? h('span', { class: 'ls-card-ic emo', text: l.emoji }) : h('span', { class: 'ls-card-ic', html: svg(I[V(l).icon]) }),
         h('span', { class: 'ls-card-main' }, h('b', { text: l.titulo || 'Lista' }), h('small', { text: sub }),
           c.total && !closed ? h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + pct + '%' })) : null)),
       closed
@@ -304,8 +342,8 @@
     const abiertas = all.filter((l) => !l.cerrada && !l.enviadaA).sort(by), cerradas = all.filter((l) => l.cerrada && !l.enviadaA).sort(by);
     const enviadas = all.filter((l) => l.enviadaA).sort((a, b) => String(b.envAct || '').localeCompare(String(a.envAct || '')));
     const wrap = h('div', { class: 'ls-home' },
-      h('button', { type: 'button', class: 'ls-new', onclick: newList, html: '<span class="ls-new-ic">' + svg(I.mic) + '</span><span><b>Nueva lista</b><small>Pulsa y dímela en voz alta</small></span>' }));
-    if (!abiertas.length) wrap.append(h('p', { class: 'ls-empty', text: cerradas.length ? 'No tienes listas abiertas.' : 'Aún no tienes listas. Pulsa «Nueva lista», di lo que necesitas («plátanos, yogures, 250 de chorizo… a ver si queda leche») y pulsa «Terminar».' }));
+      h('button', { type: 'button', class: 'ls-new', onclick: newList, html: '<span class="ls-new-ic">' + svg(I.mic) + '</span><span><b>Nueva lista</b><small>Compra, pedido, proyecto… dímela en voz alta</small></span>' }));
+    if (!abiertas.length) wrap.append(h('p', { class: 'ls-empty', text: cerradas.length ? 'No tienes listas abiertas.' : 'Aún no tienes listas. Pulsa «Nueva lista» y di lo que necesitas: la compra («plátanos, 250 de chorizo… a ver si queda leche»), un pedido a la ferretería o la farmacia, el material de un proyecto… Al pulsar «Terminar» te la ordeno.' }));
     abiertas.forEach((l) => wrap.append(listCard(l)));
     if (enviadas.length) {
       wrap.append(h('div', { class: 'ls-closed-t', text: 'Enviadas · ' + enviadas.length }));
@@ -321,7 +359,7 @@
   function itemRow(l, it) {
     const row = h('div', { class: 'ls-it ' + it.estado + (it.hecho ? ' hecho' : '') });
     const toggle = () => { it.hecho = !it.hecho; if (it.hecho && it.estado !== 'comprar') it.estado = 'comprar'; save(l); render(); };
-    row.append(h('button', { type: 'button', class: 'ls-ck', 'aria-label': it.hecho ? 'Sacar del carro' : 'Al carro', 'aria-pressed': String(!!it.hecho), onclick: toggle }));
+    row.append(h('button', { type: 'button', class: 'ls-ck', 'aria-label': it.hecho ? V(l).desmarcar : V(l).marcar, 'aria-pressed': String(!!it.hecho), onclick: toggle }));
     const main = h('button', { type: 'button', class: 'ls-it-main', onclick: () => (it.estado === 'comprar' || it.hecho ? toggle() : null) },
       h('span', { class: 'ls-nm', text: it.nombre }),
       it.cantidad ? h('span', { class: 'ls-qty', text: it.cantidad }) : null,
@@ -330,9 +368,9 @@
     row.append(h('button', { type: 'button', class: 'ls-del', 'aria-label': 'Quitar ' + it.nombre, title: 'Quitar', html: svg(I.x), onclick: () => { l.items = l.items.filter((x) => x !== it); save(l); render(); toastUndo(l, it); } }));
     if (!it.hecho && it.estado !== 'comprar') {
       row.append(h('span', { class: 'ls-ask' },
-        h('span', { class: 'ls-q', text: it.estado === 'mirar' ? '¿Lo tienes en casa?' : '¿Lo compras?' }),
-        h('button', { type: 'button', class: 'ls-yes', text: it.estado === 'mirar' ? 'No, comprar' : 'Sí', onclick: () => { it.estado = 'comprar'; save(l); render(); } }),
-        h('button', { type: 'button', class: 'ls-no', text: it.estado === 'mirar' ? 'Sí, hay' : 'No', onclick: () => { l.items = l.items.filter((x) => x !== it); save(l); render(); } })));
+        h('span', { class: 'ls-q', text: it.estado === 'mirar' ? V(l).mirar : V(l).duda }),
+        h('button', { type: 'button', class: 'ls-yes', text: it.estado === 'mirar' ? V(l).mirarSi : 'Sí', onclick: () => { it.estado = 'comprar'; save(l); render(); } }),
+        h('button', { type: 'button', class: 'ls-no', text: it.estado === 'mirar' ? V(l).mirarNo : 'No', onclick: () => { l.items = l.items.filter((x) => x !== it); save(l); render(); } })));
     }
     return row;
   }
@@ -358,13 +396,10 @@
     const menu = h('div', { class: 'ls-menu', hidden: true });
     const mi = (txt, fn, cls) => h('button', { type: 'button', class: cls || '', text: txt, onclick: () => { menu.hidden = true; fn(); } });
     menu.append(
-      mi('Compartir / copiar', async () => {
-        const txt = (l.titulo || 'Lista') + '\n' + sorted(l).filter((it) => !it.hecho).map((it) => '• ' + it.nombre + (it.cantidad ? ' — ' + it.cantidad : '') + (it.nota ? ' (' + it.nota + ')' : '') + (it.estado !== 'comprar' ? ' ¿?' : '')).join('\n');
-        try { if (navigator.share) await navigator.share({ text: txt }); else { await navigator.clipboard.writeText(txt); toast('Lista copiada'); } } catch (e) {}
-      }),
-      mi('Vaciar el carro (desmarcar todo)', () => { l.items.forEach((it) => { it.hecho = false; }); save(l); render(); }),
-      mi('Quitar lo que ya está en el carro', () => { l.items = l.items.filter((it) => !it.hecho); save(l); render(); }),
-      mi('Duplicar para otra compra', () => { const n = { ...JSON.parse(JSON.stringify(l)), id: newId('ls'), titulo: (l.titulo || 'Lista') + ' (copia)', creada: nowIso(), dictados: [] }; n.items.forEach((it) => { it.hecho = false; it.id = newId('i'); }); save(n); S.open = n.id; render(); }),
+      mi(tipoOf(l) === 'pedido' ? 'Enviar el pedido (WhatsApp, correo…)' : 'Compartir / copiar', () => shareOut(l)),
+      mi(V(l).desmarcarTodo, () => { l.items.forEach((it) => { it.hecho = false; }); save(l); render(); }),
+      mi(V(l).quitarHechos, () => { l.items = l.items.filter((it) => !it.hecho); save(l); render(); }),
+      mi('Duplicar para otra vez', () => { const n = { ...JSON.parse(JSON.stringify(l)), id: newId('ls'), titulo: (l.titulo || 'Lista') + ' (copia)', creada: nowIso(), dictados: [] }; n.items.forEach((it) => { it.hecho = false; it.id = newId('i'); }); save(n); S.open = n.id; render(); }),
       mi('Ver lo que dicté', () => { const d = (l.dictados || []).map((x) => '— ' + new Date(x.fecha).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) + ':\n' + x.texto).join('\n\n'); alert(d || 'No hay dictados en esta lista.'); }),
       l.cerrada ? mi('Volver a abrirla', () => reopenList(l)) : mi('Cerrar la lista (ya está)', () => closeList(l)),
       mi('Borrar la lista', () => deleteList(l), 'bad'));
@@ -375,7 +410,7 @@
       menu));
     if (l.enviadaPor) wrap.append(h('div', { class: 'ls-closed-note rx', text: 'Te la ha enviado ' + l.enviadaPor.nombre + '. Lo que marques le aparece a ' + first(l.enviadaPor.nombre) + '.' }));
     if (l.cerrada) wrap.append(h('div', { class: 'ls-closed-note', text: 'Lista cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + '. Puedes volver a abrirla o borrarla abajo.' }));
-    if (c.total) wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' en el carro' })));
+    if (c.total) wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' ' + V(l).hechos })));
 
     // micrófono
     const pend = (l.dictados || []).some((d) => d.pendiente);
@@ -394,7 +429,7 @@
     if (l.comentario && !recOn) wrap.append(h('div', { class: 'ls-comment' }, h('span', { text: '✨ ' + l.comentario }), h('button', { type: 'button', 'aria-label': 'Cerrar', html: svg(I.x), onclick: () => { l.comentario = ''; save(l); render(); } })));
 
     // añadir a mano
-    const inp = h('input', { class: 'ls-add-in', placeholder: 'Añadir a mano (p. ej. «2 kg de naranjas»)', enterkeyhint: 'done', 'aria-label': 'Añadir producto' });
+    const inp = h('input', { class: 'ls-add-in', placeholder: 'Añadir a mano', enterkeyhint: 'done', 'aria-label': 'Añadir a la lista' });
     const addF = h('form', { class: 'ls-add' }, inp, h('button', { type: 'submit', class: 'btn', 'aria-label': 'Añadir', html: svg(I.plus) }));
     addF.addEventListener('submit', (e) => {
       e.preventDefault(); const v = inp.value.trim(); if (!v) return; inp.value = '';
@@ -412,7 +447,7 @@
     if (decide.length) { const g = h('section', { class: 'ls-grp ask' }, h('h3', { text: 'Por decidir · ' + decide.length })); decide.forEach((it) => g.append(itemRow(l, it))); wrap.append(g); }
     let sec = null, g = null;
     buy.forEach((it) => { if (it.seccion !== sec) { sec = it.seccion; g = h('section', { class: 'ls-grp' }, h('h3', { text: sec })); wrap.append(g); } g.append(itemRow(l, it)); });
-    if (c.total && !pendientes.length && !decide.length && !l.cerrada) wrap.append(h('p', { class: 'ls-empty ok', text: '¡Todo en el carro! 🛒 Ya puedes cerrarla.' }));
+    if (c.total && !pendientes.length && !decide.length && !l.cerrada) wrap.append(h('p', { class: 'ls-empty ok', text: V(l).todo }));
     // cerrar o borrar desde la propia lista (aunque no esté todo marcado)
     if (!recOn && !l.enviadaPor && !l.cerrada) wrap.append(h('button', { type: 'button', class: 'ls-sendbtn', html: svg(I.send) + '<b>Enviar a…</b>', onclick: () => openSend(l) }));
     if (!recOn) wrap.append(h('div', { class: 'ls-foot' },
@@ -430,10 +465,10 @@
       h('button', { type: 'button', class: 'ls-back', 'aria-label': 'Volver a las listas', html: svg(I.back), onclick: () => { S.open = null; render(); } }),
       h('div', { class: 'ls-title', text: l.titulo || 'Lista' })));
     wrap.append(h('div', { class: 'ls-closed-note sent st-' + (l.envEstado || 'pendiente'), text: 'Enviada a ' + l.enviadaA.nombre + ' el ' + fmtD.format(new Date(l.enviadaA.fecha)).replace(/\./g, '') + ' · ' + sentState(l) + '.' }));
-    if (c.total && l.envEstado !== 'borrada') wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' comprados' })));
+    if (c.total && l.envEstado !== 'borrada') wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' ' + V(l).adj })));
     const g = h('section', { class: 'ls-grp ro' });
     sorted(l).forEach((it) => g.append(h('div', { class: 'ls-it ' + (it.hecho ? 'hecho' : '') },
-      h('span', { class: 'ls-ck', 'aria-pressed': String(!!it.hecho), role: 'img', 'aria-label': it.hecho ? 'Comprado' : 'Pendiente' }),
+      h('span', { class: 'ls-ck', 'aria-pressed': String(!!it.hecho), role: 'img', 'aria-label': it.hecho ? 'Hecho' : 'Pendiente' }),
       h('span', { class: 'ls-it-main' }, h('span', { class: 'ls-nm', text: it.nombre }), it.cantidad ? h('span', { class: 'ls-qty', text: it.cantidad }) : null))));
     wrap.append(g);
     const activa = ['pendiente', 'entregada'].includes(l.envEstado);
@@ -443,7 +478,7 @@
       h('button', { type: 'button', class: 'ls-foot-del', 'aria-label': 'Borrar la lista', title: 'Borrar la lista', html: svg(I.trash), onclick: () => deleteList(l) })));
     return wrap;
   }
-  const sorted = (l) => [...(l.items || [])].sort((a, b) => secIdx(a.seccion) - secIdx(b.seccion) || String(a.creado || '').localeCompare(String(b.creado || '')));
+  const sorted = (l) => [...(l.items || [])].sort((a, b) => secIdx(a.seccion, l) - secIdx(b.seccion, l) || String(a.creado || '').localeCompare(String(b.creado || '')));
 
   function render() {
     const l = S.open && S.lists.get(S.open);
