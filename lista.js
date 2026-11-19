@@ -29,7 +29,11 @@
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+    send: '<path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    share: '<circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="18" cy="18" r="2.3"/><path d="M8 11l8-4M8 13l8 4"/>',
   };
+  const first = (n) => String(n || '').trim().split(/\s+/)[0] || '';
   const SECCIONES = ['Fruta y verdura', 'Panadería', 'Carne', 'Pescado', 'Charcutería y quesos', 'Lácteos y huevos', 'Despensa', 'Conservas y salsas', 'Desayuno y dulces', 'Congelados', 'Bebidas', 'Limpieza', 'Higiene y cuidado', 'Bebé y mascotas', 'Otros'];
   const secIdx = (s) => { const i = SECCIONES.indexOf(s); return i < 0 ? SECCIONES.length : i; };
   const newId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -39,7 +43,9 @@
 
   const userId = (() => { try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) { const v = JSON.parse(localStorage.getItem(k)); const u = v && (v.user || (v.currentSession && v.currentSession.user)); if (u && u.id) return u.id; } } } catch (e) {} return 'anon'; })();
   const LS = 'sq-listas-' + userId;
-  const S = { lists: new Map(), dirty: new Set(), open: null, db: null, ai: null, rec: null, live: '', heard: '', busy: false, showClosed: false };
+  const S = { lists: new Map(), dirty: new Set(), open: null, db: null, ai: null, rec: null, live: '', heard: '', busy: false, showClosed: false, people: [], recent: [] };
+  const sbc = () => window.__sb || null;
+  const meEmail = () => String((window.__sqUser && window.__sqUser.email) || '').toLowerCase();
 
   /* ---------- datos ---------- */
   const persistLocal = () => { try { localStorage.setItem(LS, JSON.stringify({ lists: [...S.lists.values()], dirty: [...S.dirty] })); } catch (e) {} };
@@ -169,6 +175,79 @@
     save(l); S.open = l.id; render(); startRec(l);
   }
 
+  /* ---------- enviar a otra persona de Synqalia ---------- */
+  function sentState(l) {
+    const n = first(l.enviadaA && l.enviadaA.nombre), c = counts(l);
+    return ({ pendiente: 'le llegará cuando entre en Synqalia', entregada: c.hechos ? c.hechos + ' de ' + c.total + ' comprados' : 'recibida', cerrada: n + ' la ha cerrado' + (c.total ? ' (' + c.hechos + ' de ' + c.total + ')' : ''), borrada: n + ' la ha borrado' })[l.envEstado || 'pendiente'] || '';
+  }
+  function cancelSend(l) {
+    if (!confirm('¿Anular el envío a ' + first(l.enviadaA.nombre) + '? La lista desaparece de su Synqalia y vuelve a tus listas.')) return;
+    delete l.enviadaA; delete l.envEstado; delete l.envAct; l.items.forEach((it) => { it.hecho = false; });
+    save(l); render(); toast('Envío anulado: la lista vuelve a ser solo tuya');
+  }
+  const FREQ = 'sq-listas-freq-' + userId;
+  const freqMap = () => { try { return JSON.parse(localStorage.getItem(FREQ) || '{}'); } catch (e) { return {}; } };
+  function frequent() {
+    const f = freqMap(); S.lists.forEach((l) => { if (l.enviadaA && l.enviadaA.email) f[l.enviadaA.email] = (f[l.enviadaA.email] || 0) + 1; }); const byMail = new Map(S.people.map((p) => [p.email, p]));
+    const out = Object.entries(f).sort((a, b) => b[1] - a[1]).map(([e]) => byMail.get(e)).filter(Boolean);
+    S.recent.forEach((e) => { const p = byMail.get(e); if (p && !out.includes(p)) out.push(p); });
+    S.people.forEach((p) => { if (!out.includes(p)) out.push(p); });
+    return out.slice(0, 3);
+  }
+  async function loadPeople() {
+    const sb = sbc(); if (!sb) return;
+    try {
+      const me = meEmail();
+      const [{ data: ppl }, { data: chats }] = await Promise.all([sb.rpc('chat_people'), sb.rpc('chat_list')]);
+      S.people = (ppl || []).filter((p) => p.email && p.email !== me).map((p) => ({ email: p.email, name: p.name || p.email.split('@')[0], on: !!p.activated }));
+      S.recent = (chats || []).filter((c) => c.kind === 'directo').flatMap((c) => (c.members || []).map((m) => m.email)).filter((e) => e && e !== me);
+    } catch (e) { /* sin red: se intenta al abrir el envío */ }
+  }
+  async function sendTo(l, p) {
+    const sb = sbc(); if (!sb || !navigator.onLine) { toast('Sin conexión: no se puede enviar ahora.'); return false; }
+    try { await push(l.id); } catch (e) {}
+    const { data, error } = await sb.rpc('send_list', { p_to_email: p.email, p_id: l.id });
+    if (error) { toast('No se ha podido enviar (' + error.message + ').'); return false; }
+    l.enviadaA = { email: p.email, nombre: p.name, fecha: nowIso() }; l.envEstado = data; l.envAct = nowIso(); delete l.cerrada;
+    S.lists.set(l.id, l); S.dirty.delete(l.id); persistLocal();
+    const f = freqMap(); f[p.email] = (f[p.email] || 0) + 1; try { localStorage.setItem(FREQ, JSON.stringify(f)); } catch (e) {}
+    S.open = null; render(); window.scrollTo(0, 0);
+    toast('Enviada a ' + first(p.name) + (data === 'pendiente' ? ': le llegará cuando entre en Synqalia' : '') + '. Te queda en «Enviadas».');
+    return true;
+  }
+  function openSend(l) {
+    if (!(l.items || []).length) { toast('La lista está vacía: añade algo antes de enviarla.'); return; }
+    document.querySelectorAll('.ls-sheet-bg').forEach((x) => x.remove());
+    const close = () => bg.remove();
+    const bg = h('div', { class: 'ls-sheet-bg', onclick: (e) => { if (e.target === bg) close(); } });
+    const res = h('div', { class: 'ls-people' });
+    const row = (p) => h('button', { type: 'button', class: 'ls-person', onclick: async (e) => { e.currentTarget.disabled = true; if (await sendTo(l, p)) close(); else e.currentTarget.disabled = false; } },
+      h('span', { class: 'ls-av', text: (p.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() }),
+      h('span', { class: 'ls-pn' }, h('b', { text: p.name }), h('small', { text: p.on ? 'En Synqalia' : 'Le llegará cuando entre en Synqalia' })),
+      h('span', { class: 'ls-pgo', html: svg(I.send) }));
+    const q = h('input', { class: 'ls-search', type: 'search', placeholder: 'Buscar persona del equipo', 'aria-label': 'Buscar persona', enterkeyhint: 'search' });
+    const paint = () => {
+      res.textContent = '';
+      const t = norm(q.value);
+      if (!S.people.length) { res.append(h('p', { class: 'ls-empty', text: navigator.onLine ? 'Cargando personas…' : 'Sin conexión.' })); return; }
+      if (!t) { res.append(h('div', { class: 'ls-sheet-sub', text: 'Frecuentes' })); frequent().forEach((p) => res.append(row(p))); return; }
+      const hits = S.people.filter((p) => norm(p.name).includes(t) || p.email.includes(t));
+      if (!hits.length) res.append(h('p', { class: 'ls-empty', text: 'Nadie con ese nombre en Synqalia.' }));
+      hits.slice(0, 8).forEach((p) => res.append(row(p)));
+    };
+    q.addEventListener('input', paint);
+    const other = h('button', { type: 'button', class: 'ls-person other', onclick: async () => {
+      const txt = (l.titulo || 'Lista') + '\n' + sorted(l).filter((it) => !it.hecho).map((it) => '• ' + it.nombre + (it.cantidad ? ' — ' + it.cantidad : '') + (it.nota ? ' (' + it.nota + ')' : '')).join('\n');
+      try { if (navigator.share) await navigator.share({ text: txt }); else { await navigator.clipboard.writeText(txt); toast('Lista copiada'); } } catch (e) {}
+    } }, h('span', { class: 'ls-av ic', html: svg(I.share) }), h('span', { class: 'ls-pn' }, h('b', { text: 'Otras apps' }), h('small', { text: 'WhatsApp, correo… (solo el texto)' })));
+    bg.append(h('div', { class: 'ls-sheet', role: 'dialog', 'aria-label': 'Enviar la lista' },
+      h('div', { class: 'ls-sheet-h' }, h('b', { text: 'Enviar a…' }), h('button', { type: 'button', class: 'ls-sheet-x', 'aria-label': 'Cerrar', html: svg(I.x), onclick: close })),
+      h('p', { class: 'ls-sheet-p', text: 'Le llega «' + (l.titulo || 'Lista') + '» a sus Listas y un mensaje en Synqalia. Tú la sigues como propietario en «Enviadas».' }),
+      h('label', { class: 'ls-search-w', html: svg(I.search) }, q), res, other));
+    document.body.append(bg); paint();
+    if (!S.people.length) loadPeople().then(paint);
+  }
+
   /* cerrar = la doy por terminada (sale de las abiertas, queda en «Cerradas» por si acaso); borrar = desaparece */
   const isEmpty = (l) => !(l.items || []).length && !(l.dictados || []).length;
   function closeList(l) {
@@ -180,6 +259,7 @@
   function reopenList(l) { delete l.cerrada; save(l); S.open = l.id; render(); window.scrollTo(0, 0); }
   function deleteList(l) {
     if (S.rec && S.rec.list === l.id) stopRec();
+    if (l.enviadaA && ['pendiente', 'entregada'].includes(l.envEstado) && !confirm('¿Borrar «' + (l.titulo || 'Lista') + '»? ' + first(l.enviadaA.nombre) + ' también dejará de tenerla.')) return;
     const copy = JSON.parse(JSON.stringify(l));
     removeList(l.id); if (S.open === l.id) S.open = null; render();
     toastAction('«' + (l.titulo || 'Lista') + '» borrada', 'Deshacer', () => { save(copy); render(); });
@@ -192,11 +272,21 @@
 
   function listCard(l) {
     const c = counts(l); const pct = c.total ? Math.round(c.hechos / c.total * 100) : 0;
-    const closed = !!l.cerrada;
+    const closed = !!l.cerrada, sent = !!l.enviadaA;
     const open = () => { S.open = l.id; render(); window.scrollTo(0, 0); };
-    const sub = closed ? 'Cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + (c.total ? ' · ' + c.hechos + ' de ' + c.total + ' comprados' : '')
-      : c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' en el carro' : c.total + (c.total === 1 ? ' producto' : ' productos')) + (c.dudas ? ' · ' + c.dudas + ' por decidir' : '') : 'Vacía';
-    return h('div', { class: 'ls-card' + (closed ? ' closed' : '') + (c.total && c.hechos === c.total ? ' done' : '') },
+    const prog = c.total ? (c.hechos ? c.hechos + ' de ' + c.total + ' en el carro' : c.total + (c.total === 1 ? ' producto' : ' productos')) : 'Vacía';
+    let sub = closed ? 'Cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + (c.total ? ' · ' + c.hechos + ' de ' + c.total + ' comprados' : '')
+      : prog + (c.dudas ? ' · ' + c.dudas + ' por decidir' : '');
+    if (sent) sub = 'A ' + first(l.enviadaA.nombre) + ' · ' + sentState(l);
+    else if (l.enviadaPor && !closed) sub = 'De ' + first(l.enviadaPor.nombre) + ' · ' + prog;
+    if (sent) return h('div', { class: 'ls-card sent st-' + (l.envEstado || 'pendiente') },
+      h('button', { type: 'button', class: 'ls-card-open', onclick: open, 'aria-label': 'Ver ' + (l.titulo || 'lista') },
+        h('span', { class: 'ls-card-ic', html: svg(I.send) }),
+        h('span', { class: 'ls-card-main' }, h('b', { text: l.titulo || 'Lista' }), h('small', { text: sub }),
+          c.total && l.envEstado !== 'borrada' ? h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + pct + '%' })) : null)),
+      ['pendiente', 'entregada'].includes(l.envEstado) ? h('button', { type: 'button', class: 'ls-card-act', title: 'Anular el envío', 'aria-label': 'Anular el envío de ' + (l.titulo || 'lista'), html: svg(I.undo), onclick: () => cancelSend(l) }) : null,
+      h('button', { type: 'button', class: 'ls-card-act bad', title: 'Borrar', 'aria-label': 'Borrar ' + (l.titulo || 'lista'), html: svg(I.trash), onclick: () => deleteList(l) }));
+    return h('div', { class: 'ls-card' + (closed ? ' closed' : '') + (l.enviadaPor ? ' rx' : '') + (c.total && c.hechos === c.total ? ' done' : '') },
       h('button', { type: 'button', class: 'ls-card-open', onclick: open, 'aria-label': 'Abrir ' + (l.titulo || 'lista') },
         h('span', { class: 'ls-card-ic', html: svg(I.cart) }),
         h('span', { class: 'ls-card-main' }, h('b', { text: l.titulo || 'Lista' }), h('small', { text: sub }),
@@ -211,11 +301,16 @@
     pruneEmpty();
     const by = (a, b) => String(b.cerrada || b.editada || b.creada).localeCompare(String(a.cerrada || a.editada || a.creada));
     const all = [...S.lists.values()];
-    const abiertas = all.filter((l) => !l.cerrada).sort(by), cerradas = all.filter((l) => l.cerrada).sort(by);
+    const abiertas = all.filter((l) => !l.cerrada && !l.enviadaA).sort(by), cerradas = all.filter((l) => l.cerrada && !l.enviadaA).sort(by);
+    const enviadas = all.filter((l) => l.enviadaA).sort((a, b) => String(b.envAct || '').localeCompare(String(a.envAct || '')));
     const wrap = h('div', { class: 'ls-home' },
       h('button', { type: 'button', class: 'ls-new', onclick: newList, html: '<span class="ls-new-ic">' + svg(I.mic) + '</span><span><b>Nueva lista</b><small>Pulsa y dímela en voz alta</small></span>' }));
     if (!abiertas.length) wrap.append(h('p', { class: 'ls-empty', text: cerradas.length ? 'No tienes listas abiertas.' : 'Aún no tienes listas. Pulsa «Nueva lista», di lo que necesitas («plátanos, yogures, 250 de chorizo… a ver si queda leche») y pulsa «Terminar».' }));
     abiertas.forEach((l) => wrap.append(listCard(l)));
+    if (enviadas.length) {
+      wrap.append(h('div', { class: 'ls-closed-t', text: 'Enviadas · ' + enviadas.length }));
+      enviadas.forEach((l) => wrap.append(listCard(l)));
+    }
     if (cerradas.length) {
       wrap.append(h('button', { type: 'button', class: 'ls-closed-t', onclick: () => { S.showClosed = !S.showClosed; render(); }, text: 'Cerradas · ' + cerradas.length + (S.showClosed ? ' ▴' : ' ▾') }));
       if (S.showClosed) cerradas.forEach((l) => wrap.append(listCard(l)));
@@ -253,6 +348,7 @@
   }
 
   function renderList(l) {
+    if (l.enviadaA) return renderSent(l);
     const c = counts(l);
     const recOn = S.rec && S.rec.list === l.id;
     const wrap = h('div', { class: 'ls-list' });
@@ -277,6 +373,7 @@
       title,
       h('button', { type: 'button', class: 'ls-more', 'aria-label': 'Opciones', html: svg(I.more), onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } }),
       menu));
+    if (l.enviadaPor) wrap.append(h('div', { class: 'ls-closed-note rx', text: 'Te la ha enviado ' + l.enviadaPor.nombre + '. Lo que marques le aparece a ' + first(l.enviadaPor.nombre) + '.' }));
     if (l.cerrada) wrap.append(h('div', { class: 'ls-closed-note', text: 'Lista cerrada el ' + fmtD.format(new Date(l.cerrada)).replace(/\./g, '') + '. Puedes volver a abrirla o borrarla abajo.' }));
     if (c.total) wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' en el carro' })));
 
@@ -317,10 +414,32 @@
     buy.forEach((it) => { if (it.seccion !== sec) { sec = it.seccion; g = h('section', { class: 'ls-grp' }, h('h3', { text: sec })); wrap.append(g); } g.append(itemRow(l, it)); });
     if (c.total && !pendientes.length && !decide.length && !l.cerrada) wrap.append(h('p', { class: 'ls-empty ok', text: '¡Todo en el carro! 🛒 Ya puedes cerrarla.' }));
     // cerrar o borrar desde la propia lista (aunque no esté todo marcado)
+    if (!recOn && !l.enviadaPor && !l.cerrada) wrap.append(h('button', { type: 'button', class: 'ls-sendbtn', html: svg(I.send) + '<b>Enviar a…</b>', onclick: () => openSend(l) }));
     if (!recOn) wrap.append(h('div', { class: 'ls-foot' },
       l.cerrada
         ? h('button', { type: 'button', class: 'ls-foot-main', html: svg(I.undo) + '<b>Volver a abrirla</b>', onclick: () => reopenList(l) })
         : h('button', { type: 'button', class: 'ls-foot-main' + (c.total && !pendientes.length && !decide.length ? ' ready' : ''), html: svg(I.check) + '<b>Cerrar lista</b>', onclick: () => closeList(l) }),
+      h('button', { type: 'button', class: 'ls-foot-del', 'aria-label': 'Borrar la lista', title: 'Borrar la lista', html: svg(I.trash), onclick: () => deleteList(l) })));
+    return wrap;
+  }
+  // lista enviada: la ves como propietario (lo que va marcando la otra persona), sin editarla
+  function renderSent(l) {
+    const c = counts(l); const n = first(l.enviadaA.nombre);
+    const wrap = h('div', { class: 'ls-list' });
+    wrap.append(h('div', { class: 'ls-head' },
+      h('button', { type: 'button', class: 'ls-back', 'aria-label': 'Volver a las listas', html: svg(I.back), onclick: () => { S.open = null; render(); } }),
+      h('div', { class: 'ls-title', text: l.titulo || 'Lista' })));
+    wrap.append(h('div', { class: 'ls-closed-note sent st-' + (l.envEstado || 'pendiente'), text: 'Enviada a ' + l.enviadaA.nombre + ' el ' + fmtD.format(new Date(l.enviadaA.fecha)).replace(/\./g, '') + ' · ' + sentState(l) + '.' }));
+    if (c.total && l.envEstado !== 'borrada') wrap.append(h('div', { class: 'ls-prog' }, h('span', { class: 'ls-bar' }, h('i', { style: 'width:' + Math.round(c.hechos / c.total * 100) + '%' })), h('small', { text: c.hechos + ' de ' + c.total + ' comprados' })));
+    const g = h('section', { class: 'ls-grp ro' });
+    sorted(l).forEach((it) => g.append(h('div', { class: 'ls-it ' + (it.hecho ? 'hecho' : '') },
+      h('span', { class: 'ls-ck', 'aria-pressed': String(!!it.hecho), role: 'img', 'aria-label': it.hecho ? 'Comprado' : 'Pendiente' }),
+      h('span', { class: 'ls-it-main' }, h('span', { class: 'ls-nm', text: it.nombre }), it.cantidad ? h('span', { class: 'ls-qty', text: it.cantidad }) : null))));
+    wrap.append(g);
+    const activa = ['pendiente', 'entregada'].includes(l.envEstado);
+    wrap.append(h('div', { class: 'ls-foot' },
+      activa ? h('button', { type: 'button', class: 'ls-foot-main', html: svg(I.undo) + '<b>Anular el envío</b>', onclick: () => cancelSend(l) })
+        : h('button', { type: 'button', class: 'ls-foot-main', html: svg(I.undo) + '<b>Recuperarla para mí</b>', onclick: () => { delete l.enviadaA; delete l.envEstado; delete l.envAct; save(l); render(); } }),
       h('button', { type: 'button', class: 'ls-foot-del', 'aria-label': 'Borrar la lista', title: 'Borrar la lista', html: svg(I.trash), onclick: () => deleteList(l) })));
     return wrap;
   }
@@ -344,6 +463,8 @@
     const use = () => (window.claude && window.claude.use ? Promise.resolve() : new Promise((r) => setTimeout(r, 200)).then(use));
     await use();
     window.claude.use('sample').then((s) => { S.ai = s; render(); }).catch(() => {});
+    const sbWait = () => (sbc() && window.__sqUser ? Promise.resolve() : new Promise((r) => setTimeout(r, 300)).then(sbWait));
+    sbWait().then(() => { sbc().rpc('claim_lists').then(() => {}, () => {}); loadPeople(); });
     const db = await window.claude.use('db');
     const connect = async () => {
       try {
