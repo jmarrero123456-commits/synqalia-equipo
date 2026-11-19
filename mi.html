@@ -408,25 +408,89 @@
   html, body { overflow-x: clip; }
   .qv-short { display: none; }
   .te-del { margin-right: auto; color: #c0392b; }
-  /* Tareas en el móvil: vista ligera (título, abrir correo a lo ancho y Avances · Mañana · Editar) */
+  /* Tareas: tarjetas (borde por prioridad, ✓ y ··· a la derecha), 4 recuadros y fila de desplegables */
+  .tk-tiles { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; }
+  .qv.qt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 10px 4px; border-radius: 14px; border: 1px solid var(--line); box-shadow: none; }
+  .qv.qt .qt-ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  .qv.qt .qt-l { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .qv.qt .qn { background: none !important; padding: 0; min-width: 0; font-size: 24px; font-weight: 800; line-height: 1.05; color: inherit !important; }
+  .qt-hoy { background: #fdeeee; border-color: #f5c9c9; color: #d93636; }
+  .qt-mias { background: #eaf0ff; border-color: #c9d5fb; color: #2340d0; } .qt-mias .qn { color: #1a2b8f !important; }
+  .qt-pend { background: #e9f8f0; border-color: #bfe8d2; color: #1f9d55; } .qt-pend .qn { color: var(--ink) !important; }
+  .qt-venc { background: #f3eefe; border-color: #dccff8; color: #7c5cf0; } .qt-venc .qn { color: #4b2aa8 !important; }
+  .qv.qt[aria-pressed="true"] { background: inherit; color: inherit; box-shadow: 0 0 0 2px currentColor inset; }
+  .qv.qt.qt-hoy[aria-pressed="true"] { background: #fdeeee; color: #d93636; border-color: #d93636; }
+  .qv.qt.qt-mias[aria-pressed="true"] { background: #eaf0ff; color: #2340d0; border-color: #2340d0; }
+  .qv.qt.qt-pend[aria-pressed="true"] { background: #e9f8f0; color: #1f9d55; border-color: #1f9d55; }
+  .qv.qt.qt-venc[aria-pressed="true"] { background: #f3eefe; color: #7c5cf0; border-color: #7c5cf0; }
+  :root[data-theme="dark"] .qv.qt { background: var(--panel) !important; }
+  .tk-dd { display: flex !important; gap: 6px; align-items: stretch; margin: 0 0 8px !important; }
+  .tk-pill { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
+  .tk-pill.on { flex-grow: 1.3; }
+  .tk-pill select { width: 100%; min-width: 0; height: 40px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 13.5px/1 var(--font-body); padding: 0 24px 0 10px; appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 13px) 17px, calc(100% - 8px) 17px; background-size: 5px 5px; background-repeat: no-repeat; text-overflow: ellipsis; cursor: pointer; }
+  .tk-pill.on select { border: 1.5px solid var(--accent); color: var(--accent); font-weight: 700; }
+  .tk-dd .tk-filter { flex: 0 0 40px; width: 40px; min-height: 40px; border-radius: 11px; }
+  .nt-flt { background: var(--accent); }
+  #view-tareas .group-head, #task-list .group-head { border-bottom: 0; margin-top: 12px; padding: 4px 2px 6px; font-size: 13px !important; letter-spacing: .06em !important; }
+  #task-list .group-head .count { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 13px; }
+  #task-list .item.tcard { grid-template-columns: minmax(0, 1fr) auto auto !important; align-items: center; gap: 8px 10px; margin: 0 0 8px; padding: 11px 10px 11px 13px; border: 1px solid var(--line); border-left: 4px solid #e08a1e; border-radius: 14px; background: var(--panel); box-shadow: 0 1px 2px rgba(20,26,46,.05); }
+  #task-list .item.tcard.tp-Mega { border-left-color: #d93636; }
+  #task-list .item.tcard.tp-Alta { border-left-color: #e5484d; }
+  #task-list .item.tcard.tp-Media { border-left-color: #e08a1e; }
+  #task-list .item.tcard.tp-Baja { border-left-color: #2fa36b; }
+  #task-list .item.tcard.done { opacity: .65; }
+  #task-list .item.tcard > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
+  #task-list .item.tcard > .actions { grid-column: 2 !important; grid-row: 1; }
+  #task-list .item.tcard > .tside { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+  #task-list .item.tcard > .te, #task-list .item.tcard > .prog, #task-list .item.tcard > form { grid-column: 1 / -1 !important; }
+  #task-list .item.tcard .tmeta .mc.prio { order: -2; } #task-list .item.tcard .tmeta .mc.asig { order: -3; }
+  .tchk, .tmore { flex: 0 0 auto; }
+  #task-list .item.tcard .title { font-size: 15px; font-weight: 700; line-height: 1.28; }
+  #task-list .item.tcard .tmeta { margin-top: 6px; }
+  .tchk { width: 44px !important; height: 44px !important; border-radius: 50% !important; border: 2px solid #1f9d55 !important; background: var(--panel) !important; margin: 0 !important; color: #1f9d55; }
+  .tchk::after { content: ""; width: 16px; height: 9px; border-left: 2.6px solid currentColor; border-bottom: 2.6px solid currentColor; transform: translateY(-2px) rotate(-45deg); border-radius: 1px; }
+  .tchk[aria-checked="true"] { background: #1f9d55 !important; color: #fff; }
+  .tchk > * { display: none; }
+  .tmore { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center; cursor: pointer; padding: 0; color: var(--ink); }
+  .tmore:hover { border-color: var(--muted); }
+  .tmore svg { width: 18px; height: 4px; fill: currentColor; }
+  .mc.tag .mi svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+  .mc.prio.p-Alta::before { content: "⌃"; font-weight: 800; margin-right: 1px; }
+  .mc.prio.p-Media::before { content: "="; font-weight: 800; margin-right: 1px; }
+  .mc.prio.p-Baja::before { content: "⌄"; font-weight: 800; margin-right: 1px; }
+  .mc.prio.p-Alta { background: #fdeeee; color: #c42b2b; border-color: #fdeeee; }
+  .mc.prio.p-Media { background: #fff2df; color: #a35b00; border-color: #fff2df; }
+  .mc.prio.p-Baja { background: #e6f6ee; color: #1b7a4b; border-color: #e6f6ee; }
+  .mc.prio .mi { display: none; }
+  .task-sheet .ts-grab { justify-self: center; width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin: -6px 0 2px; }
+  .ts-mail { display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 12px; border: 1px solid #c9d5fb; background: #eaf0ff; color: #2340d0; font: 700 15px/1 var(--font-body); text-decoration: none; cursor: pointer; }
+  .ts-mail svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .ts-g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ts-b, .ts-d { height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 700 15px/1 var(--font-body); cursor: pointer; }
+  .ts-d { height: 42px; font-weight: 600; font-size: 14px; }
+  .ts-d.main { border: 1.5px solid var(--accent); color: var(--accent); font-weight: 700; }
+  .ts-b:hover, .ts-d:hover { border-color: var(--accent); }
   @media (max-width: 700px) {
-    .qv-l:has(.qv-short) .qv-long { display: none; } .qv-short { display: inline; }
-    #task-list .item .tmeta .mc.mine, #task-list .item .tmeta .mc.who, #task-list .item .tmeta .mc.today, #task-list .item .tmeta .mc.prio, #task-list .item .tmeta .morig { display: none; }
-    #task-list .item .tmeta:not(:has(> :not(.mine):not(.who):not(.today):not(.prio):not(.morig))) { display: none; }
-    #task-list .item .tmeta .mc.link { flex: 1 1 100%; justify-content: center; padding: 9px 12px; border-radius: 10px; font-weight: 700; }
-    #task-list .item > .actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 6px; }
-    #task-list .item > .actions .btn, #task-list .item > .actions .pp-btn { font-size: 13px; }
-    #task-list .item > .actions .pp-wrap { display: flex; min-width: 0; }
-    #task-list .item > .actions .pp-btn { flex: 1 1 auto; min-width: 0; padding-left: 6px; padding-right: 6px; }
-    #task-list .item > .actions .pp-sel { flex: 0 0 26px; width: 26px; padding: 0; text-align: center; }
-    #task-list .item > .actions .pp-btn::before { content: none; }
-    #task-list .item > .actions > .btn { min-width: 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #task-list .item > .actions .a-del { display: none; }
-    #task-list .item > .actions .a-prog { order: 1; }
-    #task-list .item > .actions .pp-wrap { order: 2; }
-    #task-list .item > .actions .a-edit { order: 3; }
-    #task-list .item > .actions .btn { justify-content: center; }
-    #task-list .item .detail { display: none; }
+    #task-list .item.tcard { grid-template-columns: minmax(0, 1fr) auto !important; }
+    #task-list .item.tcard > .tside { grid-column: 2; }
+    #task-list .item.tcard > .actions { display: none; }
+    #view-tareas .tk-card { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .tk-pill select { padding: 0 20px 0 9px; font-size: 13px; background-position: calc(100% - 12px) 17px, calc(100% - 7px) 17px; }
+    .tk-pill.on { flex-grow: 1; }
+    .tk-pill select { font-size: 12.5px; }
+    #task-list .item.tcard .tmeta .mc.mine, #task-list .item.tcard .tmeta .mc.who, #task-list .item.tcard .tmeta .mc.link, #task-list .item.tcard .tmeta .morig { display: none; }
+    #task-list .item.tcard .detail { display: none; }
+    #task-list .item.tcard .last-prog { display: none; }
+  }
+  @media (min-width: 701px) {
+    #task-list .item.tcard { grid-template-columns: minmax(0, 1fr) auto auto; }
+    #task-list .item.tcard > .actions { align-self: center; }
+    #task-list .item.tcard .tmore { display: none; }
+  }
+  @media (max-width: 380px) {
+    .tk-tiles { gap: 6px; } .qv.qt { padding: 8px 2px; } .qv.qt .qt-l { font-size: 11.5px; } .qv.qt .qn { font-size: 21px; }
+    .tk-pill select { font-size: 12.5px; padding-left: 8px; }
+    .tchk, .tmore { width: 40px !important; height: 40px !important; }
   }
   @media (max-width: 560px) {
     .app { padding-left: 12px; padding-right: 12px; }
@@ -520,7 +584,7 @@
   .tk-card .tk-row { margin-top: 0; }
   .nt-saved { display: block; margin-top: 6px; } .nt-saved:empty { display: none; }
   #view-tareas .nt-panel { margin-top: 12px; }
-  .tk-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: stretch; gap: 8px; margin: 12px 0 8px; }
+  .tk-row { margin: 12px 0 8px; }
   .tk-row .tk-quick { display: contents; }
   .tk-row .qv { justify-content: center; min-width: 0; }
   .tk-row .qv > span:first-child { overflow: hidden; text-overflow: ellipsis; }
@@ -959,7 +1023,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261119h">
+<link rel="stylesheet" href="synqalia.css?v=20261119t">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1007,7 +1071,7 @@
 
   <!-- HOY -->
   <main id="view-hoy" class="view" style="display:grid; gap:18px;">
-    <div class="nt-top"><div class="nt-strip"><button type="button" class="nt-wide" id="hoy-nt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span>Nueva tarea</span></button><button type="button" class="nt-mic" id="hoy-nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button></div></div>
+    <div class="nt-top"><div class="nt-strip"><button type="button" class="nt-wide" id="hoy-nt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span>Nueva tarea</span></button><button type="button" class="nt-mic" id="hoy-nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-flt" id="hoy-nt-flt" aria-label="Filtros de tareas" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div></div>
     <section class="stats mini" aria-label="Resumen">
       <button class="stat key" data-quick="hoy" type="button" title="Tareas que vencen hoy o ya vencidas"><b id="st-hoy">–</b><span>Resolver hoy</span></button>
       <button class="stat" data-quick="mias" type="button" title="Tareas que dependen de ti"><b id="st-mias">–</b><span>Dependen de mí</span></button>
@@ -1065,7 +1129,7 @@
 
     <h2 class="sr-only">Mis tareas</h2>
     <div class="nt-top">
-      <div class="nt-strip"><button type="button" class="nt-wide" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button><button type="button" class="nt-mic" id="nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button></div>
+      <div class="nt-strip"><button type="button" class="nt-wide" id="nt-toggle" aria-expanded="false" aria-controls="task-form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span id="nt-label">Nueva tarea</span></button><button type="button" class="nt-mic" id="nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-flt" id="nt-flt" aria-label="Filtros de tareas" aria-controls="tk-adv" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div>
       <span class="note nt-saved" id="nt-saved" aria-live="polite"></span>
       <div class="nt-panel" id="nt-panel" hidden>
       <form id="task-form" class="form-grid">
@@ -1078,25 +1142,25 @@
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
-      <label class="tk-find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="tk-q" type="search" autocomplete="off" placeholder="Buscar una tarea o persona…" aria-label="Buscar en mis tareas"></label>
+      <label class="tk-find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="tk-q" type="search" autocomplete="off" placeholder="Buscar tarea, persona o etiqueta…" aria-label="Buscar en mis tareas"></label>
     </div>
     <section class="mega-box" id="mega-tk" aria-label="Tareas mega importantes" hidden></section>
     <section class="card tk-card">
-      <div class="tk-row">
-        <div class="tk-quick" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
-        <span class="tk-count" id="tk-count" hidden></span>
+      <div class="tk-quick tk-tiles" id="tk-quick" role="group" aria-label="Vistas rápidas"></div>
+      <span class="tk-count" id="tk-count" hidden></span>
+      <div class="tk-row tk-dd">
+        <label class="tk-pill on"><span class="sr-only">Persona</span><select id="tk-person" aria-label="Filtrar por persona"><option value="">Todas</option></select></label>
+        <label class="tk-pill"><span class="sr-only">Estado</span><select id="tk-estado" aria-label="Estado"><option value="abiertas">Abiertas</option><option value="vencidas">Vencidas</option><option value="hoy">Para hoy (vencen hoy o antes)</option><option value="semana">Esta semana</option><option value="sinfecha">Sin fecha</option><option value="hechas">Hechas</option><option value="todas">Todas</option></select></label>
+        <label class="tk-pill"><span class="sr-only">Prioridad</span><select id="tk-prio" aria-label="Prioridad"><option value="">Prioridad</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
         <button type="button" class="tk-filter" id="tk-more" aria-expanded="false" aria-controls="tk-adv" aria-label="Filtros" title="Filtros"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.2 7.4V18l-3.6 1.8v-7.4z"/></svg></button>
       </div>
       <div class="tk-adv" id="tk-adv" hidden>
       <div class="tk-bar tk-bar1">
-        <label class="tk-sel">Persona<select id="tk-person" aria-label="Filtrar por persona"><option value="">Todas</option></select></label>
         <div class="tk-mode" role="group" aria-label="Forma de ver las tareas"><button type="button" data-mode="lista" aria-pressed="true">☰ Lista</button><button type="button" data-mode="tabla" aria-pressed="false">▦ Tabla</button></div>
         <button class="btn ghost" type="button" id="tk-clear" hidden>Quitar filtros</button>
       </div>
         <div class="tk-bar">
-        <label class="tk-sel">Ver<select id="tk-estado"><option value="abiertas">Abiertas</option><option value="vencidas">Vencidas</option><option value="hoy">Para hoy (vencen hoy o antes)</option><option value="semana">Esta semana</option><option value="sinfecha">Sin fecha</option><option value="hechas">Hechas</option><option value="todas">Todas</option></select></label>
         <label class="tk-sel">Pendiente de<select id="tk-who"><option value="">Todos</option><option value="mia">Mí</option><option value="tercero">Otros (espero respuesta)</option><option value="vercon">Ver con alguien</option></select></label>
-        <label class="tk-sel">Prioridad<select id="tk-prio"><option value="">Todas</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
         <label class="tk-sel">Empresa<select id="tk-emp"><option value="">Todas</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></label>
         <label class="tk-sel">Agrupar<select id="tk-group"><option value="persona">Por persona</option><option value="espera">Por quién lo tiene</option><option value="prioridad">Por prioridad</option><option value="fecha">Por fecha</option><option value="empresa">Por empresa</option><option value="">Sin agrupar</option></select></label>
         </div>
@@ -1502,7 +1566,8 @@
 
   // ---------- render tareas ----------
   function taskItem(t, compact) {
-    const row = el('div', 'item' + (t.estado === 'hecha' ? ' done' : '') + (t.asignadaPor ? ' asignada' : ''));
+    const row = el('div', 'item tcard tp-' + (t.prioridad || 'Media') + (t.estado === 'hecha' ? ' done' : '') + (t.asignadaPor ? ' asignada' : ''));
+    let mailAct = null, dateActs = [];
     const chk = el('button', 'check'); chk.type = 'button'; chk.setAttribute('role', 'checkbox');
     chk.setAttribute('aria-checked', String(t.estado === 'hecha')); chk.setAttribute('aria-label', 'Marcar como hecha: ' + t.titulo);
     chk.addEventListener('click', () => {
@@ -1561,7 +1626,7 @@
       const daysLate = Math.round((new Date(todayISO + 'T12:00:00') - new Date(t.vence + 'T12:00:00')) / 86400000);
       if (isLate(t)) meta.appendChild(chip('late', 'cal', (isSeg ? 'Seguimiento vencido ' : 'Vencida ') + (daysLate === 1 ? 'ayer' : 'hace ' + daysLate + ' días')));
       else if (managedPast(t)) meta.appendChild(chip('soft', 'cal', 'Gestionada · sin nueva fecha'));
-      else meta.appendChild(chip(t.vence === todayISO ? 'today' : 'due', 'cal', (isSeg ? 'Próximo seguimiento: ' : 'Vence: ') + dueLabel(t.vence)));
+      else meta.appendChild(chip(t.vence === todayISO ? 'today' : 'due', 'cal', (isSeg ? 'Seguimiento: ' : '') + dueLabel(t.vence)));
     } else if (!open && t.hecha) meta.appendChild(chip('soft', 'me', 'Hecha ' + agoLabel(t.hecha)));
     // 4. Prioridad
     meta.appendChild(chip('prio p-' + (t.prioridad || 'Media'), 'flag', t.prioridad || 'Media'));
@@ -1571,23 +1636,26 @@
       if (src) {
         const url = mailLink(src);
         if (url) {
+          mailAct = {url};
           const lk = chip('link', 'mail', 'Abrir correo ↗', 'a'); lk.href = url; lk.target = '_blank'; lk.rel = 'noopener'; lk.title = 'Abrir en Outlook el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
           meta.appendChild(lk);
         } else if (!compact) {
           const lk = chip('link', 'mail', 'Ver correo', 'button'); lk.type = 'button'; lk.title = 'Correo de ' + personaDe(src.de);
-          lk.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); });
+          const goMail = () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); };
+          mailAct = {fn: goMail};
+          lk.addEventListener('click', goMail);
           meta.appendChild(lk);
         }
       }
     }
     // 6. Origen (texto discreto): empresa, creación y fecha límite inicial
     const orig = [];
-    if (t.empresa) orig.push(t.empresa);
     if (t.creada) { const cd = new Date(t.creada); if (!isNaN(cd)) orig.push('Creada ' + fmtShort.format(cd) + (t.origen === 'voz' ? ' (nota)' : t.origen === 'correo' ? ' (correo)' : '')); }
     if (t.venceOriginal && t.venceOriginal !== t.vence) orig.push('límite inicial ' + fmtShort.format(new Date(t.venceOriginal + 'T12:00:00')));
     if (orig.length && !compact) meta.appendChild(el('span', 'morig', orig.join(' · ')));
+    if (t.empresa) { const tg = el('span', 'mc tag'); const i = el('span', 'mi'); i.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h4l1.3 1.6h5.7v6.4h-11z"/></svg>'; tg.appendChild(i); tg.appendChild(el('span', null, t.empresa)); meta.appendChild(tg); }
     body.appendChild(meta);
-    row.appendChild(chk); row.appendChild(body);
+    row.appendChild(body);
     const act = el('div', 'actions');
     const progOpen = !compact && state.progTask === t.id;
     const pb = el('button', 'btn' + (progOpen ? ' primary' : ''), progOpen ? 'Cerrar avances' : 'Avances' + (av.length ? ' (' + av.length + ')' : '')); pb.type = 'button';
@@ -1623,6 +1691,7 @@
         else if (v) postpone(nextWork(plus(Number(v))), v === '2' ? 'pasado mañana' : 'dentro de ' + (Number(v) / 7) + (v === '7' ? ' semana' : ' semanas'));
       });
       wrap.appendChild(tb); wrap.appendChild(sel); act.appendChild(wrap);
+      dateActs = [['Mañana', () => postpone(tmw, tmw.getDay() === 1 && plus(1).getDay() !== 1 ? 'el lunes' : 'mañana'), true], ['Pasado mañana', () => postpone(nextWork(plus(2)), 'pasado mañana')], ['El lunes', () => postpone(mon, 'el lunes')], ['Elegir fecha…', () => { state.progTask = null; openTaskEdit(t); }]];
     }
     if (!compact) {
       const del = el('button', 'btn ghost a-del', 'Borrar'); del.type = 'button';
@@ -1634,9 +1703,50 @@
       act.appendChild(del);
     }
     row.appendChild(act);
+    // ✓ y ··· a la derecha (a mano del pulgar)
+    const side = el('div', 'tside');
+    chk.classList.add('tchk'); side.appendChild(chk);
+    if (!compact) {
+      const more = el('button', 'tmore'); more.type = 'button'; more.setAttribute('aria-label', 'Más acciones: ' + t.titulo); more.title = 'Más acciones';
+      more.innerHTML = '<svg viewBox="0 0 18 4" aria-hidden="true"><circle cx="2" cy="2" r="2"/><circle cx="9" cy="2" r="2"/><circle cx="16" cy="2" r="2"/></svg>';
+      more.addEventListener('click', () => taskSheet(t, {mailAct, dateActs, avN: av.length}));
+      side.appendChild(more);
+    }
+    row.appendChild(side);
     if (editing) row.appendChild(taskEditor(t));
     if (progOpen) row.appendChild(progressPanel(t));
     return row;
+  }
+  // Hoja de acciones de una tarea (botón ···): Abrir correo, Avances, Editar y aplazar
+  function taskSheet(t, o) {
+    let dlg = document.getElementById('task-sheet');
+    if (!dlg) { dlg = document.createElement('dialog'); dlg.id = 'task-sheet'; dlg.className = 'mega-sheet task-sheet'; dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); document.body.appendChild(dlg); }
+    const w = el('div', 'ms-in');
+    w.appendChild(el('div', 'ts-grab'));
+    const top = el('div', 'ms-top'); const tt = el('div', 'ms-t'); tt.appendChild(el('b', null, t.titulo));
+    const bits = [t.prioridad || 'Media']; if (t.vence) bits.push(isLate(t) ? 'Vencida' : (dueLabel(t.vence) || t.vence)); if (t.empresa) bits.push(t.empresa);
+    const other = otherPerson(t); if (other) bits.push(other);
+    tt.appendChild(el('span', 'mega-meta', bits.join(' · '))); top.appendChild(tt);
+    const x = el('button', 'ms-x', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Cerrar'); x.addEventListener('click', () => dlg.close()); top.appendChild(x);
+    w.appendChild(top);
+    const go = (fn) => () => { dlg.close(); fn(); };
+    if (o.mailAct) {
+      const m = el(o.mailAct.url ? 'a' : 'button', 'ts-mail'); m.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>'; m.appendChild(document.createTextNode('Abrir correo'));
+      if (o.mailAct.url) { m.href = o.mailAct.url; m.target = '_blank'; m.rel = 'noopener'; m.addEventListener('click', () => dlg.close()); } else { m.type = 'button'; m.addEventListener('click', go(o.mailAct.fn)); }
+      w.appendChild(m);
+    }
+    const g2 = el('div', 'ts-g2');
+    const b1 = el('button', 'ts-b', 'Avances' + (o.avN ? ' (' + o.avN + ')' : '')); b1.type = 'button'; b1.addEventListener('click', go(() => openProgress(t)));
+    const b2 = el('button', 'ts-b', 'Editar'); b2.type = 'button'; b2.addEventListener('click', go(() => { state.progTask = null; openTaskEdit(t); }));
+    g2.appendChild(b1); g2.appendChild(b2); w.appendChild(g2);
+    if (o.dateActs && o.dateActs.length) {
+      w.appendChild(el('div', 'ms-l', 'Pasar a'));
+      const g3 = el('div', 'ts-g2');
+      o.dateActs.forEach(([l, fn, main]) => { const b = el('button', 'ts-d' + (main ? ' main' : ''), l); b.type = 'button'; b.addEventListener('click', go(fn)); g3.appendChild(b); });
+      w.appendChild(g3);
+    }
+    dlg.replaceChildren(w);
+    if (!dlg.open) dlg.showModal();
   }
   const espOf = (t) => (t.espera === 'tercero' ? 'tercero' : t.espera === 'vercon' ? 'vercon' : 'mia');
   const WAIT_RE = /(me tiene[n]? que (responder|contestar|enviar|mandar|pasar|confirmar)|espero (su |la |el |que )|esperando|a la espera|pendiente de que|quedo pendiente|que me (manden|envien|envíen|pasen|confirmen|digan|respondan|contesten)|le he (enviado|pedido|solicitado|mandado)|les he (enviado|pedido|solicitado|mandado)|he solicitado|he pedido)/i;
@@ -1902,14 +2012,22 @@
   const weekEndISO = (() => { const d = new Date(todayISO + 'T12:00:00'); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); return iso(d); })();
   const forToday = (t) => t.estado !== 'hecha' && (t.vence === todayISO || isLate(t));
   const QUICK = [
-    {k: 'hoy', label: 'Resolver hoy', short: 'Hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
+    {k: 'hoy', label: 'Hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
     {k: 'mias', label: 'Mis tareas', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
+    {k: 'pend', label: 'Pendientes', set: {}, test: (t) => t.estado !== 'hecha'},
+    {k: 'venc', label: 'Vencidas', set: {taskF: 'vencidas'}, test: (t) => t.estado !== 'hecha' && isLate(t)},
   ];
+  const QICON = {
+    hoy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/></svg>',
+    mias: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="4.8" cy="7" r="1"/><circle cx="4.8" cy="12" r="1"/><circle cx="4.8" cy="17" r="1"/></svg>',
+    pend: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/></svg>',
+    venc: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M12 12.5v3"/><circle cx="12" cy="17.6" r=".6"/></svg>',
+  };
   const quickBase = {taskF: 'abiertas', taskW: '', taskPr: '', taskP: '', empF: '', taskQ: ''};
   function applyQuick(qv) {
     const st = Object.assign({}, quickBase, qv ? qv.set : {});
     Object.assign(state, st);
-    $('#tk-q').value = ''; $('#tk-estado').value = st.taskF; $('#tk-who').value = st.taskW; $('#tk-prio').value = st.taskPr; $('#tk-emp').value = '';
+    $('#tk-q').value = ''; $('#tk-person').value = ''; $('#tk-estado').value = st.taskF; $('#tk-who').value = st.taskW; $('#tk-prio').value = st.taskPr; $('#tk-emp').value = '';
     renderTasks();
   }
   function renderQuick() {
@@ -1917,10 +2035,11 @@
     const cur = (qv) => { const st = Object.assign({}, quickBase, qv.set); return Object.keys(st).every((k) => (state[k] || '') === (st[k] || '')); };
     QUICK.forEach((qv) => {
       const n = state.tasks.filter(qv.test).length;
-      const b = el('button', 'qv' + (qv.hot && n ? ' hot' : '')); b.type = 'button';
+      const b = el('button', 'qv qt qt-' + qv.k + (qv.hot && n ? ' hot' : '')); b.type = 'button';
       const on = cur(qv); b.setAttribute('aria-pressed', String(on));
-      const lb = el('span', 'qv-l'); lb.appendChild(el('span', 'qv-long', qv.label)); if (qv.short) lb.appendChild(el('span', 'qv-short', qv.short)); b.appendChild(lb);
-      b.appendChild(el('span', 'qn', String(n)));
+      const ic = el('span', 'qt-ic'); ic.innerHTML = QICON[qv.k] || ''; b.appendChild(ic);
+      b.appendChild(el('span', 'qt-l', qv.label));
+      b.appendChild(el('b', 'qn', String(n)));
       b.addEventListener('click', () => applyQuick(on ? null : qv));
       box.appendChild(b);
     });
@@ -1959,7 +2078,7 @@
     // Botones de persona (con lo que queda tras estado, empresa y búsqueda)
     const pc = new Map(); rows.forEach((t) => { const k = personOf(t); pc.set(k, (pc.get(k) || 0) + 1); });
     if (state.taskP && !pc.has(state.taskP)) state.taskP = '';
-    const psel = $('#tk-person'); psel.replaceChildren(new Option('Todas (' + rows.length + ')', ''));
+    const psel = $('#tk-person'); psel.replaceChildren(new Option('Todas', ''));
     [...pc.keys()].sort((a, b) => (b === ME_GROUP) - (a === ME_GROUP) || (a === 'Sin persona') - (b === 'Sin persona') || a.localeCompare(b, 'es')).forEach((k) => psel.appendChild(new Option(k + ' (' + pc.get(k) + ')', k)));
     psel.value = state.taskP;
     if (state.taskP) rows = rows.filter((t) => personOf(t) === state.taskP);
@@ -1998,7 +2117,7 @@
     keys.sort(order ? (a, b) => order.indexOf(a) - order.indexOf(b) : (a, b) => (b === ME_GROUP) - (a === ME_GROUP) || (a === 'Sin persona') - (b === 'Sin persona') || groups.get(b).length - groups.get(a).length || a.localeCompare(b));
     if (g !== '__none') keys.forEach((k) => {
       if (!g) { groups.get(k).forEach((t) => list.appendChild(taskItem(t))); return; }
-      const head = el('div', 'group-head'); head.appendChild(el('span', null, k)); head.appendChild(el('span', 'count', String(groups.get(k).length)));
+      const head = el('div', 'group-head'); head.appendChild(el('span', null, k)); { const gn = groups.get(k).length; head.appendChild(el('span', 'count', gn === 1 ? '1 tarea' : gn + ' tareas')); }
       if (g === 'persona' && !state.taskP) { head.classList.add('clickable'); head.title = 'Ver solo las tareas de ' + k; head.addEventListener('click', () => { state.taskP = k; renderTasks(); }); }
       list.appendChild(head);
       groups.get(k).forEach((t) => list.appendChild(taskItem(t)));
@@ -2036,6 +2155,9 @@
   // Nueva tarea desde Hoy o desde el micro de la franja: va a Tareas, abre el formulario y (micro) empieza a escuchar
   function ntQuick(mic) { if (state.view !== 'tareas') show('tareas'); ntOpen(true, !!mic); try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); } if (mic && !tfMic.want && (window.SpeechRecognition || window.webkitSpeechRecognition)) tfMicStart(); }
   $('#hoy-nt').addEventListener('click', () => ntQuick(false));
+  const openFilters = () => { if (state.view !== 'tareas') show('tareas'); const adv = $('#tk-adv'); if (adv.hidden) $('#tk-more').click(); setTimeout(() => { adv.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }, 30); };
+  $('#hoy-nt-flt').addEventListener('click', openFilters);
+  $('#nt-flt').addEventListener('click', () => $('#tk-more').click());
   $('#hoy-nt-mic').addEventListener('click', () => ntQuick(true));
   $('#nt-mic').addEventListener('click', () => ntQuick(true));
   $('#nt-toggle').addEventListener('click', () => { if (!$('#nt-panel').hidden) tfMicStop(null, true); ntOpen($('#nt-panel').hidden); });

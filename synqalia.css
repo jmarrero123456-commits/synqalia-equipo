@@ -207,7 +207,7 @@ body:has(.login) .sq-bar { display: none; }
 .sq-more[hidden] { display: none; }
 @media (max-width: 860px) and (min-width: 561px) { .app .tabs { overflow-x: auto; scrollbar-width: none; } }
 @media (max-width: 560px) {
-  .app .tabs { grid-template-columns: repeat(5, 1fr) !important; }
+  .app .tabs { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
   .app .tabs #tab-reuniones, .app .tabs #tab-catchups, .app .tabs #tab-notas { display: none !important; }
   .tab-mas { display: flex !important; }
   .tab-mas.on { color: #fff; background: rgba(255,255,255,.08); } .tab-mas.on .ti { color: var(--gold-2); }
