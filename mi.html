@@ -955,7 +955,7 @@
   @media (max-width: 560px) { .tf-ctl button { width: 38px; height: 38px; } .tf-voice input { padding-right: 54px; } .tf-voice.listening input { padding-right: 140px; } }
 </style>
 <link rel="stylesheet" href="notas.css">
-<link rel="stylesheet" href="synqalia.css?v=20261119c">
+<link rel="stylesheet" href="synqalia.css?v=20261119d">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1107,8 +1107,8 @@
       <div class="row-between"><h2>Correo</h2><span class="note" id="mail-updated"></span></div>
       <p class="hint" id="ready-hint" hidden></p>
       <div class="chips" id="mail-filter">
-        <button class="chip" type="button" data-c="todos" aria-pressed="true">Recibidos <span class="count" id="count-todos"></span></button>
-        <button class="chip chip-mias" type="button" data-c="mias" aria-pressed="false" title="Todo lo que te piden: urgente y no urgente">Te piden algo <span class="count" id="count-mias"></span></button>
+        <button class="chip" type="button" data-c="todos" aria-pressed="true"><span class="lbl-l">Recibidos</span><span class="lbl-s">Recib.</span> <span class="count" id="count-todos"></span></button>
+        <button class="chip chip-mias" type="button" data-c="mias" aria-pressed="false" title="Todo lo que te piden: urgente y no urgente"><span class="lbl-l">Te piden algo</span><span class="lbl-s">Te piden</span> <span class="count" id="count-mias"></span></button>
         <span class="mf-more" id="mf-more" role="menu" aria-label="Otros filtros">
         <button class="chip chip-dec chip-urg" type="button" data-c="urgente" aria-pressed="false" title="Alguien está parado esperando tu decisión, hay plazo en 48 h, dinero reclamado o un riesgo legal">Urgente · decide tú <span class="count" id="count-urg"></span></button>
         <button class="chip chip-pide" type="button" data-c="decision" aria-pressed="false" title="Te piden revisar, opinar o contestar, sin bloquear a nadie. Pasa a Urgente si lleva más de 5 días o se acerca el plazo">Te piden algo <span class="count" id="count-dec"></span></button>
@@ -2987,7 +2987,7 @@
       if (m.estado === 'gestionado') { const undo = el('button', 'btn ghost', 'Devolver'); undo.type = 'button'; undo.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({estado: 'pendiente'}), 'Devuelta a pendientes')); act.appendChild(undo); }
     } else if (m.estado !== 'gestionado') {
       const rp = el('button', 'btn' + (open ? ' primary' : ''), open ? 'Cerrar' : isMeeting(m) ? 'Ver agenda y decidir' : 'Abrir'); rp.type = 'button';
-      rp.addEventListener('click', () => { state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus(); } });
+      rp.addEventListener('click', () => { if (open && !o.split) state.scrollToMid = m.id; state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus(); } });
       if (!o.pane) act.appendChild(rp);
       if (!isMeeting(m)) act.appendChild(outlookBtn(m));
       if (!isMeeting(m) && !handled(m) && !open) { const sg = el('button', 'btn', '✨ Sugerir respuesta'); sg.type = 'button'; sg.title = 'Abre el correo y te propongo una respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; renderAll(); }); act.appendChild(sg); }
@@ -3031,7 +3031,7 @@
       const done = bs.find((b) => b.textContent === 'Gestionado');
       const ft = el('div', 'mob-foot');
       if (later) { later.className = 'btn ghost mob-later'; if (later.textContent === 'Para mañana') later.textContent = 'Posponer a mañana'; ft.appendChild(later); }
-      if (done) { done.className = 'btn mob-done'; done.textContent = '✓ Gestionado'; done.addEventListener('click', () => { state.openReply = null; }); ft.appendChild(done); }
+      if (done) { done.className = 'btn mob-done'; done.textContent = '✓ Gestionado'; done.addEventListener('click', () => { const nx = row.nextElementSibling; state.scrollToMid = nx && nx.dataset.mid ? nx.dataset.mid : m.id; state.openReply = null; }); ft.appendChild(done); }
       // botones: solo «Outlook ↗» (copia la respuesta sugerida si la hay) y «Pasar a tarea»; sin «Cerrar» (se cierra tocando el remitente)
       bs.filter((b) => b.textContent === 'Cerrar' || b.textContent === 'Abrir').forEach((b) => b.remove());
       const comp = row.querySelector(':scope > .composer');
@@ -3065,7 +3065,7 @@
       line.appendChild(el('span', 'mdate', cuandoDe(m)));
       row.insertBefore(line, body);
       line.title = o.split ? 'Ver en el panel' : open ? 'Cerrar' : 'Abrir';
-      line.addEventListener('click', () => { if (o.split) { if (state.openReply !== m.id) { state.openReply = m.id; renderAll(); } return; } state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus({preventScroll: true}); } });
+      line.addEventListener('click', () => { if (o.split) { if (state.openReply !== m.id) { state.openReply = m.id; renderAll(); } return; } if (open && !o.split) state.scrollToMid = m.id; state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus({preventScroll: true}); } });
     }
     return row;
   }
@@ -3203,7 +3203,11 @@
       $$('#mail-list .mrow').forEach((r) => r.classList.toggle('sel', r.dataset.mid === state.openReply));
       renderMailPane(rows);
       const selRow = list.querySelector('.mrow.sel'); if (selRow && !state._mailScrolled) { selRow.scrollIntoView({block: 'nearest'}); }
-    } else { const pn = $('#mail-pane'); if (pn) pn.replaceChildren(); }
+    } else {
+      const pn = $('#mail-pane'); if (pn) pn.replaceChildren();
+      // móvil: tras cerrar o gestionar un correo, la lista vuelve al punto donde ibas (ese correo o el siguiente, arriba)
+      if (state.scrollToMid) { const id = state.scrollToMid; state.scrollToMid = null; requestAnimationFrame(() => { const r = [...list.querySelectorAll('.mrow')].find((x) => x.dataset.mid === id); if (r) r.scrollIntoView({block: 'start'}); }); }
+    }
     state._mailRows = rows.map((x) => x.id);
     const pend = state.mails.filter(isPending);
     { const pm = pend.filter((m) => !isMeeting(m)); $('#count-todos').textContent = pm.length ? String(pm.length) : ''; const nU = pm.filter(isUrgent).length, nP = pm.filter((x) => isDecision(x) && !isUrgent(x)).length; $('#count-urg').textContent = nU ? String(nU) : ''; { const cm = $('#count-mias'); if (cm) cm.textContent = nU + nP ? String(nU + nP) : ''; } $('#count-dec').textContent = nP ? String(nP) : ''; }
