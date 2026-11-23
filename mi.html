@@ -967,6 +967,16 @@
   .ms-link:hover { background: rgba(255,255,255,.16); }
   .ms-link .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa3ad; }
   .ms-link.ok .dot { background: #5fe0cf; } .ms-link.err .dot { background: #f59e0b; }
+  .ms-side { display: none; }
+  @media (min-width: 861px) {
+    .sq-side > .ms-side { display: flex; align-items: center; gap: 8px; margin: 6px 10px 8px; padding: 8px 10px; border-radius: 9px; border: 1px solid rgba(255,255,255,.18); background: rgba(95,224,207,.12); color: #fff; font: 700 12px/1.2 var(--font-body); cursor: pointer; text-align: left; }
+    .sq-side > .ms-side:hover { background: rgba(95,224,207,.22); }
+    .sq-side > .ms-side.ok { background: transparent; border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.7); font-weight: 600; }
+    body.sq-mini .sq-side > .ms-side { justify-content: center; margin: 6px 8px; } body.sq-mini .ms-side .ms-lab { display: none; }
+  }
+  .ms-side .dot, .ms-more .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa3ad; flex: none; }
+  .ms-side.ok .dot, .ms-more.ok .dot { background: #5fe0cf; } .ms-side.err .dot, .ms-more.err .dot { background: #f59e0b; }
+  .ms-more { display: flex; align-items: center; gap: 8px; }
   .ms-pop { position: fixed; z-index: 9999; top: 70px; right: 20px; width: min(360px, calc(100vw - 40px)); background: #fff; color: #1b2430; border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.25); padding: 18px; font: 14px/1.45 var(--font-body); }
   .ms-pop h4 { margin: 0 0 6px; font-size: 15px; } .ms-pop p { margin: 6px 0; color: #4b5563; } .ms-pop .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .ms-pop button { font: 600 13px var(--font-body); border-radius: 9px; padding: 8px 12px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; } .ms-pop button.pri { background: #2b4fd8; border-color: #2b4fd8; color: #fff; }
@@ -1106,6 +1116,7 @@
     <button role="tab" id="tab-asistente" data-view="asistente" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><span class="tlab">Asistente</span></button>
     <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="count" id="count-mas"></span></button>
     </nav>
+    <button type="button" class="ms-side ms-trigger" id="ms-side" title="Conectar tu correo, agenda y Teams"><span class="dot"></span><span class="ms-lab">Conectar Microsoft 365</span></button>
     <div class="sq-me" id="sq-me"></div>
   </aside>
   <div class="sq-more" id="sq-more" hidden>
@@ -1115,6 +1126,7 @@
       <button type="button" role="menuitem" data-go="notas">Notas</button>
       <button type="button" role="menuitem" data-go="lista">Listas</button>
       <button type="button" role="menuitem" data-go="asistente">Asistente</button>
+      <button type="button" role="menuitem" class="ms-more ms-trigger" id="ms-more"><span class="dot"></span><span class="ms-lab">Conectar Microsoft 365</span></button>
     </div>
   </div>
   <header class="top">
@@ -4778,27 +4790,29 @@
 (async () => {
   await window.__sqReady;
   const sb = window.__sb;
-  const btn = document.getElementById('ms-link'), label = document.getElementById('ms-label');
+  const btn = document.getElementById('ms-link'), label0 = document.getElementById('ms-label');
   if (!btn) return;
+  const trig = [btn, document.getElementById('ms-side'), document.getElementById('ms-more')].filter(Boolean);
+  const label = { set textContent(t) { if (label0) label0.textContent = t; trig.forEach((b) => { const l = b.querySelector('.ms-lab'); if (l) l.textContent = t; b.title = t; }); } };
   const call = async (action) => { const { data, error } = await sb.functions.invoke('graph', { body: { action } }); if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch {} throw new Error(t); } return data; };
   const hora = (t) => t ? new Date(t).toLocaleString('es-ES', { timeZone: 'Atlantic/Canary', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
   let st = null;
   async function refresh() {
     try { st = await call('status'); } catch (e) { st = { error: e.message }; }
-    btn.classList.toggle('ok', !!st.connected && !st.last_error);
-    btn.classList.toggle('err', !!st.connected && !!st.last_error);
+    trig.forEach((b) => { b.classList.toggle('ok', !!st.connected && !st.last_error); b.classList.toggle('err', !!st.connected && !!st.last_error); });
     label.textContent = st.connected ? (st.last_ok ? 'Microsoft 365 · ' + hora(st.last_ok).split(', ').pop() : 'Microsoft 365 · conectando…') : 'Conectar Microsoft 365';
   }
   function pop(html) {
     document.querySelector('.ms-pop')?.remove();
     const d = document.createElement('div'); d.className = 'ms-pop'; d.innerHTML = html; document.body.appendChild(d);
-    setTimeout(() => document.addEventListener('click', function off(e) { if (!d.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { d.remove(); document.removeEventListener('click', off); } }), 0);
+    setTimeout(() => document.addEventListener('click', function off(e) { if (!d.contains(e.target) && !trig.some((b) => b.contains(e.target))) { d.remove(); document.removeEventListener('click', off); } }), 0);
     return d;
   }
   async function connect() {
     try { const { url } = await call('start'); location.href = url; } catch (e) { alert('No se pudo conectar: ' + e.message); }
   }
-  btn.addEventListener('click', async () => {
+  const onTrig = async () => {
+    { const sh = document.getElementById('sq-more'); if (sh && !sh.hidden) { sh.hidden = true; document.getElementById('tab-mas')?.setAttribute('aria-expanded', 'false'); } }
     if (!st) await refresh();
     if (!st.connected) {
       const d = pop(`<h4>Conectar con Microsoft 365</h4><p>Synqalia leerá tu correo, tu agenda y tus chats de Teams cada pocos minutos, sin depender de tu ordenador. También podrá dejar tus respuestas como <b>borradores</b> en Outlook (nunca envía nada por ti).</p><p>Microsoft te pedirá aceptar estos permisos con tu cuenta de Provalliance.</p><div class="row"><button class="pri" data-a="go">Conectar</button><button data-a="x">Ahora no</button></div>`);
@@ -4811,7 +4825,8 @@
     d.querySelector('[data-a=sync]').onclick = async (e) => { e.target.disabled = true; e.target.textContent = 'Sincronizando…'; try { const r = await call('sync'); await refresh(); d.remove(); if (r.error) alert('Error: ' + r.error); } catch (er) { alert(er.message); e.target.disabled = false; e.target.textContent = 'Sincronizar ahora'; } };
     d.querySelector('[data-a=re]').onclick = connect;
     d.querySelector('[data-a=off]').onclick = async () => { if (!confirm('¿Desconectar Microsoft 365? Synqalia dejará de actualizar tu correo, agenda y Teams.')) return; await call('disconnect'); await refresh(); d.remove(); };
-  });
+  };
+  trig.forEach((b) => b.addEventListener('click', onTrig));
   // vuelta de Microsoft
   const h = decodeURIComponent(location.hash || '');
   if (h.startsWith('#microsoft=')) {
