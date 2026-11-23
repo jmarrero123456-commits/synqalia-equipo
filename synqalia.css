@@ -550,3 +550,15 @@ body:has(.login) .sq-bar { display: none; }
   #mail-filter .count:empty { display: none; }
   #view-correo #mail-list > .empty, #view-correo #mail-list > p, #view-correo #mail-list > .note { padding: 12px 10px; margin: 0; }
 }
+
+/* ---------- Tarea desde un correo: «Ver con» y propuesta de catch-up ---------- */
+.tsug-row { grid-template-areas: 'title title' 'when btns' 'vc vc'; }
+.tsug-vc { grid-area: vc; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.tsug-vc-l { font-size: 12px; font-weight: 700; color: var(--muted); }
+.tsug-vc input { flex: 1 1 160px; min-width: 0; font: inherit; font-size: 14px; border: 0; border-bottom: 1px dashed var(--line); background: transparent; padding: 6px 2px; }
+.tsug-vc input:focus { outline: none; border-bottom-color: var(--accent, #2b4fd8); }
+.tsug-vc-chips { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.tsug-vc-chips .chip { min-height: 32px; font-size: 13px; }
+.tsug-vc-chips .chip[aria-pressed="true"] { background: color-mix(in srgb, #5fe0cf 26%, transparent); border-color: #2bb3a3; color: #0b5f55; font-weight: 700; }
+@media (max-width: 760px) { .tsug-row { grid-template-areas: 'title' 'when' 'vc' 'btns'; } }
+@media (max-width: 560px) { .item.mrow.mob-open .tsug-row { grid-template-areas: 'title' 'when' 'vc' 'btns'; } }

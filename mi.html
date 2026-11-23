@@ -1088,7 +1088,7 @@
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
-<link rel="stylesheet" href="synqalia.css?v=20261119u">
+<link rel="stylesheet" href="synqalia.css?v=20261123a">
 <link rel="stylesheet" href="mensajes.css?v=20261118b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -2803,6 +2803,13 @@
     return box;
   }
 
+  // Personas o grupos de catch-up que aparecen en el correo (remitente, destinatarios o CC): se proponen en «Ver con»
+  function cuCandidates(m) {
+    const names = String((m.de || '') + ';' + (m.para || '')).split(/[;,]|\bCC\b/).map((x) => x.replace(/\(.*?\)|y \d+ más/gi, '').trim()).filter((x) => x && !isMe(x));
+    const hit = (n) => names.some((x) => sameName(x, n) || sameName(firstName(x), n) && firstName(n).length > 3 && normTxt(firstName(x)) === normTxt(firstName(n)));
+    const team = (state.team || []).filter((p) => (isGroup(p) ? membersOf(p).some(hit) : hit(p.nombre)));
+    return team.sort((a, b) => (isGroup(a) - isGroup(b)) || String(a.nombre).localeCompare(String(b.nombre), 'es')).slice(0, 4);
+  }
   function taskSuggester(m, setStatus) {
     const wrap = el('div', 'tsug');
     const list = el('div', 'tsug-list');
@@ -2820,6 +2827,22 @@
       if (!['Mega', 'Alta', 'Media', 'Baja'].includes(t.prioridad)) t.prioridad = ['Alta', 'Media', 'Baja'].includes(m.prioridad) ? m.prioridad : 'Media';
       const pri = el('div', 'tsug-pri'); pri.setAttribute('role', 'radiogroup'); pri.setAttribute('aria-label', 'Prioridad de la tarea');
       ['Mega', 'Alta', 'Media', 'Baja'].forEach((p) => { const b = el('button', 'pri-opt ' + p, p === 'Mega' ? 'Mega ⚡' : p); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(t.prioridad === p)); b.title = 'Prioridad ' + p.toLowerCase(); b.addEventListener('click', () => { t.prioridad = p; pri.querySelectorAll('.pri-opt').forEach((x) => x.setAttribute('aria-checked', String(x.classList.contains(p)))); }); pri.appendChild(b); });
+      // «Ver con»: con quién lo tienes que ver; si esa persona (o su grupo) tiene catch-up, la tarea aparece en él
+      const vc = el('div', 'tsug-vc');
+      const vcId = 'tsvc-' + Math.random().toString(36).slice(2, 8);
+      const vl = el('label', 'tsug-vc-l', 'Ver con'); vl.htmlFor = vcId;
+      const vi = document.createElement('input'); vi.id = vcId; vi.type = 'text'; vi.setAttribute('list', 'tf-personas'); vi.autocomplete = 'off'; vi.placeholder = 'Nadie (solo yo)'; vi.value = t.verCon || '';
+      const vchips = el('div', 'tsug-vc-chips');
+      const markVc = () => vchips.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(!!vi.value.trim() && normTxt(c.dataset.v) === normTxt(vi.value))));
+      cuCandidates(m).forEach((p) => {
+        const nx = nextMeetingFor(p);
+        const lbl = 'Catch-up ' + (isGroup(p) ? p.nombre : firstName(p.nombre)) + (nx ? ' · ' + (nx.fecha === todayISO ? 'hoy' : new Intl.DateTimeFormat('es-ES', {weekday: 'short', day: 'numeric'}).format(new Date(nx.fecha + 'T12:00:00'))) : '');
+        const c = el('button', 'chip', lbl); c.type = 'button'; c.dataset.v = p.nombre; c.title = 'Para tratarlo en tu próximo catch-up con ' + p.nombre;
+        c.addEventListener('click', () => { vi.value = normTxt(vi.value) === normTxt(p.nombre) ? '' : p.nombre; t.verCon = vi.value; markVc(); });
+        vchips.appendChild(c);
+      });
+      vi.addEventListener('input', () => { t.verCon = vi.value; markVc(); });
+      vc.appendChild(vl); vc.appendChild(vi); if (vchips.childNodes.length) vc.appendChild(vchips); markVc();
       const ok = el('button', 'btn primary', 'Crear'); ok.type = 'button';
       const no = el('button', 'btn ghost', '✕'); no.type = 'button'; no.title = 'Descartar'; no.setAttribute('aria-label', 'Descartar esta tarea');
       ok.addEventListener('click', async () => {
@@ -2828,7 +2851,8 @@
         if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
         row.classList.remove('needdate');
         ok.disabled = true; t.titulo = titulo; t.vence = di.value;
-        const id = await addTask({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id});
+        const vcn = vi.value.trim(); t.verCon = vcn && !isMe(vcn) ? vcn : '';
+        const id = await addTask(Object.assign({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id}, t.verCon ? {espera: 'vercon', extra: {verCon: t.verCon}} : {}));
         if (id) { t.creada = true; doneRow(row, t); refreshAll(); }
         else ok.disabled = false;
       });
@@ -2841,6 +2865,7 @@
       if (t.creada) { list.appendChild(row); doneRow(row, t); return row; }
       if (t.descartada) { row.classList.add('done', 'gone'); row.appendChild(el('span', 'tsug-gone', 'Descartada: ' + (t.titulo || 'tarea'))); list.appendChild(row); return row; }
       row.appendChild(voice); const right = el('div', 'tsug-when'); right.appendChild(di); right.appendChild(quick); row.appendChild(right);
+      row.appendChild(vc);
       const btns = el('div', 'tsug-btns'); btns.appendChild(pri); btns.appendChild(ok); btns.appendChild(no); row.appendChild(btns);
       list.appendChild(row); return row;
     };
@@ -2851,7 +2876,7 @@
     const refreshAll = () => { all.hidden = list.querySelectorAll('.tsug-row:not(.done)').length < 2; };
     add.addEventListener('click', () => { const t = {titulo: '', vence: todayISO}; (st[m.id] = st[m.id] || []).push(t); const r = addRow(t); r.querySelector('input').focus(); refreshAll(); });
     all.addEventListener('click', async () => { all.disabled = true; for (const b of [...list.querySelectorAll('.tsug-row:not(.done) .btn.primary')]) { b.click(); await new Promise((r) => setTimeout(r, 250)); } all.disabled = false; refreshAll(); });
-    const doneRow = (row, t) => { row.className = 'tsug-row done'; row.replaceChildren(el('span', 'tsug-ok', '✓ Creada: ' + t.titulo + ' · ' + (t.vence === todayISO ? 'hoy' : dayName(t.vence)) + (t.prioridad ? ' · prioridad ' + t.prioridad.toLowerCase() : ''))); };
+    const doneRow = (row, t) => { row.className = 'tsug-row done'; row.replaceChildren(el('span', 'tsug-ok', '✓ Creada: ' + t.titulo + ' · ' + (t.vence === todayISO ? 'hoy' : dayName(t.vence)) + (t.prioridad ? ' · prioridad ' + t.prioridad.toLowerCase() : '') + (t.verCon ? ' · ver con ' + t.verCon + (state.team.some((p) => sameName(p.nombre, t.verCon) || (isGroup(p) && membersOf(p).some((n) => sameName(n, t.verCon)))) ? ' (en su catch-up)' : '') : ''))); };
     const fill = (arr) => { list.replaceChildren(); arr.forEach(addRow); refreshAll(); };
     sug.addEventListener('click', async () => {
       if (!sample) { setStatus('La IA no está conectada ahora mismo.', true); return; }
