@@ -2,8 +2,8 @@
 // - Páginas y archivos propios: primero la red (para recibir siempre la última versión); sin red, la copia guardada.
 // - Librerías y tipografías externas: la copia guardada al momento y se refresca en segundo plano.
 // - Nunca guarda datos ni llamadas a Supabase (las notas offline viven en IndexedDB, dentro de la app).
-const CACHE = 'sq-app-v21';
-const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/graph-live.js', '/resumen.js', '/asistente.js', '/asistente.css', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
+const CACHE = 'sq-app-v22';
+const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/graph-live.js', '/aviso-reunion.js', '/resumen.js', '/asistente.js', '/asistente.css', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'];
 
 self.addEventListener('install', (e) => {
@@ -46,4 +46,16 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin === self.location.origin) { e.respondWith(networkFirst(req)); return; }
   if (EXTERNAL.test(req.url)) e.respondWith(staleWhileRevalidate(req));
+});
+
+// Aviso de reunión: al tocar la notificación, trae Synqalia al frente (o la abre) y abre las notas de esa reunión
+self.addEventListener('notificationclick', (e) => {
+  const key = e.notification.data && e.notification.data.key;
+  e.notification.close();
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const c = all.find((w) => /\/mi\.html/.test(new URL(w.url).pathname)) || all[0];
+    if (c) { await c.focus(); if (key) c.postMessage({ type: 'sq-meet', key }); return; }
+    await self.clients.openWindow('/mi.html#reuniones');
+  })());
 });

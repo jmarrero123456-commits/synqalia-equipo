@@ -110,7 +110,9 @@
     const url = safeUrl(ev?.unirse);
     if (!url) return;
     const j = document.createElement('a');
-    j.className = 'btn sq-join'; j.href = url; j.target = '_blank'; j.rel = 'noopener';
+    // en el ordenador abre directamente la app de Teams; en el móvil el enlace normal ya abre la app
+    const app = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || !/^https:\/\/teams\.microsoft\.com\//i.test(url) ? url : url.replace(/^https:\/\/teams\.microsoft\.com\//i, 'msteams:/');
+    j.className = 'btn sq-join'; j.href = app; if (app === url) j.target = '_blank'; j.rel = 'noopener';
     j.textContent = 'Unirse a Teams ↗'; j.title = 'Entra en la reunión de Teams';
     ol.before(j);
   }
