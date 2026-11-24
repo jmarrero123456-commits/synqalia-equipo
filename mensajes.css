@@ -81,7 +81,8 @@ html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) b
 /* PC: como Teams, lista a la izquierda (con su propio scroll) y conversación a la derecha, a toda la altura */
 @media (min-width: 900px) {
   .sqm-canal.split { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px;
-    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 480px; }
+    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 420px; }
+  html.sqm-fit:has(#view-mensajes:not([hidden])), html.sqm-fit:has(#view-mensajes:not([hidden])) body { overflow-y: hidden; }
   .sqm-canal.split .sqm-side { display: flex; flex-direction: column; min-height: 0; gap: 10px; }
   .sqm-canal.split .sqm-stick { position: static; margin: 0; padding: 0; background: none; }
   .sqm-canal.split .sqm-list { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
@@ -151,3 +152,47 @@ body.sqm-lock { overflow: hidden; }
 .sqm-timg { display: block; border: 0; padding: 0; margin: 0 0 4px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--ink) 8%, var(--panel)); cursor: zoom-in; min-width: 120px; min-height: 80px; }
 .sqm-timg img { display: block; max-width: min(300px, 64vw); max-height: 320px; width: auto; height: auto; }
 .sqm-tadj { display: block; margin: 2px 0 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--panel)); font-size: 13.5px; font-weight: 700; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+
+/* ---------- crear tarea desde el chat ---------- */
+.sqm-taskbtn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--sqm-q); color: #062b27; font: 800 13.5px var(--font-body); cursor: pointer; }
+.sqm-taskbtn svg { width: 18px; height: 18px; }
+@media (max-width: 520px) { .sqm-taskbtn { width: 40px; padding: 0; justify-content: center; } .sqm-taskbtn span { display: none; } }
+.sqm-ctasks { flex: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 12px; background: color-mix(in srgb, var(--sqm-q) 14%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.sqm-ctasks svg { width: 16px; height: 16px; color: var(--sqm-ok); }
+.sqm-ctasks b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
+.sqm-b { position: relative; }
+.sqm-mtask { position: absolute; top: 50%; right: -38px; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--sqm-ok) 45%, var(--line)); background: var(--panel); color: var(--sqm-ok); display: grid; place-items: center; cursor: pointer; padding: 0; font: 800 13px var(--font-body); opacity: .55; }
+.sqm-b.me .sqm-mtask { right: auto; left: -38px; }
+.sqm-mtask:hover, .sqm-mtask:focus-visible, .sqm-b:hover .sqm-mtask { opacity: 1; background: var(--sqm-q); color: #062b27; border-color: var(--sqm-q); }
+.sqm-b.sqm-bimg { overflow: visible; }
+.sqm-b.sqm-hl { outline: 2px solid var(--sqm-q); outline-offset: 2px; }
+
+.sqm-tsheet { position: fixed; inset: 0; z-index: 130; background: rgba(5,10,18,.45); display: flex; align-items: flex-end; justify-content: center; }
+.sqm-tbox { width: 100%; max-height: 88vh; overflow-y: auto; background: var(--panel); color: var(--ink); border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; font-family: var(--font-body); box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
+@media (min-width: 900px) { .sqm-tsheet { align-items: stretch; justify-content: flex-end; } .sqm-tbox { width: 420px; max-height: none; height: 100%; border-radius: 0; align-content: start; } }
+.sqm-thead { display: flex; align-items: center; } .sqm-thead b { flex: 1; font-size: 18px; font-weight: 800; }
+.sqm-tquote { margin: 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--panel)); font-size: 13px; line-height: 1.4; color: var(--muted); }
+.sqm-tquote b { color: var(--ink); }
+.sqm-tai { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: var(--sqm-ok); }
+.sqm-tai svg { width: 16px; height: 16px; } .sqm-tai.err { color: var(--sqm-ask); }
+.sqm-tf { display: grid; gap: 6px; } .sqm-tf > span { font-size: 11.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.sqm-tf input, .sqm-tf textarea, .sqm-tf select, .sqm-tdate { width: 100%; box-sizing: border-box; min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: 600 14.5px var(--font-body); }
+.sqm-tf textarea { resize: vertical; font-weight: 500; line-height: 1.4; }
+.sqm-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.sqm-pill { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
+.sqm-pill.on { background: var(--sqm-navy); border-color: var(--sqm-navy); color: #fff; }
+.sqm-tchk { display: flex; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; } .sqm-tchk input { width: 20px; height: 20px; accent-color: var(--sqm-ok); }
+.sqm-tact { display: flex; gap: 8px; margin-top: 4px; }
+.sqm-tgo { flex: 1; min-height: 46px; border: 0; border-radius: 12px; background: var(--sqm-navy); color: var(--sqm-q); font: 800 15px var(--font-body); cursor: pointer; } .sqm-tgo:disabled { opacity: .6; cursor: progress; }
+.sqm-tno { min-height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); font: 700 14px var(--font-body); cursor: pointer; }
+.sqm-mopt { display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 0 6px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: 600 15.5px var(--font-body); text-align: left; cursor: pointer; }
+.sqm-mopt.main { color: var(--sqm-ok); font-weight: 800; } .sqm-mopt svg { width: 20px; height: 20px; }
+.sqm-toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 140; display: flex; align-items: center; gap: 8px; max-width: min(92vw, 560px); padding: 10px 14px; border-radius: 12px; background: var(--sqm-navy); color: #fff; font: 700 13.5px var(--font-body); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+.sqm-toast svg { width: 18px; height: 18px; color: var(--sqm-q); flex: none; } .sqm-toast .sqm-link { color: var(--sqm-q); white-space: nowrap; }
+/* varias imágenes en un mensaje: cuadrícula dentro de la burbuja, sin salirse */
+.sqm-b.sqm-bimg { max-width: min(82%, 360px); }
+.sqm-bimg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.sqm-bimg > :not(.sqm-timg) { grid-column: 1 / -1; }
+.sqm-bimg .sqm-timg:only-of-type { grid-column: 1 / -1; }
+.sqm-timg { min-width: 0; margin: 0; }
+.sqm-timg img { max-width: 100%; width: 100%; height: auto; max-height: 320px; object-fit: cover; }
