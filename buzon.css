@@ -275,3 +275,14 @@
   #view-correo .card.bz-on .bz-modebar > #mail-filter, #view-correo .card.bz-on .bz-modebar > #mail-updated { display: none !important; }
   #view-correo .card > .row-between { display: none; }
 }
+
+/* programar el envío */
+.bz-prog { display: grid; gap: 8px; border: 1px solid #c9d2dc; border-radius: 8px; padding: 10px 12px; background: var(--panel); }
+.bz-prog-t { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+.bz-prog-o { display: flex; flex-wrap: wrap; gap: 6px; }
+.bz-prog-c { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.bz-prog-c input { height: 34px; border: 1px solid #c9d2dc; border-radius: 6px; padding: 0 8px; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); }
+.bz-prog-a { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bz-prog-slot:empty { display: none; }
+.bz-offh { margin: 0; font-size: 12.5px; color: var(--muted); }
+.bz-offh .bz-link { color: #0b6e63; font-weight: 700; padding: 0; }
