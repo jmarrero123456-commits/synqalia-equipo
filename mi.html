@@ -1093,7 +1093,7 @@
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124b">
 <link rel="stylesheet" href="mensajes.css?v=20261124d">
-<link rel="stylesheet" href="buzon.css?v=20261124e">
+<link rel="stylesheet" href="buzon.css?v=20261124f">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -3314,6 +3314,14 @@
       rp.addEventListener('click', () => { if (open && !o.split) state.scrollToMid = m.id; state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus(); } });
       if (!o.pane) act.appendChild(rp);
       if (!isMeeting(m)) act.appendChild(outlookBtn(m));
+      if (!isMeeting(m) && m.conv && typeof window.__sqOpenInBandeja === 'function') {
+        [['todos', 'Responder a todos'], ['reenviar', 'Reenviar']].forEach(([t, txt]) => {
+          const bb = el('button', 'btn', txt); bb.type = 'button';
+          bb.title = t === 'reenviar' ? 'Abre el hilo en la Bandeja con el reenvío preparado' : 'Abre el hilo en la Bandeja: puedes quitar o añadir gente en Para y CC';
+          bb.addEventListener('click', () => window.__sqOpenInBandeja(m.conv, t));
+          act.appendChild(bb);
+        });
+      }
       if (!isMeeting(m) && !handled(m) && !open) { const sg = el('button', 'btn', '✨ Sugerir respuesta'); sg.type = 'button'; sg.title = 'Abre el correo y te propongo una respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; renderAll(); }); act.appendChild(sg); }
       if (!isMeeting(m)) {
         const toTask = el('button', 'btn', linked.has(m.id) ? 'Ya es tarea' : 'Pasar a tarea'); toTask.type = 'button';
@@ -4968,7 +4976,7 @@
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124e" defer></script>
+<script src="buzon.js?v=20261124f" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>

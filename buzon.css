@@ -252,3 +252,14 @@
 .bz-compose.bz-dragging { outline: 2px dashed #2bb3a3; outline-offset: 2px; background: color-mix(in srgb, #5fe0cf 10%, var(--panel)); }
 .bz-compose.bz-dragging .bz-drop { border-color: #2bb3a3; }
 @media (max-width: 599px) { .bz-f.bz-acw .bz-ac { left: 0; } .bz-drophint { display: none; } }
+
+/* Para / CC en fichas */
+.bz-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 36px; padding: 3px 6px; border: 1px solid #c9d2dc; border-radius: 6px; background: var(--panel); cursor: text; min-width: 0; }
+.bz-chips:focus-within { border-color: #0b0e13; box-shadow: 0 0 0 2px color-mix(in srgb, #5fe0cf 45%, transparent); }
+.bz-chips input { flex: 1 1 120px; min-width: 80px; height: 28px; border: 0 !important; box-shadow: none !important; outline: none; padding: 0 4px !important; font: inherit; font-size: 14px; background: transparent; color: var(--ink); }
+.bz-person { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; height: 26px; padding: 0 2px 0 8px; border-radius: 13px; background: color-mix(in srgb, #5fe0cf 22%, var(--panel)); color: var(--ink); font-size: 13px; font-weight: 600; }
+.bz-person > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.bz-person button { width: 22px; height: 22px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.bz-person button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
+.bz-f .bz-chips .bz-ac, .bz-f.bz-acw .bz-ac { left: 0; }
+.bz-chips.bz-acw { position: relative; }

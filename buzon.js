@@ -510,6 +510,7 @@
       if (act >= 0) input.setAttribute('aria-activedescendant', `${box.id}-${act}`); else input.removeAttribute('aria-activedescendant');
     };
     const pick = (p) => {
+      if (input.dataset.chips) { input.value = ''; close(); input.dispatchEvent(new CustomEvent('bz-pick', { detail: p })); input.focus(); return; }
       const v = input.value; const i = Math.max(v.lastIndexOf(';'), v.lastIndexOf(','));
       input.value = (i >= 0 ? v.slice(0, i + 1) + ' ' : '') + p.mail + '; ';
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -520,7 +521,7 @@
       if (q.length < 2) { items = []; close(); return; }
       const fq = fold(q);
       const yo = String(st.outlook || '').toLowerCase();
-      const already = new Set(input.value.toLowerCase().split(/[;,\s]+/));
+      const already = new Set([...input.value.toLowerCase().split(/[;,\s]+/), ...(typeof input._exclude === 'function' ? input._exclude() : [])]);
       const loc = localPeople().filter((p) => p.mail !== yo && !already.has(p.mail) && (fold(p.nombre).includes(fq) || fold(p.mail).includes(fq)));
       items = loc.slice(0, 8); act = items.length ? 0 : -1; paint();
       clearTimeout(timer);
@@ -547,6 +548,55 @@
     input.addEventListener('blur', () => setTimeout(close, 150));
   }
   window.__sqPeopleAC = peopleAC;
+  // Desde Pendientes: abrir ese hilo en la Bandeja con Responder a todos o Reenviar ya preparado
+  window.__sqOpenInBandeja = async (conv, tipo) => {
+    if (!conv) return;
+    setModo('bandeja');
+    await openThread(conv);
+    if (st.sel === conv && st.hilo?.length && tipo) openCompose({ tipo });
+  };
+
+
+  /* ---------- Para / CC en fichas: ✕ para quitar a alguien, escribir para añadir ---------- */
+  const isMail = (x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(x || '').trim());
+  function chipField(box, initial) {
+    const input = box.querySelector('input'), hidden = box.parentElement.querySelector('input[type="hidden"]');
+    let list = [];
+    const seen = (a) => list.some((p) => p.mail.toLowerCase() === a.toLowerCase());
+    const add = (p) => { if (!p?.mail || !isMail(p.mail) || seen(p.mail)) return; list.push({ nombre: p.nombre || p.mail, mail: p.mail.trim() }); paint(); };
+    const paint = () => {
+      box.querySelectorAll('.bz-person').forEach((x) => x.remove());
+      list.forEach((p, i) => {
+        const s = document.createElement('span');
+        s.className = 'bz-person'; s.title = p.mail;
+        s.innerHTML = `<span>${esc(p.nombre && p.nombre !== p.mail ? p.nombre : p.mail)}</span><button type="button" aria-label="Quitar a ${esc(p.nombre || p.mail)}">✕</button>`;
+        s.querySelector('button').addEventListener('click', () => { list.splice(i, 1); paint(); input.focus(); });
+        box.insertBefore(s, input);
+      });
+      hidden.value = list.map((p) => p.mail).join('; ');
+      input.placeholder = list.length ? '' : (box.dataset.chips === 'para' ? 'Escribe un nombre o correo' : 'Añadir en copia');
+    };
+    const commit = () => {
+      const parts = input.value.split(/[;,\s]+/).filter(Boolean);
+      const bad = parts.find((x) => !isMail(x));
+      if (bad) { msgStatus(`«${bad}» no es una dirección de correo: elige una sugerencia o escríbela completa.`, true); input.focus(); return false; }
+      parts.forEach((a) => add({ mail: a })); input.value = ''; return true;
+    };
+    input.dataset.chips = '1';
+    input._exclude = () => list.map((p) => p.mail.toLowerCase());
+    peopleAC(input);
+    input.addEventListener('bz-pick', (e) => add(e.detail));
+    input.addEventListener('keydown', (e) => {
+      if (input.getAttribute('aria-expanded') === 'true') return;
+      if ((e.key === 'Enter' || e.key === ';' || e.key === ',') && input.value.trim()) { e.preventDefault(); commit(); }
+      else if (e.key === 'Backspace' && !input.value && list.length) { list.pop(); paint(); }
+    });
+    input.addEventListener('paste', (e) => { const t = e.clipboardData?.getData('text') || ''; if (/[;,]/.test(t) || isMail(t.trim())) { e.preventDefault(); t.split(/[;,\s]+/).filter(isMail).forEach((a) => add({ mail: a })); } });
+    input.addEventListener('blur', () => setTimeout(() => { if (input.value.trim() && input.value.split(/[;,\s]+/).filter(Boolean).every(isMail)) commit(); }, 200));
+    box.addEventListener('click', (e) => { if (e.target === box) input.focus(); });
+    initial.forEach(add); paint();
+    return { commit };
+  }
 
   /* ---------- redactar: responder, a todos, reenviar, nuevo ---------- */
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
@@ -564,17 +614,20 @@
       slot = pane.querySelector('.bz-compose-slot');
     }
     const yo = String(st.outlook || '').toLowerCase();
-    const quien = o.tipo === 'todos' ? [m.de, ...(m.para || []), ...(m.cc || [])].filter((p) => p && (!yo || String(p.mail || '').toLowerCase() !== yo)).map((p) => p.nombre || p.mail).filter(Boolean).join(', ')
-      : o.tipo === 'responder' ? (m.de?.nombre || m.de?.mail || '') : '';
+    const notMe = (l) => (l || []).filter((p) => p && p.mail && String(p.mail).toLowerCase() !== yo);
+    // destinatarios de partida: se pueden quitar (✕) o añadir
+    const ini = o.tipo === 'responder' ? { para: notMe([m.de]), cc: [] }
+      : o.tipo === 'todos' ? { para: notMe([m.de, ...(m.para || [])]), cc: notMe(m.cc) }
+      : { para: [], cc: [] };
     slot.innerHTML = `<form class="bz-compose" novalidate>
-      <div class="bz-ctit"><b>${o.sugerida ? 'Respuesta sugerida' : TIT[o.tipo]}</b>${quien ? `<span>a ${esc(quien)}</span>` : ''}</div>
+      <div class="bz-ctit"><b>${o.sugerida ? 'Respuesta sugerida' : TIT[o.tipo]}</b></div>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>De</span><select name="cuenta" required>
         ${st.cuenta === 'todas' ? '<option value="" selected disabled>¿Desde qué cuenta?</option>' : ''}
         <option value="outlook"${st.cuenta === 'outlook' ? ' selected' : ''}>Outlook · ${esc(st.outlook || 'cuenta de trabajo')}</option>
         <option value="gmail" disabled>Gmail · todavía sin conectar</option>
       </select></label>` : ''}
-      ${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? `<label class="bz-f"><span>Para</span><input name="para" type="text" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com; otro@ejemplo.com" required></label>` : ''}
-      <label class="bz-f"><span>CC</span><input name="cc" type="text" inputmode="email" autocomplete="off" placeholder="${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'Opcional' : 'Añadir en copia (opcional)'}"></label>
+      <div class="bz-f"><span>Para</span><div class="bz-chips" data-chips="para"><input type="text" inputmode="email" aria-label="Para" placeholder="Escribe un nombre o correo"></div><input type="hidden" name="para"></div>
+      <div class="bz-f"><span>CC</span><div class="bz-chips" data-chips="cc"><input type="text" inputmode="email" aria-label="CC" placeholder="Añadir en copia"></div><input type="hidden" name="cc"></div>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
       <label class="bz-sr" for="bz-txt">Texto del correo</label>
       <textarea id="bz-txt" name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea>
@@ -593,7 +646,8 @@
     </form>`;
     const f = slot.querySelector('form');
     o.files = o.files || [];
-    f.querySelectorAll('input[name="para"], input[name="cc"]').forEach(peopleAC);
+    const chipFields = [...f.querySelectorAll('[data-chips]')].map((box) => chipField(box, ini[box.dataset.chips] || []));
+    o.commitChips = () => chipFields.every((c) => c.commit());
     const drop = f.querySelector('[data-drop]'), fin = f.querySelector('[data-files]'), flist = f.querySelector('.bz-files');
     const total = () => o.files.reduce((a, x) => a + x.size, 0);
     const paintFiles = () => {
@@ -624,15 +678,16 @@
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       slot.innerHTML = '';
     }));
-    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'input[name="para"]' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
+    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? '[data-chips="para"] input' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
   }
   async function send(f, o, enviar) {
+    if (o.commitChips && !o.commitChips()) return;
     const fd = new FormData(f);
     if (o.tipo === 'nuevo' && !fd.get('cuenta')) { msgStatus('Elige desde qué cuenta lo envías («De»).', true); f.querySelector('select[name="cuenta"]')?.focus(); return; }
-    const body = { cuenta: fd.get('cuenta') || 'outlook', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
-    if (enviar && (o.tipo === 'nuevo' || o.tipo === 'reenviar') && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { msgStatus('Escribe al menos una dirección de correo en «Para».', true); f.querySelector('input[name="para"]')?.focus(); return; }
+    const body = { cuenta: fd.get('cuenta') || 'outlook', destinatarios: o.tipo === 'responder' || o.tipo === 'todos', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
+    if (enviar && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { msgStatus('Falta al menos un destinatario en «Para».', true); f.querySelector('[data-chips="para"] input')?.focus(); return; }
     const badCc = String(body.cc || '').split(/[;,\s]+/).filter(Boolean).find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
-    if (badCc) { msgStatus(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('input[name="cc"]')?.focus(); return; }
+    if (badCc) { msgStatus(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('[data-chips="cc"] input')?.focus(); return; }
     if (enviar && o.tipo !== 'reenviar' && !body.texto.trim()) { msgStatus('El correo está vacío.', true); f.querySelector('textarea')?.focus(); return; }
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
     msgStatus(enviar ? 'Enviando…' : 'Guardando en Borradores…');
