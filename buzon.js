@@ -671,6 +671,109 @@
   }
   window.__sqSchedule = { panel: schedulePanel, label: progLabel, offHours: fueraDeHora, next: nextWorkday };
 
+
+  /* ---------- fechas libres de tu agenda en la respuesta sugerida (24/11) ----------
+     Si la propuesta trae huecos como «[fecha 1 de enero]», se rellenan con días libres de tu calendario de Outlook. */
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const PH_RE = /\[(?:fecha|d[ií]a|hueco|opci[oó]n)[^\]]*\]/gi;
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const toM = (s) => { const t = String(s || '').slice(11, 16); return t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null; };
+  function franja(txt) {
+    const r = /\b(?:de|entre)\s+(?:las\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:h|horas)?\s*(?:a|y|-|–)\s*(?:las\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:h\b|horas)?/i.exec(txt || '');
+    if (!r) return null;
+    const a = +r[1] * 60 + +(r[2] || 0), z = +r[3] * 60 + +(r[4] || 0);
+    return a >= 7 * 60 && z <= 21 * 60 && z > a ? [a, z] : null;
+  }
+  async function diasLibres(m, phText) {
+    const src = phText + ' ' + (m.peticion || '') + ' ' + (m.resumen || '');
+    const now = new Date(), man = at(now, 1, 0);
+    const mes = MESES.findIndex((x) => new RegExp('\\b' + x + '\\b', 'i').test(src));
+    let desde = man, hasta = at(now, 28, 0);
+    if (mes >= 0) { let y = now.getFullYear(); if (mes < now.getMonth()) y++; desde = new Date(y, mes, 1); hasta = new Date(y, mes + 1, 0); if (desde < man) desde = man; }
+    const win = franja((m.resumen || '') + ' ' + (m.peticion || '') + ' ' + String(m.cuerpo || '').slice(0, 3000));
+    const r = await call('agenda', { desde: ymd(desde), hasta: ymd(hasta) });
+    const byDay = {};
+    for (const e of r.eventos || []) {
+      const d0 = String(e.inicio || '').slice(0, 10), d1 = String(e.fin || '').slice(0, 10);
+      for (let d = new Date(d0 + 'T12:00:00'); ymd(d) <= d1 && ymd(d) <= ymd(hasta); d.setDate(d.getDate() + 1)) {
+        const k = ymd(d);
+        const a = e.diaEntero || k !== d0 ? 0 : toM(e.inicio), z = e.diaEntero || k !== d1 ? 1440 : toM(e.fin);
+        (byDay[k] = byDay[k] || []).push([a, z]);
+        if (e.diaEntero && k === d1 && d1 !== d0) break;
+      }
+    }
+    const cands = [];
+    for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() === 0 || d.getDay() === 6 || festivo(d)) continue;
+      const k = ymd(d), busy = byDay[k] || [];
+      if (win && busy.some(([a, z]) => a < win[1] && win[0] < z)) continue;
+      const ocupado = busy.reduce((s, [a, z]) => s + Math.max(0, Math.min(z, 19 * 60) - Math.max(a, 9 * 60)), 0);
+      if (ocupado >= 9 * 60) continue;
+      cands.push({ d: new Date(d), k, ocupado });
+    }
+    // primero los días más libres, y repartidos (no seguidos)
+    const orden = cands.slice().sort((x, y) => x.ocupado - y.ocupado || x.d - y.d);
+    const pick = [];
+    for (const c of orden) { if (pick.every((p) => Math.abs(p.d - c.d) > 1.5 * 864e5)) pick.push(c); if (pick.length >= 6) break; }
+    for (const c of orden) { if (pick.length >= 6) break; if (!pick.includes(c)) pick.push(c); }
+    return { win, mes, todos: cands, mejores: pick };
+  }
+  // festivos nacionales (fijos + Jueves y Viernes Santo)
+  function festivo(d) {
+    const md = (d.getMonth() + 1) + '-' + d.getDate();
+    if (['1-1', '1-6', '5-1', '8-15', '10-12', '11-1', '12-6', '12-8', '12-25'].includes(md)) return true;
+    const y = d.getFullYear(), a = y % 19, b2 = Math.floor(y / 100), c = y % 100, dd = Math.floor(b2 / 4), e = b2 % 4, f = Math.floor((b2 + 8) / 25), g2 = Math.floor((b2 - f + 1) / 3), h = (19 * a + b2 - dd - g2 + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m2 = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mes = Math.floor((h + l - 7 * m2 + 114) / 31), dia = ((h + l - 7 * m2 + 114) % 31) + 1;
+    const pascua = new Date(y, mes - 1, dia);
+    return [-3, -2].some((o) => { const x = new Date(pascua); x.setDate(x.getDate() + o); return x.toDateString() === d.toDateString(); });
+  }
+  const diaTxt = (d) => `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  window.__sqFillDates = async (m, ta, place, onChange) => {
+    const orig = ta.value;
+    const phs = orig.match(PH_RE);
+    if (!phs || !phs.length) return;
+    const note = document.createElement('div');
+    note.className = 'bz-datefill';
+    note.textContent = 'Buscando días libres en tu agenda de Outlook…';
+    place(note);
+    let info;
+    try { info = await diasLibres(m, phs.join(' ')); }
+    catch (e) { note.textContent = 'No pude mirar tu agenda: ' + e.message + '. Completa las fechas a mano.'; note.classList.add('bad'); return; }
+    if (!info.mejores.length) { note.textContent = 'No encuentro días libres en tu agenda para esas fechas. Complétalas a mano.'; note.classList.add('bad'); return; }
+    let elegidos = info.mejores.slice(0, phs.length).sort((a, b) => a.d - b.d);
+    let last = null;
+    const fill = (lista) => { let i = 0; return orig.replace(PH_RE, (x) => (lista[i] ? diaTxt(lista[i++].d) : x)); };
+    const apply = () => {
+      if (last != null && ta.value !== last) { note.querySelector('.st').textContent = 'Has cambiado el texto: cambia las fechas a mano.'; return; }
+      ta.value = last = fill(elegidos); onChange?.();
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      paint();
+    };
+    const franjaTxt = info.win ? ` de ${hhmm2(info.win[0])} a ${hhmm2(info.win[1])}` : '';
+    function paint() {
+      note.innerHTML = `<div><b>📅 Fechas de tu agenda de Outlook</b> · ${esc(elegidos.map((c) => diaTxt(c.d)).join(', '))}${info.win ? ` (libre${elegidos.length > 1 ? 's' : ''}${esc(franjaTxt)})` : ' (días con la agenda más libre)'} <button type="button" class="bz-link" data-chg>Cambiar</button></div><div class="st"></div><div class="bz-dchips" hidden></div>`;
+      note.querySelector('[data-chg]').addEventListener('click', () => {
+        const box = note.querySelector('.bz-dchips');
+        if (!box.hidden) { box.hidden = true; return; }
+        box.hidden = false;
+        box.innerHTML = `<p>Elige ${phs.length} día${phs.length > 1 ? 's' : ''}:</p>` + info.todos.slice(0, 24).map((c, i) => `<button type="button" class="bz-chip" data-i="${i}" aria-pressed="${elegidos.some((e) => e.k === c.k)}">${esc(DIAS[c.d.getDay()].slice(0, 3) + ' ' + c.d.getDate())}${c.ocupado ? '' : ' · libre'}</button>`).join('') + '<button type="button" class="bz-btn send" data-ap>Poner estas fechas</button>';
+        box.querySelectorAll('[data-i]').forEach((c) => c.addEventListener('click', () => {
+          const cd = info.todos[+c.dataset.i];
+          const on = c.getAttribute('aria-pressed') === 'true';
+          if (!on && box.querySelectorAll('[aria-pressed="true"]').length >= phs.length) return;
+          c.setAttribute('aria-pressed', String(!on));
+        }));
+        box.querySelector('[data-ap]').addEventListener('click', () => {
+          const sel = [...box.querySelectorAll('[data-i][aria-pressed="true"]')].map((c) => info.todos[+c.dataset.i]).sort((a, b) => a.d - b.d);
+          if (!sel.length) return;
+          elegidos = sel; apply();
+        });
+      });
+    }
+    apply();
+  };
+  const hhmm2 = (mm) => Math.floor(mm / 60) + ':' + String(mm % 60).padStart(2, '0');
+
   /* ---------- redactar: responder, a todos, reenviar, nuevo ---------- */
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
   function openCompose(o) {

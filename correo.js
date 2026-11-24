@@ -35,3 +35,23 @@
     e.preventDefault(); save(width);
   });
 })();
+
+/* Synqalia · Correo: la lista y el correo llegan hasta abajo de la pantalla, sin hueco blanco (24/11).
+   Calcula el alto según dónde empieza el bloque (en Pendientes y en la Bandeja), solo en pantallas anchas. */
+(() => {
+  const fit = () => {
+    const narrow = window.innerWidth < 600;
+    document.querySelectorAll('#view-correo .mail-split, #view-correo .bz-body').forEach((el) => {
+      if (narrow || !el.offsetParent || (el.classList.contains('mail-split') && !el.classList.contains('on'))) { if (el.style.height) el.style.height = ''; return; }
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const h = Math.max(380, Math.round(window.innerHeight - top - 34));
+      if (el.style.height !== h + 'px') el.style.height = h + 'px';
+    });
+  };
+  let raf = 0;
+  const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); };
+  window.addEventListener('resize', later);
+  const view = document.getElementById('view-correo');
+  if (view) new MutationObserver(later).observe(view, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+  setTimeout(later, 300);
+})();

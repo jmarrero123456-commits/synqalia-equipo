@@ -1211,7 +1211,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261124i">
+<link rel="stylesheet" href="buzon.css?v=20261124j">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -3425,6 +3425,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const locked = r.estado === 'en_outlook' || r.estado === 'enviada';
     ta.readOnly = locked;
     box.appendChild(ta);
+    // fechas libres de la agenda de Outlook en lugar de «[fecha …]» (24/11)
+    if (!locked && state.drafts[m.id] == null && /\[(?:fecha|d[ií]a|hueco|opci[oó]n)[^\]]*\]/i.test(ta.value)) setTimeout(() => { if (ta.isConnected && typeof window.__sqFillDates === 'function') window.__sqFillDates(m, ta, (n) => ta.before(n), () => { state.drafts[m.id] = ta.value; grow(); }); }, 0);
     const grow = () => { if (!ta.isConnected) return; ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, window.innerWidth < 600 ? 170 : 300), Math.round(window.innerHeight * (window.innerWidth < 600 ? 0.6 : 0.72))) + 'px'; };
     ta.addEventListener('input', grow); requestAnimationFrame(grow);
     const status = el('span', 'status', locked ? (r.estado === 'enviada' ? 'Esta respuesta ya se envió.' : 'Está en tus Borradores de Outlook, dentro del hilo. Ábrela allí y pulsa Enviar.') : (m.cuerpo ? '' : 'Ojo: solo tengo la vista previa de este correo. La sugerencia será orientativa.'));
@@ -5524,8 +5526,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="aviso-reunion.js?v=20261124a" defer></script>
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124h" defer></script>
-<script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124i" defer></script>
+<script src="correo.js?v=20261124a" defer></script>
+<script src="buzon.js?v=20261124j" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>

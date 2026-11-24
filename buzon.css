@@ -286,3 +286,13 @@
 .bz-prog-slot:empty { display: none; }
 .bz-offh { margin: 0; font-size: 12.5px; color: var(--muted); }
 .bz-offh .bz-link { color: #0b6e63; font-weight: 700; padding: 0; }
+
+/* fechas de la agenda en la respuesta sugerida */
+.bz-datefill { display: grid; gap: 6px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, #5fe0cf 14%, var(--panel)); font-size: 13.5px; color: var(--ink); margin-bottom: 6px; }
+.bz-datefill.bad { background: color-mix(in srgb, var(--bad) 8%, var(--panel)); color: var(--bad); }
+.bz-datefill .st:empty { display: none; }
+.bz-datefill .st { color: var(--bad); font-size: 12.5px; }
+.bz-datefill .bz-link { color: #0b6e63; font-weight: 700; padding: 0 4px; }
+.bz-dchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bz-dchips p { width: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
+.bz-dchips .bz-chip { height: 30px; }
