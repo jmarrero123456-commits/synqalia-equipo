@@ -480,6 +480,74 @@
     btn.disabled = false;
   }
 
+
+  /* ---------- sugerencias de personas en «Para» y «CC» (como Outlook) ---------- */
+  const localPeople = () => {
+    const m = new Map();
+    const add = (n, a) => { a = String(a || '').toLowerCase().trim(); if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a) && !m.has(a)) m.set(a, { nombre: n || a, mail: a }); };
+    try { JSON.parse(localStorage.getItem('sq-cc-hist') || '[]').forEach((a) => add('', a)); } catch {}
+    for (const x of [...st.items, ...(st.hilo || [])]) [x.de, ...(x.para || []), ...(x.cc || [])].forEach((p) => p && add(p.nombre, p.mail));
+    return [...m.values()];
+  };
+  const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  function peopleAC(input) {
+    if (!input || input.dataset.ac) return;
+    input.dataset.ac = '1';
+    input.setAttribute('autocomplete', 'off'); input.removeAttribute('list');
+    input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-expanded', 'false');
+    const box = document.createElement('ul');
+    box.className = 'bz-ac'; box.setAttribute('role', 'listbox'); box.hidden = true;
+    box.id = 'bz-ac-' + Math.random().toString(36).slice(2, 8);
+    input.setAttribute('aria-controls', box.id);
+    const wrap = input.parentElement; wrap.classList.add('bz-acw'); wrap.appendChild(box);
+    let items = [], act = -1, timer = null, seq = 0;
+    const token = () => { const v = input.value; const i = Math.max(v.lastIndexOf(';'), v.lastIndexOf(',')); return v.slice(i + 1).trim(); };
+    const close = () => { box.hidden = true; input.setAttribute('aria-expanded', 'false'); act = -1; };
+    const paint = () => {
+      if (!items.length) { close(); return; }
+      box.innerHTML = items.map((p, i) => `<li role="option" id="${box.id}-${i}" aria-selected="${i === act}" data-i="${i}"><b>${esc(p.nombre)}</b><small>${esc(p.mail)}</small></li>`).join('');
+      box.hidden = false; input.setAttribute('aria-expanded', 'true');
+      if (act >= 0) input.setAttribute('aria-activedescendant', `${box.id}-${act}`); else input.removeAttribute('aria-activedescendant');
+    };
+    const pick = (p) => {
+      const v = input.value; const i = Math.max(v.lastIndexOf(';'), v.lastIndexOf(','));
+      input.value = (i >= 0 ? v.slice(0, i + 1) + ' ' : '') + p.mail + '; ';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      close(); input.focus();
+    };
+    const search = () => {
+      const q = token();
+      if (q.length < 2) { items = []; close(); return; }
+      const fq = fold(q);
+      const yo = String(st.outlook || '').toLowerCase();
+      const already = new Set(input.value.toLowerCase().split(/[;,\s]+/));
+      const loc = localPeople().filter((p) => p.mail !== yo && !already.has(p.mail) && (fold(p.nombre).includes(fq) || fold(p.mail).includes(fq)));
+      items = loc.slice(0, 8); act = items.length ? 0 : -1; paint();
+      clearTimeout(timer);
+      const n = ++seq;
+      timer = setTimeout(async () => {
+        try {
+          const r = await call('personas', { q });
+          if (n !== seq || token() !== q) return;
+          const seen = new Set(items.map((p) => p.mail));
+          for (const p of r.personas || []) if (!seen.has(p.mail) && p.mail !== yo && !already.has(p.mail)) { items.push(p); seen.add(p.mail); }
+          items = items.slice(0, 10); if (act < 0 && items.length) act = 0; paint();
+        } catch { /* sin sugerencias del servidor */ }
+      }, 250);
+    };
+    input.addEventListener('input', (e) => { if (e.isTrusted === false && !e.inputType) return; search(); });
+    input.addEventListener('keydown', (e) => {
+      if (box.hidden) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); act = (act + 1) % items.length; paint(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); act = (act - 1 + items.length) % items.length; paint(); }
+      else if ((e.key === 'Enter' || e.key === 'Tab') && act >= 0) { e.preventDefault(); pick(items[act]); }
+      else if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    });
+    box.addEventListener('mousedown', (e) => { const li = e.target.closest('li[data-i]'); if (li) { e.preventDefault(); pick(items[+li.dataset.i]); } });
+    input.addEventListener('blur', () => setTimeout(close, 150));
+  }
+  window.__sqPeopleAC = peopleAC;
+
   /* ---------- redactar: responder, a todos, reenviar, nuevo ---------- */
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
   function openCompose(o) {
@@ -506,11 +574,17 @@
         <option value="gmail" disabled>Gmail · todavía sin conectar</option>
       </select></label>` : ''}
       ${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? `<label class="bz-f"><span>Para</span><input name="para" type="text" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com; otro@ejemplo.com" required></label>` : ''}
-      <label class="bz-f"><span>CC</span><input name="cc" type="text" inputmode="email" autocomplete="off" list="sq-cc-list" placeholder="${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'Opcional' : 'Añadir en copia (opcional)'}"></label>
+      <label class="bz-f"><span>CC</span><input name="cc" type="text" inputmode="email" autocomplete="off" placeholder="${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'Opcional' : 'Añadir en copia (opcional)'}"></label>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
       <label class="bz-sr" for="bz-txt">Texto del correo</label>
       <textarea id="bz-txt" name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea>
-      <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}.</p>
+      <div class="bz-drop" data-drop>
+        <input type="file" multiple hidden data-files>
+        <button type="button" class="bz-btn" data-pick>${svg('clip', 15)}<span>Adjuntar</span></button>
+        <span class="bz-drophint">o arrastra aquí archivos y fotos (también puedes pegarlos)</span>
+        <ul class="bz-files" aria-label="Adjuntos"></ul>
+      </div>
+      <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
       <div class="bz-cacts">
         <button type="submit" class="bz-btn send">Enviar</button>
         <button type="button" class="bz-btn" data-draft>A Borradores</button>
@@ -518,7 +592,31 @@
       </div>
     </form>`;
     const f = slot.querySelector('form');
-    f.querySelectorAll('[list="sq-cc-list"]').forEach((x) => x.addEventListener('focus', () => { if (typeof window.__sqFillCcList === 'function') window.__sqFillCcList(); }));
+    o.files = o.files || [];
+    f.querySelectorAll('input[name="para"], input[name="cc"]').forEach(peopleAC);
+    const drop = f.querySelector('[data-drop]'), fin = f.querySelector('[data-files]'), flist = f.querySelector('.bz-files');
+    const total = () => o.files.reduce((a, x) => a + x.size, 0);
+    const paintFiles = () => {
+      flist.innerHTML = o.files.map((x, i) => `<li><span>${svg('clip', 13)}<b>${esc(x.name)}</b><small>${esc(tam(x.size))}</small></span><button type="button" class="bz-ibtn" data-rm="${i}" aria-label="Quitar ${esc(x.name)}">✕</button></li>`).join('');
+      drop.classList.toggle('has', o.files.length > 0);
+    };
+    const addFiles = (list) => {
+      for (const x of list) {
+        if (!x || !x.size) continue;
+        if (total() + x.size > 25 * 1024 * 1024) { msgStatus(`«${x.name}» no cabe: el correo pasaría de 25 MB.`, true); continue; }
+        const name = x.name && x.name !== 'image.png' ? x.name : `imagen-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${(x.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`;
+        o.files.push(new File([x], name, { type: x.type || 'application/octet-stream' }));
+      }
+      paintFiles();
+    };
+    f.querySelector('[data-pick]').addEventListener('click', () => fin.click());
+    fin.addEventListener('change', () => { addFiles([...fin.files]); fin.value = ''; });
+    flist.addEventListener('click', (e) => { const r = e.target.closest('[data-rm]'); if (r) { o.files.splice(+r.dataset.rm, 1); paintFiles(); } });
+    ['dragenter', 'dragover'].forEach((ev) => f.addEventListener(ev, (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); f.classList.add('bz-dragging'); } }));
+    ['dragleave', 'dragend'].forEach((ev) => f.addEventListener(ev, (e) => { if (!f.contains(e.relatedTarget)) f.classList.remove('bz-dragging'); }));
+    f.addEventListener('drop', (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); f.classList.remove('bz-dragging'); addFiles([...e.dataTransfer.files]); });
+    f.querySelector('textarea').addEventListener('paste', (e) => { const fl = [...(e.clipboardData?.files || [])]; if (fl.length) { e.preventDefault(); addFiles(fl); } });
+    paintFiles();
     f.addEventListener('submit', (e) => { e.preventDefault(); send(f, o, true); });
     f.querySelector('[data-draft]').addEventListener('click', () => send(f, o, false));
     pane.querySelectorAll('[data-cl]').forEach((x) => x.addEventListener('click', () => {
@@ -539,7 +637,24 @@
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
     msgStatus(enviar ? 'Enviando…' : 'Guardando en Borradores…');
     try {
-      await call('redactar', body);
+      if (o.files?.length) {
+        // 1) borrador preparado, 2) se suben los adjuntos, 3) se envía (o se queda en Borradores)
+        const { draft } = await call('redactar', { ...body, preparar: true });
+        for (let i = 0; i < o.files.length; i++) {
+          const x = o.files[i];
+          msgStatus(`Subiendo adjuntos ${i + 1} de ${o.files.length}: ${x.name}…`);
+          if (x.size <= 3 * 1024 * 1024) await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size, b64: await b64Of(x) });
+          else {
+            const { url } = await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size });
+            const CH = 9 * 327680;
+            for (let s0 = 0; s0 < x.size; s0 += CH) {
+              msgStatus(`Subiendo ${x.name}: ${Math.round((s0 / x.size) * 100)} %…`);
+              await call('trozo', { url, start: s0, total: x.size, b64: await b64Of(x.slice(s0, s0 + CH)) });
+            }
+          }
+        }
+        if (enviar) { msgStatus('Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo }); }
+      } else await call('redactar', body);
       if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);
       st.compose = null;
       toast(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook');
@@ -552,6 +667,8 @@
       f.querySelectorAll('button').forEach((x) => { x.disabled = false; });
     }
   }
+
+  const b64Of = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('No se pudo leer el archivo')); r.readAsDataURL(blob); });
 
   /* ---------- aviso corto ---------- */
   let toastEl = null, toastT = null;
