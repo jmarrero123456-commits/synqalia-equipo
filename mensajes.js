@@ -50,7 +50,8 @@
   function diaDe(ts) {
     const d = new Date(ts), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
     if (sameDay(d, now)) return 'Hoy'; if (sameDay(d, y)) return 'Ayer';
-    return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    const t = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).replace(',', '');
+    return t.charAt(0).toUpperCase() + t.slice(1);
   }
   const hhmm = (ts) => new Date(ts).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   const ICON = {
@@ -61,6 +62,7 @@
     send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-6 16-3-7Z"/><path d="m11 13 9-9"/></svg>',
     ext: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
     q: '<svg viewBox="0 0 48 48" aria-hidden="true" class="q"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="30.5" cy="44" r="3.6" class="dot"/></svg>',
   };
   const CANALES = {
@@ -68,11 +70,13 @@
     synqalia: { nombre: 'Synqalia', sub: 'Tu equipo y grupos de trabajo', letra: '' },
   };
   const chIcon = (k, cls = '') => `<span class="sqm-ch sqm-ch-${k} ${cls}" aria-hidden="true">${k === 'synqalia' ? ICON.q : CANALES[k].letra}</span>`;
-  const wide = () => matchMedia('(min-width: 1100px)').matches;
+  const wide = () => matchMedia('(min-width: 900px)').matches;
 
   /* ---------- estado ---------- */
   const st = {
     nivel: 'hub', canal: 'teams', f: 'todas', q: '', open: null, keep: new Set(),
+    // Teams: separar personas / grupos / reuniones o verlos juntos (se recuerda en este navegador)
+    tipo: (() => { try { return localStorage.getItem('sqm-tipo') || 'personas'; } catch { return 'personas'; } })(),
     teams: new Map(), visto: new Map(), teamsAt: null,
     chats: [], people: [], msgs: new Map(), // chat id → mensajes
   };
@@ -101,8 +105,9 @@
   }
   function teamsConvs() {
     return [...st.teams.entries()].map(([id, d]) => ({
-      id, canal: 'teams', nombre: d.nombre || 'Chat de Teams', texto: d.ultimo || '', cuando: d.hora || '', orden: d.fecha || d.capturado || '',
-      unread: teamsUnread(id, d) ? Math.max(1, Number(d.nuevos) || 1) : 0, pide: isTrue(d.pide) ? (d.accion || 'Te piden algo') : '', accion: d.accion || '', grupo: !!d.grupo, d,
+      id, canal: 'teams', nombre: d.nombre || 'Chat de Teams', texto: d.ultimo || '', cuando: d.fecha ? cuando(d.fecha) : (d.hora || ''), orden: d.fecha || d.capturado || '',
+      unread: teamsUnread(id, d) ? Math.max(1, Number(d.nuevos) || 1) : 0, pide: isTrue(d.pide) ? (d.accion || 'Te piden algo') : '', accion: d.accion || '',
+      grupo: !!d.grupo || d.tipo === 'grupo' || d.tipo === 'reunion', reunion: d.tipo === 'reunion', d,
     }));
   }
 
@@ -172,14 +177,19 @@
     </div>`;
   }
 
+  const tipoDe = (c) => (c.reunion ? 'reuniones' : c.grupo ? 'grupos' : 'personas');
+  const TIPOS = [['personas', 'Personas'], ['grupos', 'Grupos'], ['reuniones', 'Reuniones'], ['todos', 'Todo junto']];
   function rowsDe() {
     let rows = convsDe(st.canal);
     const pass = (c) => st.keep.has(c.id);
     if (st.f === 'sinleer') rows = rows.filter((c) => c.unread || pass(c));
     if (st.f === 'pide') rows = rows.filter((c) => c.pide || pass(c));
+    if (st.canal === 'teams' && st.tipo !== 'todos') rows = rows.filter((c) => tipoDe(c) === st.tipo || pass(c));
     const q = norm(st.q);
     if (q) rows = rows.filter((c) => norm([c.nombre, c.texto, c.accion].join(' ')).includes(q));
-    return rows.sort((a, b) => ((b.unread ? 1 : 0) - (a.unread ? 1 : 0)) || String(b.orden).localeCompare(String(a.orden)));
+    // como en Teams: arriba la conversación con el último mensaje (las no leídas van en negrita, sin saltar arriba)
+    const t = (c) => { const x = new Date(c.orden).getTime(); return isNaN(x) ? 0 : x; };
+    return rows.sort((a, b) => t(b) - t(a));
   }
 
   function paintCanal() {
@@ -195,13 +205,13 @@
       list = `<p class="note sqm-none">${all ? 'Nada en esta vista.' : k === 'teams' ? 'Aún no hay chats de Teams sincronizados.' : 'Todavía no tienes conversaciones. Pulsa «Nuevo» para escribir a alguien.'}</p>`;
     } else {
       list = rows.map((c) => `<button type="button" class="sqm-row${c.unread ? ' unread' : ''}${st.open === c.id ? ' sel' : ''}" data-id="${esc(c.id)}">
-        <span class="sqm-av${c.grupo ? ' grp' : ''} sqm-av-${k}">${esc(ini(c.nombre))}</span>
+        <span class="sqm-av${c.grupo ? ' grp' : ''}${c.reunion ? ' meet' : ''} sqm-av-${k}"${c.reunion ? ' title="Chat de reunión"' : ''}>${c.reunion ? ICON.cal : esc(ini(c.nombre))}</span>
         <span class="sqm-rmain"><span class="sqm-r1"><span class="sqm-name">${esc(c.nombre)}</span><span class="sqm-when">${esc(c.cuando)}</span></span>
           <span class="sqm-r2"><span class="sqm-txt">${esc(c.texto)}</span>${c.unread ? `<span class="sqm-badge">${c.unread}</span>` : ''}</span>
           ${c.pide ? `<span class="sqm-pide">${esc(c.pide.length > 70 ? c.pide.slice(0, 68) + '…' : c.pide)}</span>` : ''}</span></button>`).join('');
     }
     const f = (id, t) => `<button type="button" class="chip" data-f="${id}" aria-pressed="${st.f === id}">${t}</button>`;
-    root.innerHTML = `<div class="sqm-canal${st.open && wide() ? ' split' : ''}">
+    root.innerHTML = `<div class="sqm-canal${wide() ? ' split' : ''}">
       <div class="sqm-side">
         <div class="sqm-stick">
         <div class="sqm-head">
@@ -210,12 +220,16 @@
           ${k === 'synqalia' ? `<button type="button" class="sqm-new" data-act="nuevo">${ICON.pen}<span>Nuevo</span></button>` : ''}
         </div>
         <div class="sqm-switch" role="group" aria-label="Cambiar de mensajería">${sw}</div>
+        ${k === 'teams' ? `<div class="sqm-tipos" role="group" aria-label="Qué conversaciones ver">${TIPOS.map(([id, t]) => {
+          const n = id === 'todos' ? 0 : convsDe('teams').filter((c) => c.unread && tipoDe(c) === id).length;
+          return `<button type="button" data-tipo="${id}" aria-pressed="${st.tipo === id}">${t}${n ? ` <span>${n}</span>` : ''}</button>`;
+        }).join('')}</div>` : ''}
         ${`<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') : ''}</div>
           <label class="sqm-search">${ICON.search}<span class="sr">Buscar</span><input type="search" placeholder="Buscar persona o mensaje" value="${esc(st.q)}"></label></div>`}
         </div>
         <div class="sqm-list">${list}</div>
       </div>
-      <div class="sqm-pane"></div>
+      <div class="sqm-pane">${st.open ? '' : `<div class="sqm-pick">${chIcon(k, 'lg')}<b>Elige una conversación</b><span>Se abre aquí; la lista sigue a la izquierda.</span></div>`}</div>
     </div>`;
     if (st.open) paintConv();
   }
@@ -267,6 +281,24 @@
       <span class="sqm-ctit"><b>${esc(nombre)}</b><span>${esc(sub)}</span></span>${extra}</div>`;
   }
 
+  // Hilo de Teams con corte por día (raya con «Hoy», «Ayer» o la fecha), como en Teams
+  function teamsThread(msgs) {
+    const ok = (m) => m.fecha && !isNaN(new Date(m.fecha));
+    const list = msgs.every(ok) ? [...msgs].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)) : msgs;
+    let html = '', lastDay = '', lastFrom = '';
+    list.forEach((m) => {
+      if (ok(m)) {
+        const day = new Date(m.fecha).toDateString();
+        if (day !== lastDay) { html += dayLine(m.fecha); lastDay = day; lastFrom = ''; }
+      }
+      const who = !m.mio && m.de && m.de !== lastFrom ? `<span class="sqm-bwho">${esc(m.de)}</span>` : '';
+      html += `<div class="sqm-b ${m.mio ? 'me' : ''}">${who}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(ok(m) ? hhmm(m.fecha) : (m.hora || ''))}</span></div>`;
+      lastFrom = m.mio ? '' : m.de;
+    });
+    return html;
+  }
+  const dayLine = (ts) => `<p class="sqm-day" role="separator"><span>${esc(diaDe(ts))}</span></p>`;
+
   const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
   function paintTeamsConv(host) {
     const id = st.open, d = st.teams.get(id);
@@ -276,11 +308,11 @@
     const url = safeUrl(d.enlace);
     const msgs = Array.isArray(d.mensajes) ? d.mensajes : null;
     const bubbles = msgs && msgs.length
-      ? msgs.map((m) => `<div class="sqm-b ${m.mio ? 'me' : ''}">${!m.mio && m.de ? `<span class="sqm-bwho">${esc(m.de)}</span>` : ''}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(m.hora || '')}</span></div>`).join('')
+      ? teamsThread(msgs)
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
          <p class="sqm-info">${live ? 'Cargando el hilo completo…' : 'Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.'}</p>`;
     host.innerHTML = `<div class="sqm-conv">
-      ${convHead(d.nombre || 'Chat de Teams', 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
+      ${convHead(d.nombre || 'Chat de Teams', d.tipo === 'reunion' ? 'Chat de reunión de Teams' : d.tipo === 'grupo' ? 'Grupo de Teams' : 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
       ${d.accion ? `<div class="sqm-ask${isTrue(d.pide) ? ' pide' : ''}"><span class="sqm-pide">${isTrue(d.pide) ? 'Te pide algo' : 'Resumen'}</span><p>${esc(d.accion)}</p></div>` : ''}
       <div class="sqm-thread">${bubbles}</div>
       <div class="sqm-foot">
@@ -312,7 +344,7 @@
       const myLast = [...msgs].reverse().find((m) => m.from_email === me);
       msgs.forEach((m) => {
         const day = new Date(m.created_at).toDateString();
-        if (day !== lastDay) { html += `<p class="sqm-day">${esc(diaDe(m.created_at))}</p>`; lastDay = day; lastFrom = ''; }
+        if (day !== lastDay) { html += dayLine(m.created_at); lastDay = day; lastFrom = ''; }
         const mine = m.from_email === me;
         let seen = '';
         if (mine && myLast && m.id === myLast.id && others.length) {
@@ -386,6 +418,8 @@
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
+    const tb = t.closest('[data-tipo]');
+    if (tb) { st.tipo = tb.dataset.tipo; try { localStorage.setItem('sqm-tipo', st.tipo); } catch {} st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const chip = t.closest('.chips .chip');
     if (chip) { st.f = chip.dataset.f; st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const row = t.closest('.sqm-list .sqm-row');
