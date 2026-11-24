@@ -577,3 +577,8 @@ body:has(.login) .sq-bar { display: none; }
   body.sq-mini .sq-side .tabs button[aria-selected="true"] .count { color: var(--gold-2, #5fe0cf) !important; }
   body.sq-mini .sq-side .tabs .rec-tab { top: 4px !important; left: 8px !important; }
 }
+
+/* ---------- Pantallas anchas (tablet en horizontal, PC grande): el contenido ocupa todo el ancho, sin hueco a la derecha ---------- */
+@media (min-width: 700px) {
+  .app > main, .app > main#view-lista { max-width: none !important; width: 100%; }
+}
