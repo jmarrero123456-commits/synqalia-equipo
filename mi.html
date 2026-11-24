@@ -3013,7 +3013,13 @@
           ready.disabled = true; setStatus('Enviando…');
           try {
             await graphCall({action: 'send', mail: m.id});
-            delete state.drafts[m.id]; state.openReply = null; renderAll();
+            // Enviado = gestionado: el correo se cierra solo y la lista queda en el siguiente (24/11)
+            const row = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === m.id);
+            const nid = row && row.nextElementSibling && row.nextElementSibling.dataset.mid ? row.nextElementSibling.dataset.mid : null;
+            delete state.drafts[m.id]; state.openReply = null; state.scrollToMid = nid;
+            await write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Enviado ✓ · correo gestionado');
+            renderAll();
+            if (nid) [60, 400, 1200].forEach((ms) => setTimeout(() => { const r = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === nid); if (r && !document.querySelector('#mail-list .mrow.mob-open')) r.scrollIntoView({block: 'start'}); }, ms));
           } catch (e) { setStatus('No se pudo enviar: ' + e.message + '. Tu texto sigue aquí.', true); ready.disabled = false; await saveReply(m, {texto: t, estado: 'borrador'}); }
           return;
         }
