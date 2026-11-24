@@ -146,7 +146,7 @@
   function dictation(onFinal, onPartial, onEnd) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast('Este navegador no permite dictar. Usa el micrófono del teclado del móvil.'); return null; }
-    if (window.__sqRecording) { toast('Ya hay una grabación en marcha en Reuniones o Catch-ups.'); return null; }
+    if (window.__sqRecording) { toast('Ya hay una grabación en marcha en Agenda o Reuniones.'); return null; }
     let want = true, r;
     const start = () => {
       r = new SR(); r.lang = 'es-ES'; r.continuous = true; r.interimResults = true;
