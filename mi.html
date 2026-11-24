@@ -870,7 +870,9 @@
   .cal-ev.mv { cursor: grab; user-select: none; -webkit-user-select: none; }
   .cal-ev.drag { cursor: grabbing; box-shadow: 0 10px 24px rgba(15,27,45,.28); z-index: 15; opacity: .96; }
   .cal-ev.drag::after { content: attr(data-drag); position: absolute; right: 4px; top: 2px; background: var(--ink); color: var(--panel); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
-  .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
+  .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; z-index: 2; }
+  .ev-rs.top { top: 0; bottom: auto; }
+  .cal-ev.mv:hover .ev-rs { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .cal-pop { position: absolute; z-index: 20; width: min(400px, 94%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15,27,45,.24); padding: 4px 4px 8px; }
   .cal-pop .item { border: 0; box-shadow: none; background: transparent; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 6px; }
   .cal-pop .item > .stripe { display: none; }
@@ -2698,12 +2700,13 @@
   function makeMovable(box, o) {
     box.classList.add('mv');
     box.title = (box.title ? box.title + ' · ' : '') + 'Arrastra para moverla' + (o.cols ? ' (también a otro día)' : '');
-    const rs = el('div', 'ev-rs'); rs.title = 'Arrastra para cambiar la duración'; box.appendChild(rs);
+    const rs = el('div', 'ev-rs'); rs.title = 'Arrastra para cambiar la hora de fin'; box.appendChild(rs);
+    const rt = el('div', 'ev-rs top'); rt.title = 'Arrastra para cambiar la hora de inicio'; box.appendChild(rt);
     box.addEventListener('touchmove', (k) => { if (box.classList.contains('drag')) k.preventDefault(); }, {passive: false});
     box.addEventListener('click', (k) => { if (Date.now() - dragEndedAt < 450) { k.stopImmediatePropagation(); k.preventDefault(); } }, true);
     box.addEventListener('pointerdown', (p0) => {
       if (p0.button !== 0) return;
-      const mode = p0.target === rs ? 'size' : 'move';
+      const mode = p0.target === rs ? 'size' : p0.target === rt ? 'start' : 'move';
       const x0 = p0.clientX, y0 = p0.clientY, top0 = parseFloat(box.style.top), hgt0 = parseFloat(box.style.height);
       const a0 = toMin(o.e.inicio), b0 = toMin(o.e.fin), touch = p0.pointerType === 'touch';
       let active = false, dMin = 0, tIdx = o.idx || 0, timer = null;
@@ -2723,6 +2726,10 @@
             tIdx = t; box.style.transform = 'translateX(' + (r[t].left - r[o.idx].left) + 'px)';
           }
           box.dataset.drag = (o.dates && tIdx !== o.idx ? DOW_L[tIdx].slice(0, 3) + ' ' : '') + hmOf(a0 + dMin) + '–' + hmOf(b0 + dMin);
+        } else if (mode === 'start') {
+          dMin = Math.max(o.minM - a0, Math.min((b0 - a0) - 15, dMin));
+          box.style.top = (top0 + dMin * o.pxMin) + 'px'; box.style.height = Math.max(14, hgt0 - dMin * o.pxMin) + 'px';
+          box.dataset.drag = hmOf(a0 + dMin) + '–' + o.e.fin;
         } else {
           dMin = Math.max(15 - (b0 - a0), Math.min(o.maxM - b0, dMin));
           box.style.height = Math.max(14, hgt0 + dMin * o.pxMin) + 'px';
@@ -2735,6 +2742,7 @@
         const nf = o.dates ? o.dates[tIdx] : o.fecha;
         if (!dMin && nf === o.fecha) { renderMeetings(); return; }
         if (mode === 'move') moveMeeting(o.fecha, o.e, nf, hmOf(a0 + dMin), hmOf(b0 + dMin));
+        else if (mode === 'start') moveMeeting(o.fecha, o.e, o.fecha, hmOf(a0 + dMin), o.e.fin);
         else moveMeeting(o.fecha, o.e, o.fecha, o.e.inicio, hmOf(b0 + dMin));
       };
       const cancel = () => { const was = active; done(); if (was) renderMeetings(); };
@@ -2878,7 +2886,7 @@
       if (p.f === todayISO) { const nl = el('div', 'wk-now'); nl.style.top = y(nowMin()) + 'px'; if (nowMin() >= h0 * 60 && nowMin() <= h1 * 60) col.appendChild(nl); }
     });
     scroller.appendChild(body); wrap.appendChild(scroller);
-    wrap.appendChild(el('p', 'note', 'Toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día) y se alargan tirando del borde de abajo.'));
+    wrap.appendChild(el('p', 'note', 'Toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día); tirando del borde de arriba o de abajo cambias la hora de inicio o de fin.'));
     const focus = per.some((p) => p.f === todayISO) ? nowMin() - 90 : 8 * 60 + 30;
     requestAnimationFrame(() => {
       scroller.scrollTop = Math.max(0, y(focus));
