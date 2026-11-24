@@ -70,11 +70,13 @@
     synqalia: { nombre: 'Synqalia', sub: 'Tu equipo y grupos de trabajo', letra: '' },
   };
   const chIcon = (k, cls = '') => `<span class="sqm-ch sqm-ch-${k} ${cls}" aria-hidden="true">${k === 'synqalia' ? ICON.q : CANALES[k].letra}</span>`;
-  const wide = () => matchMedia('(min-width: 1100px)').matches;
+  const wide = () => matchMedia('(min-width: 900px)').matches;
 
   /* ---------- estado ---------- */
   const st = {
     nivel: 'hub', canal: 'teams', f: 'todas', q: '', open: null, keep: new Set(),
+    // Teams: separar personas / grupos / reuniones o verlos juntos (se recuerda en este navegador)
+    tipo: (() => { try { return localStorage.getItem('sqm-tipo') || 'personas'; } catch { return 'personas'; } })(),
     teams: new Map(), visto: new Map(), teamsAt: null,
     chats: [], people: [], msgs: new Map(), // chat id → mensajes
   };
@@ -175,12 +177,14 @@
     </div>`;
   }
 
+  const tipoDe = (c) => (c.reunion ? 'reuniones' : c.grupo ? 'grupos' : 'personas');
+  const TIPOS = [['personas', 'Personas'], ['grupos', 'Grupos'], ['reuniones', 'Reuniones'], ['todos', 'Todo junto']];
   function rowsDe() {
     let rows = convsDe(st.canal);
     const pass = (c) => st.keep.has(c.id);
     if (st.f === 'sinleer') rows = rows.filter((c) => c.unread || pass(c));
     if (st.f === 'pide') rows = rows.filter((c) => c.pide || pass(c));
-    if (st.f === 'reuniones') rows = rows.filter((c) => c.reunion || pass(c));
+    if (st.canal === 'teams' && st.tipo !== 'todos') rows = rows.filter((c) => tipoDe(c) === st.tipo || pass(c));
     const q = norm(st.q);
     if (q) rows = rows.filter((c) => norm([c.nombre, c.texto, c.accion].join(' ')).includes(q));
     // como en Teams: arriba la conversación con el último mensaje (las no leídas van en negrita, sin saltar arriba)
@@ -216,7 +220,11 @@
           ${k === 'synqalia' ? `<button type="button" class="sqm-new" data-act="nuevo">${ICON.pen}<span>Nuevo</span></button>` : ''}
         </div>
         <div class="sqm-switch" role="group" aria-label="Cambiar de mensajería">${sw}</div>
-        ${`<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') + f('reuniones', 'Reuniones') : ''}</div>
+        ${k === 'teams' ? `<div class="sqm-tipos" role="group" aria-label="Qué conversaciones ver">${TIPOS.map(([id, t]) => {
+          const n = id === 'todos' ? 0 : convsDe('teams').filter((c) => c.unread && tipoDe(c) === id).length;
+          return `<button type="button" data-tipo="${id}" aria-pressed="${st.tipo === id}">${t}${n ? ` <span>${n}</span>` : ''}</button>`;
+        }).join('')}</div>` : ''}
+        ${`<div class="sqm-tools"><div class="chips" role="group" aria-label="Filtrar">${f('todas', 'Todas')}${f('sinleer', 'Sin leer')}${k === 'teams' ? f('pide', 'Te piden algo') : ''}</div>
           <label class="sqm-search">${ICON.search}<span class="sr">Buscar</span><input type="search" placeholder="Buscar persona o mensaje" value="${esc(st.q)}"></label></div>`}
         </div>
         <div class="sqm-list">${list}</div>
@@ -410,6 +418,8 @@
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
+    const tb = t.closest('[data-tipo]');
+    if (tb) { st.tipo = tb.dataset.tipo; try { localStorage.setItem('sqm-tipo', st.tipo); } catch {} st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const chip = t.closest('.chips .chip');
     if (chip) { st.f = chip.dataset.f; st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const row = t.closest('.sqm-list .sqm-row');

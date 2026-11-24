@@ -78,13 +78,20 @@ html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) b
 .sqm-empty { padding: 22px 18px; display: grid; gap: 10px; justify-items: start; } .sqm-empty b { font-size: 16px; } .sqm-empty p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .sqm-pane { display: none; }
 
-/* PC ancho: conversaciones a la izquierda, conversación abierta a la derecha */
-@media (min-width: 1100px) {
-  .sqm-canal.split { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 18px; align-items: start; }
-  .sqm-canal.split .sqm-pane { display: block; position: sticky; top: calc(var(--sq-bar, 54px) + 12px); height: calc(100vh - var(--sq-bar, 54px) - 150px); min-height: 520px;
-    border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg); }
-  .sqm-canal.split .sqm-list { max-height: calc(100vh - var(--sq-bar, 54px) - 330px); overflow-y: auto; }
+/* PC: como Teams, lista a la izquierda (con su propio scroll) y conversación a la derecha, a toda la altura */
+@media (min-width: 900px) {
+  .sqm-canal.split { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px;
+    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 480px; }
+  .sqm-canal.split .sqm-side { display: flex; flex-direction: column; min-height: 0; gap: 10px; }
+  .sqm-canal.split .sqm-stick { position: static; margin: 0; padding: 0; background: none; }
+  .sqm-canal.split .sqm-list { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
+  .sqm-canal.split .sqm-pane { display: block; height: 100%; min-height: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg); }
+  .sqm-canal.split .sqm-pane .sqm-conv { height: 100%; }
 }
+.sqm-tipos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.sqm-tipos button { flex: none; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
+.sqm-tipos button span { color: var(--sqm-ok); font-weight: 800; }
+.sqm-tipos button[aria-pressed="true"] { background: color-mix(in srgb, var(--sqm-teams) 14%, var(--panel)); border-color: color-mix(in srgb, var(--sqm-teams) 45%, var(--line)); color: var(--sqm-teams); }
 
 /* ---------- 3 · conversación ---------- */
 .sqm-overlay { position: fixed; inset: 0; z-index: 90; background: var(--bg); color: var(--ink); display: flex; flex-direction: column;
