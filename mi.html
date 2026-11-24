@@ -811,6 +811,82 @@
   .cal-ev.past { opacity: .55; }
   .cal-now { position: absolute; left: calc(var(--cal-g) - 6px); right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
   .cal-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
+  /* Agenda: vista semana, minicalendario, convocatorias en el calendario, mover arrastrando (24/11/2026) */
+  .ag-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ag-tools .wk-lbl { font-size: 16px; font-weight: 800; margin: 0 6px; }
+  .ag-tools .btn { min-height: 34px; }
+  .ag-ico { width: 38px; padding: 0 !important; display: inline-grid; place-items: center; }
+  .ag-ico[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; background: var(--panel); font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  .ag-lay { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .ag-main { flex: 999 1 560px; min-width: 0; }
+  .mcal { flex: 0 0 236px; border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 1px; background: var(--panel); }
+  .mcal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .mcal-h b { font-size: 14px; }
+  .mcal-h button { border: 0; background: transparent; font-size: 17px; cursor: pointer; color: var(--muted); width: 30px; height: 30px; border-radius: 7px; }
+  .mcal-h button:hover { background: var(--accent-soft); color: var(--ink); }
+  .mcal-r { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; border-radius: 8px; }
+  .mcal-r.sel { background: var(--accent-soft); }
+  .mcal-dw { font-size: 11px; font-weight: 700; color: var(--muted); padding: 2px 0; }
+  .mcal-d { position: relative; border: 0; background: transparent; font: inherit; font-size: 12.5px; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--ink); }
+  .mcal-d:hover { background: var(--accent-soft); }
+  .mcal-d.out { color: var(--muted); }
+  .mcal-d.pick { box-shadow: inset 0 0 0 2px var(--accent); }
+  .mcal-d.today { background: var(--ink); color: var(--panel); font-weight: 800; }
+  .mcal-d.pend::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #c98a00; }
+  .mcal-sum { font-size: 12px; color: var(--muted); margin-top: 8px; display: grid; gap: 3px; }
+  .mcal-sum .pn { color: #a16207; font-weight: 700; }
+  @media (max-width: 700px) { .mcal { flex: 1 1 100%; } }
+  .wkw { gap: 0; }
+  .wk-head, .wk-allday, .wk-body { display: grid; grid-template-columns: 52px var(--wk-tracks); }
+  .wk-head { border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--panel); }
+  .wk-dh { border: 0; border-left: 1px solid var(--line); background: transparent; text-align: left; padding: 6px 8px; cursor: pointer; font: inherit; color: var(--ink); min-width: 0; }
+  .wk-dh:hover { background: var(--accent-soft); }
+  .wk-dh b { display: block; font-size: 19px; font-weight: 800; line-height: 1.1; }
+  .wk-dh span { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wk-dh.today { background: var(--accent-soft); }
+  .wk-dh.today b { color: var(--accent); }
+  .wk-dh .wk-pn { color: #a16207; font-weight: 800; }
+  .wk-allday { border: 1px solid var(--line); border-bottom: 0; background: var(--panel); }
+  .wk-allday > div { border-left: 1px solid var(--line); padding: 3px; display: grid; gap: 2px; min-width: 0; align-content: start; }
+  .wk-allday .cal-chip { font-size: 11px; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wkw .cal-scroll { border-radius: 0 0 10px 10px; }
+  .wk-body { position: relative; }
+  .wk-gut { position: relative; }
+  .wk-gut span { position: absolute; right: 8px; font-size: 11px; font-weight: 600; color: var(--muted); transform: translateY(-7px); font-variant-numeric: tabular-nums; }
+  .wk-line { position: absolute; left: 52px; right: 0; border-top: 1px solid var(--line); pointer-events: none; }
+  .wk-line.half { border-top-style: dashed; opacity: .6; }
+  .wk-col { position: relative; border-left: 1px solid var(--line); min-width: 0; }
+  .wk-col.past { background: color-mix(in srgb, var(--line) 30%, transparent); }
+  .wk-col.today { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .wk-col .cal-ev { margin-left: 1px; padding: 2px 5px; font-size: 11.5px; }
+  .wk-col .cal-ev .ev-h { font-size: 10.5px; }
+  .wk-now { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
+  .wk-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
+  .cal-ev.pend { cursor: pointer; }
+  .cal-ev.pend.on { outline: 3px solid var(--ink); outline-offset: 1px; z-index: 7; }
+  .cal-ev.mv { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .cal-ev.drag { cursor: grabbing; box-shadow: 0 10px 24px rgba(15,27,45,.28); z-index: 15; opacity: .96; }
+  .cal-ev.drag::after { content: attr(data-drag); position: absolute; right: 4px; top: 2px; background: var(--ink); color: var(--panel); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
+  .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
+  .cal-pop { position: absolute; z-index: 20; width: min(400px, 94%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15,27,45,.24); padding: 4px 4px 8px; }
+  .cal-pop .item { border: 0; box-shadow: none; background: transparent; }
+  .cal-pop-x { position: absolute; right: 6px; top: 4px; border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--muted); z-index: 2; line-height: 1; padding: 4px 6px; }
+  .cal-pop-more { display: flex; justify-content: flex-end; gap: 6px; padding: 0 8px; }
+  .ag-pend { position: relative; display: inline-flex; }
+  .ag-pend-btn { background: #fff7e2 !important; border-color: #e0b44a !important; color: #0f1b2d !important; white-space: nowrap; }
+  .ag-pend-btn .n { background: #c98a00; color: #fff; border-radius: 999px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+  .ag-pmenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: min(400px, 92vw); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(15,27,45,.2); padding: 8px; max-height: 440px; overflow: auto; }
+  .ag-pm-h { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #a16207; padding: 4px 6px 8px; }
+  .ag-pm-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 7px 6px; border-top: 1px solid var(--line); font-size: 13px; }
+  .ag-pm-row .d { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .ag-pm-row .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-pm-row .h { font-size: 12px; color: var(--muted); }
+  .mv-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
+  .mv-form .field { margin: 0; }
+  @media (prefers-color-scheme: dark) { .ag-pend-btn { background: #3a2f12 !important; color: var(--ink) !important; } }
   .cal-now::after { content: attr(data-t); position: absolute; left: calc(-1 * var(--cal-g) + 2px); top: -9px; font-size: 11px; font-weight: 800; color: #fff; background: #e5484d; border-radius: 4px; padding: 1px 4px; }
   @media (prefers-color-scheme: dark) { .cal-ev { background: #1f2a4a; } .cal-ev.meal { background: #232838; } .cal-ev.pend { background: repeating-linear-gradient(135deg, #3a2f12 0 6px, #2e2610 6px 12px); } }
   .prep-ul { list-style: none; margin: 4px 0 2px; padding: 0; display: grid; gap: 2px; }
@@ -2528,7 +2604,7 @@
         const past = fecha < todayISO || (fecha === todayISO && b <= nowMin());
         const tag = 'div'; // toda reunión abre su sala (notas y grabar), también las pendientes de responder
         const box = document.createElement(tag); box.className = 'cal-ev' + (pend && !okd ? ' pend' : '') + (okd ? ' okd' : '') + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : '');
-        if (tag === 'div') { box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0; const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}; box.addEventListener('click', () => openMeetRoom(ev)); box.addEventListener('keydown', (k) => { if (k.key === 'Enter') openMeetRoom(ev); }); if (mtRecord(ev)) box.classList.add('has-notes'); }
+        if (tag === 'div') { box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0; const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}; if (mtRecord(ev)) box.classList.add('has-notes'); }
         if (tag === 'a') { box.href = e.enlace; box.target = '_blank'; box.rel = 'noopener'; box.title = 'Abrir en Outlook para aceptar o rechazar'; box.addEventListener('click', () => setTimeout(() => markAnswered({fecha, inicio: e.inicio, titulo: e.titulo, mas: []}, true), 400)); }
         box.dataset.mtkey = fecha + '|' + e.inicio; if (window.__sqRecKey === box.dataset.mtkey) { box.classList.add('rec'); box.title = 'Grabando esta reunión'; }
         const h = y(b) - y(a);
@@ -2541,7 +2617,9 @@
           box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '')));
           if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente de responder'));
         }
+        wireCalBox(box, fecha, e, {pxMin: CAL_PX / 60, minM: h0 * 60, maxM: h1 * 60});
         cal.appendChild(box);
+        if (state.calPop === fecha + '|' + e.inicio && box.classList.contains('pend')) { const pop = calPopover(fecha, e); pop.style.top = box.style.top; pop.style.right = '8px'; cal.appendChild(pop); }
       });
     });
     if (fecha === todayISO) { const nl = el('div', 'cal-now'); nl.dataset.h0 = String(h0); cal.appendChild(nl); placeNow(nl); }
@@ -2551,6 +2629,333 @@
     const focus = fecha === todayISO ? nowMin() - 60 : (evs[0] ? toMin(evs[0].inicio) - 30 : 9 * 60);
     requestAnimationFrame(() => { scroller.scrollTop = Math.max(0, y(focus)); });
     return {wrap};
+  }
+  // ===== Agenda: vista semana, minicalendario, convocatorias en el calendario y mover arrastrando (24/11/2026) =====
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento */ } };
+  state.agendaView = lsGet('sq-ag-view', window.innerWidth >= 900 ? 'semana' : 'dia');
+  state.agendaSide = lsGet('sq-ag-side', window.innerWidth >= 1100 ? '1' : '0') === '1';
+  const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const addDays = (f, n) => { const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() + n); return isoOf(d); };
+  const mondayOf = (f) => { const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoOf(d); };
+  const AG_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const DOW_L = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const isPendEv = (fecha, e) => /sin confirmar/i.test(e.estado || '') && !answeredLocally(fecha, e.inicio, e.titulo);
+  // Solo se pueden mover las reuniones propias (las de otros llevan «(quien convoca)» al final del título); el servidor lo comprueba
+  const canMove = (fecha, e) => !!e.enlace && !e.todoElDia && fecha >= todayISO && !(fecha === todayISO && toMin(e.fin) <= nowMin()) && !/sin confirmar/i.test(e.estado || '') && !/\([^()]*\)\s*$/.test(String(e.titulo || ''));
+  const weekLabel = (mon) => { const a = new Date(mon + 'T12:00:00'), b = new Date(addDays(mon, 6) + 'T12:00:00'); return a.getMonth() === b.getMonth() ? a.getDate() + ' – ' + b.getDate() + ' de ' + AG_MESES[b.getMonth()] + ' de ' + b.getFullYear() : a.getDate() + ' de ' + AG_MESES[a.getMonth()] + (a.getFullYear() !== b.getFullYear() ? ' de ' + a.getFullYear() : '') + ' – ' + b.getDate() + ' de ' + AG_MESES[b.getMonth()] + ' de ' + b.getFullYear(); };
+  // convocatoria (con su serie) que corresponde a un evento del calendario
+  function pendFor(fecha, e) {
+    const t = String(e.titulo || '').replace(/\s*\([^)]*\)\s*$/, '');
+    for (const p of (state.pendCache || pendingInvites())) {
+      const xs = [p].concat(p.mas || []);
+      const x = xs.find((y) => y.fecha === fecha && y.inicio === e.inicio && normTxt(y.titulo) === normTxt(t)) || xs.find((y) => y.fecha === fecha && y.inicio === e.inicio);
+      if (!x) continue;
+      if (x === p) return p;
+      const g = Object.assign({}, x, {mas: xs.filter((y) => y !== x)}); g.rv = rsvpEntry(x); g.done = answeredLocally(x.fecha, x.inicio, x.titulo) || !!g.rv; return g;
+    }
+    return {key: 'cal:' + fecha + ':' + e.inicio, fecha, inicio: e.inicio, fin: e.fin, titulo: t, organiza: e.organiza || ((String(e.titulo).match(/\(([^)]+)\)\s*$/) || [])[1] || ''), enlace: e.enlace || null, mas: [], ev: e};
+  }
+  const pendDates = () => { const out = new Map(); (state.pendCache || []).filter((p) => !p.done).forEach((p) => [p].concat(p.mas || []).forEach((x) => { if (!answeredLocally(x.fecha, x.inicio, x.titulo) && !rsvpEntry(x)) out.set(x.fecha, (out.get(x.fecha) || 0) + 1); })); return out; };
+  // ventanita para responder la convocatoria desde el calendario (mismas opciones que la lista: mensaje, toda la serie, deshacer)
+  function calPopover(fecha, e) {
+    const p = pendFor(fecha, e);
+    const pop = el('div', 'cal-pop'); pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Responder a la convocatoria');
+    const x = el('button', 'cal-pop-x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Cerrar');
+    x.addEventListener('click', () => { state.calPop = null; state.rsvpOpen = null; state.rsvpForm = {}; renderMeetings(); });
+    pop.appendChild(x);
+    pop.appendChild(inviteRow(p, true));
+    const more = el('div', 'cal-pop-more');
+    const nb = el('button', 'btn ghost', 'Abrir notas'); nb.type = 'button';
+    nb.addEventListener('click', () => { state.calPop = null; openMeetRoom({fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}); setTimeout(() => { const r = $('#meet-room'); if (r) r.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 60); });
+    more.appendChild(nb); pop.appendChild(more);
+    ['click', 'pointerdown', 'keydown'].forEach((t) => pop.addEventListener(t, (k) => k.stopPropagation()));
+    return pop;
+  }
+  // comportamiento de cada reunión en el calendario (día y semana)
+  function wireCalBox(box, fecha, e, o) {
+    const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null};
+    const pend = isPendEv(fecha, e);
+    box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0;
+    if (mtRecord(ev)) box.classList.add('has-notes');
+    let act;
+    if (pend) {
+      const k = fecha + '|' + e.inicio;
+      box.classList.add('pend'); if (state.calPop === k) box.classList.add('on');
+      const p = pendFor(fecha, e); if (p.rv) box.classList.add('okd');
+      box.title = 'Por responder · toca para aceptar, provisional o rechazar';
+      act = () => { state.calPop = state.calPop === k ? null : k; state.rsvpOpen = null; state.rsvpForm = {}; renderMeetings(); };
+    } else act = () => { state.calPop = null; openMeetRoom(ev); };
+    box.addEventListener('click', act);
+    box.addEventListener('keydown', (k) => { if (k.key === 'Enter') act(); });
+    if (!pend && canMove(fecha, e)) makeMovable(box, Object.assign({fecha, e}, o));
+  }
+  // arrastrar para mover (ratón: al momento; dedo: mantener pulsado) y borde de abajo para cambiar la duración
+  let dragEndedAt = 0;
+  function makeMovable(box, o) {
+    box.classList.add('mv');
+    box.title = (box.title ? box.title + ' · ' : '') + 'Arrastra para moverla' + (o.cols ? ' (también a otro día)' : '');
+    const rs = el('div', 'ev-rs'); rs.title = 'Arrastra para cambiar la duración'; box.appendChild(rs);
+    box.addEventListener('touchmove', (k) => { if (box.classList.contains('drag')) k.preventDefault(); }, {passive: false});
+    box.addEventListener('click', (k) => { if (Date.now() - dragEndedAt < 450) { k.stopImmediatePropagation(); k.preventDefault(); } }, true);
+    box.addEventListener('pointerdown', (p0) => {
+      if (p0.button !== 0) return;
+      const mode = p0.target === rs ? 'size' : 'move';
+      const x0 = p0.clientX, y0 = p0.clientY, top0 = parseFloat(box.style.top), hgt0 = parseFloat(box.style.height);
+      const a0 = toMin(o.e.inicio), b0 = toMin(o.e.fin), touch = p0.pointerType === 'touch';
+      let active = false, dMin = 0, tIdx = o.idx || 0, timer = null;
+      const on = () => { active = true; box.classList.add('drag'); try { box.setPointerCapture(p0.pointerId); } catch (x) { /* sin captura */ } if (touch && navigator.vibrate) navigator.vibrate(12); };
+      const done = () => { clearTimeout(timer); window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancel); };
+      const mv = (k) => {
+        const dx = k.clientX - x0, dy = k.clientY - y0;
+        if (!active) { if (touch) { if (Math.abs(dx) > 8 || Math.abs(dy) > 8) done(); return; } if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return; on(); }
+        k.preventDefault();
+        dMin = Math.round(dy / o.pxMin / 15) * 15;
+        if (mode === 'move') {
+          dMin = Math.max(o.minM - a0, Math.min(o.maxM - b0, dMin));
+          box.style.top = (top0 + dMin * o.pxMin) + 'px';
+          if (o.cols) {
+            const r = o.cols.map((c) => c.getBoundingClientRect());
+            let t = r.findIndex((q) => k.clientX >= q.left && k.clientX < q.right); if (t < 0) t = k.clientX < r[0].left ? 0 : r.length - 1;
+            tIdx = t; box.style.transform = 'translateX(' + (r[t].left - r[o.idx].left) + 'px)';
+          }
+          box.dataset.drag = (o.dates && tIdx !== o.idx ? DOW_L[tIdx].slice(0, 3) + ' ' : '') + hmOf(a0 + dMin) + '–' + hmOf(b0 + dMin);
+        } else {
+          dMin = Math.max(15 - (b0 - a0), Math.min(o.maxM - b0, dMin));
+          box.style.height = Math.max(14, hgt0 + dMin * o.pxMin) + 'px';
+          box.dataset.drag = o.e.inicio + '–' + hmOf(b0 + dMin);
+        }
+      };
+      const up = () => {
+        done(); if (!active) return;
+        dragEndedAt = Date.now(); box.classList.remove('drag');
+        const nf = o.dates ? o.dates[tIdx] : o.fecha;
+        if (!dMin && nf === o.fecha) { renderMeetings(); return; }
+        if (mode === 'move') moveMeeting(o.fecha, o.e, nf, hmOf(a0 + dMin), hmOf(b0 + dMin));
+        else moveMeeting(o.fecha, o.e, o.fecha, o.e.inicio, hmOf(b0 + dMin));
+      };
+      const cancel = () => { const was = active; done(); if (was) renderMeetings(); };
+      if (touch) timer = setTimeout(on, 380);
+      window.addEventListener('pointermove', mv, {passive: false}); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', cancel);
+    });
+  }
+  // Mover en Outlook (función «reuniones»): primero se ve movida aquí; si falla, vuelve a su sitio
+  async function moveMeeting(fecha, e, nf, ni, nfi, lugar) {
+    const t = cleanTitle(e.titulo);
+    const cuando = (nf !== fecha ? dayName(nf) + ', ' : '') + ni + '–' + nfi;
+    if (nf < todayISO || (nf === todayISO && toMin(ni) < nowMin() - 5)) { alert('No se puede mover a una hora que ya ha pasado.'); renderMeetings(); return; }
+    if (!confirm('¿Mover «' + t + '» a ' + cuando + '?' + (lugar !== undefined ? '\nLugar: ' + (lugar || 'sin lugar') : '') + '\n\nSe cambia en tu calendario de Outlook y Microsoft avisa a los asistentes.')) { renderMeetings(); return; }
+    const snap = {a: state.agenda[fecha], b: state.agenda[nf]};
+    const src = state.agenda[fecha];
+    if (src && Array.isArray(src.eventos)) state.agenda[fecha] = Object.assign({}, src, {eventos: src.eventos.filter((x) => x !== e)});
+    const moved = Object.assign({}, e, {inicio: ni, fin: nfi}, lugar !== undefined ? {lugar: lugar || null} : {});
+    const dst = state.agenda[nf] || {fecha: nf, eventos: []};
+    state.agenda[nf] = Object.assign({}, dst, {eventos: (dst.eventos || []).filter((x) => x !== e).concat([moved]).sort((p, q) => toMin(p.inicio) - toMin(q.inicio))});
+    if (state.mtOpen && state.mtOpen.ev.fecha === fecha && state.mtOpen.ev.inicio === e.inicio) state.mtOpen = null;
+    state.mvForm = null; renderMeetRoom(true); renderMeetings();
+    try {
+      const {data, error} = await window.__sb.functions.invoke('reuniones', {body: Object.assign({action: 'moverReunion', enlace: e.enlace, fecha: nf, inicio: ni, fin: nfi}, lugar !== undefined ? {lugar} : {})});
+      let msg = data && data.error; if (error) { msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (x) { /* sin detalle */ } }
+      if (msg) throw new Error(msg);
+      agFlash('✓ «' + t + '» movida a ' + cuando + (data && data.asistentes ? ' · avisados ' + data.asistentes + (data.asistentes === 1 ? ' asistente' : ' asistentes') : ''));
+    } catch (err) {
+      state.agenda[fecha] = snap.a; if (nf !== fecha) { if (snap.b) state.agenda[nf] = snap.b; else delete state.agenda[nf]; }
+      renderMeetings();
+      alert(/NO_ORGANIZADOR/.test(err.message) ? '«' + t + '» la convoca otra persona: solo quien convoca puede moverla. Puedes proponerle otra hora desde Outlook.' : 'No se pudo mover: ' + err.message);
+    }
+  }
+  function agFlash(txt) {
+    const c = $('#agenda-card'); if (!c) return;
+    const old = c.querySelector('.ag-flash'); if (old) old.remove();
+    const f = el('p', 'note ag-flash', txt); f.style.color = 'var(--ok)'; f.style.fontWeight = '700';
+    const tools = $('#ag-tools'); (tools || c.firstElementChild).after(f); setTimeout(() => f.remove(), 9000);
+  }
+  // minicalendario del mes (lateral, se pliega)
+  function miniCal() {
+    const box = el('div', 'mcal');
+    const ref = state.mcalMonth || (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay) || todayISO;
+    const y = Number(ref.slice(0, 4)), m = Number(ref.slice(5, 7)) - 1;
+    const h = el('div', 'mcal-h');
+    const nav = (txt, lbl, dm) => { const b = el('button', null, txt); b.type = 'button'; b.setAttribute('aria-label', lbl); b.addEventListener('click', () => { const d = new Date(y, m + dm, 1, 12); state.mcalMonth = isoOf(d); renderMeetings(); }); return b; };
+    h.appendChild(nav('‹', 'Mes anterior', -1)); h.appendChild(el('b', null, AG_MESES[m].replace(/^./, (c) => c.toUpperCase()) + ' ' + y)); h.appendChild(nav('›', 'Mes siguiente', 1));
+    box.appendChild(h);
+    const dw = el('div', 'mcal-r'); ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach((d) => dw.appendChild(el('span', 'mcal-dw', d))); box.appendChild(dw);
+    const pd = pendDates();
+    const d0 = mondayOf(isoOf(new Date(y, m, 1, 12)));
+    for (let w = 0; w < 6; w++) {
+      const mon = addDays(d0, w * 7);
+      if (w === 5 && Number(mon.slice(5, 7)) - 1 !== m) break;
+      const r = el('div', 'mcal-r' + ((state.agendaView === 'semana' ? state.agendaWeek === mon : (state.agendaDay >= mon && state.agendaDay <= addDays(mon, 6))) ? ' sel' : ''));
+      for (let i = 0; i < 7; i++) {
+        const f = addDays(mon, i); const out = Number(f.slice(5, 7)) - 1 !== m;
+        const b = el('button', 'mcal-d' + (out ? ' out' : '') + (f === todayISO ? ' today' : '') + (state.agendaView === 'dia' && f === state.agendaDay ? ' pick' : '') + (pd.has(f) ? ' pend' : ''), String(Number(f.slice(8))));
+        b.type = 'button'; b.title = dayName(f) + (pd.has(f) ? ' · ' + pd.get(f) + ' por responder' : '');
+        b.addEventListener('click', () => { state.mcalMonth = null; state.calPop = null; if (state.agendaView === 'semana') state.agendaWeek = mondayOf(f); else { state.agendaDay = f; state.agendaFree = true; state.mtOpen = null; renderMeetRoom(true); } renderMeetings(); });
+        r.appendChild(b);
+      }
+      box.appendChild(r);
+    }
+    // resumen de la semana elegida
+    const mon = state.agendaView === 'semana' ? state.agendaWeek : mondayOf(state.agendaDay || todayISO);
+    let n = 0, mins = 0, np = 0;
+    for (let i = 0; i < 7; i++) { const f = addDays(mon, i); const ag = agendaOf(f); (ag && ag.eventos || []).forEach((e) => { const a = toMin(e.inicio), b = toMin(e.fin); if (a == null || b == null || b - a >= 7 * 60 || /^comida|^call family/i.test(e.titulo || '')) return; n++; mins += b - a; }); np += pd.get(f) || 0; }
+    const sum = el('div', 'mcal-sum');
+    sum.appendChild(el('b', null, state.agendaView === 'semana' ? 'Esta semana' : 'Semana del día'));
+    sum.appendChild(el('span', null, n + (n === 1 ? ' reunión' : ' reuniones') + ' · ' + durOf(mins)));
+    if (np) sum.appendChild(el('span', 'pn', np + ' por responder'));
+    box.appendChild(sum);
+    return box;
+  }
+  // vista de la semana
+  function weekGrid(mon) {
+    const wrap = el('div', 'calw wkw');
+    const dates = Array.from({length: 7}, (_, i) => addDays(mon, i));
+    const isBlock = (e) => /ubicaci/i.test(e.estado || '') || (toMin(e.fin) - toMin(e.inicio)) >= 7 * 60;
+    const per = dates.map((f) => {
+      const ag = agendaOf(f);
+      const all = (ag && Array.isArray(ag.eventos) ? ag.eventos : []).filter((e) => toMin(e.inicio) != null && toMin(e.fin) != null);
+      return {f, ag, blocks: all.filter(isBlock), evs: all.filter((e) => !isBlock(e)).sort((a, b) => toMin(a.inicio) - toMin(b.inicio) || toMin(b.fin) - toMin(a.fin))};
+    });
+    if (!per.some((p) => p.ag)) wrap.appendChild(el('p', 'note', 'No tengo guardada la agenda de esta semana (Synqalia guarda la de las próximas 3 semanas y la de los días pasados desde el 5 de noviembre).'));
+    let h0 = 8, h1 = 20;
+    per.forEach((p) => p.evs.forEach((e) => { h0 = Math.min(h0, Math.floor(toMin(e.inicio) / 60)); h1 = Math.max(h1, Math.ceil(toMin(e.fin) / 60)); }));
+    const PX = CAL_PX, y = (m) => (m - h0 * 60) / 60 * PX;
+    const we = per.slice(5).some((p) => p.evs.length || p.blocks.length);
+    wrap.style.setProperty('--wk-tracks', we ? 'repeat(7, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, .4fr))');
+    const pd = pendDates();
+    const head = el('div', 'wk-head'); head.appendChild(el('div'));
+    per.forEach((p, i) => {
+      const b = el('button', 'wk-dh' + (p.f === todayISO ? ' today' : '')); b.type = 'button'; b.title = 'Ver ' + dayName(p.f) + ' en vista de día';
+      b.appendChild(el('b', null, p.f.slice(8)));
+      const sp = el('span', null, DOW_L[i]); if (pd.get(p.f)) sp.appendChild(el('span', 'wk-pn', ' · ' + pd.get(p.f) + ' por responder')); b.appendChild(sp);
+      b.addEventListener('click', () => { setAgView('dia'); state.agendaDay = p.f; state.agendaFree = true; state.mtOpen = null; state.calPop = null; renderMeetRoom(true); renderMeetings(); });
+      head.appendChild(b);
+    });
+    wrap.appendChild(head);
+    if (per.some((p) => p.blocks.length)) {
+      const ad = el('div', 'wk-allday'); ad.appendChild(el('div'));
+      per.forEach((p) => { const c = el('div'); p.blocks.forEach((e) => c.appendChild(el('span', 'cal-chip', cleanTitle(e.titulo) + ' · ' + e.inicio + '–' + e.fin))); ad.appendChild(c); });
+      wrap.appendChild(ad);
+    }
+    const scroller = el('div', 'cal-scroll');
+    const body = el('div', 'wk-body'); body.style.height = ((h1 - h0) * PX) + 'px';
+    const gut = el('div', 'wk-gut'); body.appendChild(gut);
+    for (let h = h0; h <= h1; h++) {
+      if (h > h0) { const s = el('span', null, String(h).padStart(2, '0') + ':00'); s.style.top = y(h * 60) + 'px'; gut.appendChild(s); }
+      const ln = el('div', 'wk-line'); ln.style.top = y(h * 60) + 'px'; body.appendChild(ln);
+      if (h < h1) { const hl = el('div', 'wk-line half'); hl.style.top = y(h * 60 + 30) + 'px'; body.appendChild(hl); }
+    }
+    const cols = per.map((p) => { const c = el('div', 'wk-col' + (p.f === todayISO ? ' today' : p.f < todayISO ? ' past' : '')); body.appendChild(c); return c; });
+    let popAt = null;
+    per.forEach((p, i) => {
+      const col = cols[i];
+      const clusters = []; let cl = null, clEnd = -1;
+      p.evs.forEach((e) => { const a = toMin(e.inicio), b = toMin(e.fin); if (!cl || a >= clEnd) { cl = []; clusters.push(cl); clEnd = b; } else clEnd = Math.max(clEnd, b); cl.push(e); });
+      clusters.forEach((c) => {
+        const colsEnd = []; const pos = new Map();
+        c.forEach((e) => { const a = toMin(e.inicio); let k = colsEnd.findIndex((end) => end <= a); if (k < 0) { k = colsEnd.length; colsEnd.push(0); } colsEnd[k] = toMin(e.fin); pos.set(e, k); });
+        const n = colsEnd.length;
+        c.forEach((e) => {
+          const a = toMin(e.inicio), b = toMin(e.fin), k = pos.get(e);
+          const past = p.f < todayISO || (p.f === todayISO && b <= nowMin());
+          const box = el('div', 'cal-ev' + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : ''));
+          const hh = y(b) - y(a);
+          box.style.top = (y(a) + 1) + 'px'; box.style.height = Math.max(hh - 2, 14) + 'px';
+          box.style.left = 'calc(' + k + ' * (100% / ' + n + '))'; box.style.width = 'calc(100% / ' + n + ' - 3px)';
+          box.dataset.mtkey = p.f + '|' + e.inicio; if (window.__sqRecKey === box.dataset.mtkey) { box.classList.add('rec'); box.title = 'Grabando esta reunión'; }
+          const t = cleanTitle(e.titulo);
+          if (hh < 30) { box.classList.add('tiny'); box.appendChild(el('span', 'ev-t', t)); }
+          else { box.appendChild(el('div', 'ev-t', t)); box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : ''))); }
+          box.title = t + ' · ' + e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '');
+          wireCalBox(box, p.f, e, {pxMin: PX / 60, minM: h0 * 60, maxM: h1 * 60, cols, idx: i, dates});
+          col.appendChild(box);
+          if (state.calPop === p.f + '|' + e.inicio && box.classList.contains('pend')) popAt = {i, top: y(a), pop: calPopover(p.f, e)};
+        });
+      });
+      if (p.f === todayISO) { const nl = el('div', 'wk-now'); nl.style.top = y(nowMin()) + 'px'; if (nowMin() >= h0 * 60 && nowMin() <= h1 * 60) col.appendChild(nl); }
+    });
+    scroller.appendChild(body); wrap.appendChild(scroller);
+    wrap.appendChild(el('p', 'note', 'Toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día) y se alargan tirando del borde de abajo.'));
+    const focus = per.some((p) => p.f === todayISO) ? nowMin() - 90 : 8 * 60 + 30;
+    requestAnimationFrame(() => {
+      scroller.scrollTop = Math.max(0, y(focus));
+      if (popAt) {
+        const pop = popAt.pop; body.appendChild(pop);
+        const c = cols[popAt.i]; const W = body.clientWidth; const pw = Math.min(400, W * 0.94);
+        let left = c.offsetLeft + c.offsetWidth + 6; if (left + pw > W) left = Math.max(56, c.offsetLeft - pw - 6);
+        pop.style.left = left + 'px';
+        pop.style.top = Math.max(0, Math.min(popAt.top - 10, body.clientHeight - pop.offsetHeight - 4)) + 'px';
+        const st = scroller.scrollTop, vh = scroller.clientHeight, pt = parseFloat(pop.style.top);
+        if (pt < st || pt + Math.min(pop.offsetHeight, vh) > st + vh) scroller.scrollTop = Math.max(0, pt - 20);
+      }
+    });
+    return {wrap};
+  }
+  function setAgView(v) { state.agendaView = v; lsSet('sq-ag-view', v); }
+  // Botón «Por responder» con su lista desplegable (junto a «Nueva reunión»)
+  function renderPendMenu() {
+    const row = $('#agenda-card .row-between'); if (!row) return;
+    let w = $('#ag-pend');
+    if (!w) {
+      w = el('div', 'ag-pend'); w.id = 'ag-pend';
+      const nm = row.querySelector('.nm-open'); if (nm) row.insertBefore(w, nm); else row.appendChild(w);
+      document.addEventListener('click', (k) => { if (state.pendMenu && !w.contains(k.target)) { state.pendMenu = false; renderPendMenu(); } });
+    }
+    w.replaceChildren();
+    const open = (state.pendCache || []).filter((p) => !p.done);
+    const items = [];
+    open.forEach((p) => [p].concat(p.mas || []).forEach((x) => { if (!answeredLocally(x.fecha, x.inicio, x.titulo) && !rsvpEntry(x)) items.push(x); }));
+    items.sort((a, b) => (a.fecha + a.inicio).localeCompare(b.fecha + b.inicio));
+    w.hidden = !items.length && !state.pendMenu;
+    const b = el('button', 'btn ag-pend-btn'); b.type = 'button'; b.setAttribute('aria-expanded', String(!!state.pendMenu));
+    b.append('Por responder'); b.appendChild(el('span', 'n', String(items.length))); b.append(' ▾');
+    b.addEventListener('click', (k) => { k.stopPropagation(); state.pendMenu = !state.pendMenu; renderPendMenu(); });
+    w.appendChild(b);
+    if (!state.pendMenu) return;
+    const m = el('div', 'ag-pmenu');
+    const nd = new Set(items.map((x) => x.fecha)).size;
+    m.appendChild(el('div', 'ag-pm-h', items.length ? items.length + (items.length === 1 ? ' convocatoria' : ' convocatorias') + ' por responder · ' + nd + (nd === 1 ? ' día' : ' días') : 'No tienes convocatorias por responder'));
+    items.forEach((x) => {
+      const r = el('div', 'ag-pm-row');
+      const dn = dayName(x.fecha).replace(/^./, (c) => c.toUpperCase());
+      r.appendChild(el('span', 'd', dn.split(' ')[0].slice(0, 3) + ' ' + Number(x.fecha.slice(8))));
+      const t = el('span', 't', x.titulo); t.title = x.titulo + (x.organiza ? ' · convoca ' + x.organiza : ''); r.appendChild(t);
+      r.appendChild(el('span', 'h', x.inicio));
+      const go = el('button', 'btn ghost', 'Ir'); go.type = 'button';
+      go.addEventListener('click', () => {
+        state.pendMenu = false; state.rsvpOpen = null; state.rsvpForm = {};
+        state.agendaWeek = mondayOf(x.fecha); state.agendaDay = x.fecha; state.agendaFree = true; state.mcalMonth = null;
+        state.calPop = x.fecha + '|' + x.inicio; state.mtOpen = null; renderMeetRoom(true);
+        show('reuniones'); renderMeetings();
+        setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40);
+      });
+      r.appendChild(go); m.appendChild(r);
+    });
+    w.appendChild(m);
+  }
+  // barra de la agenda: plegar el mes, Hoy / ‹ › / semana, y Día | Semana
+  function renderAgTools(days) {
+    let tb = $('#ag-tools');
+    if (!tb) { tb = el('div', 'ag-tools'); tb.id = 'ag-tools'; $('#agenda-day').before(tb); }
+    tb.replaceChildren();
+    const side = el('button', 'btn ghost ag-ico'); side.type = 'button'; side.setAttribute('aria-label', 'Mostrar u ocultar el calendario del mes'); side.title = 'Calendario del mes'; side.setAttribute('aria-pressed', String(state.agendaSide));
+    side.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>';
+    side.addEventListener('click', () => { state.agendaSide = !state.agendaSide; lsSet('sq-ag-side', state.agendaSide ? '1' : '0'); renderMeetings(); });
+    tb.appendChild(side);
+    if (state.agendaView === 'semana') {
+      const go = (mon) => { state.agendaWeek = mon; state.calPop = null; state.mcalMonth = null; renderMeetings(); };
+      const hoy = el('button', 'btn', 'Hoy'); hoy.type = 'button'; hoy.addEventListener('click', () => go(mondayOf(todayISO))); tb.appendChild(hoy);
+      const pv = el('button', 'btn ghost', '‹'); pv.type = 'button'; pv.setAttribute('aria-label', 'Semana anterior'); pv.addEventListener('click', () => go(addDays(state.agendaWeek, -7))); tb.appendChild(pv);
+      const nx = el('button', 'btn ghost', '›'); nx.type = 'button'; nx.setAttribute('aria-label', 'Semana siguiente'); nx.addEventListener('click', () => go(addDays(state.agendaWeek, 7))); tb.appendChild(nx);
+      tb.appendChild(el('span', 'wk-lbl', weekLabel(state.agendaWeek)));
+    }
+    const seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Vista');
+    [['dia', 'Día'], ['semana', 'Semana']].forEach(([v, t]) => {
+      const b = el('button', null, t); b.type = 'button'; b.setAttribute('aria-pressed', String(state.agendaView === v));
+      b.addEventListener('click', () => { if (state.agendaView === v) return; setAgView(v); state.calPop = null; state.mcalMonth = null; if (v === 'semana') state.agendaWeek = mondayOf(state.agendaDay || todayISO); renderMeetings(); });
+      seg.appendChild(b);
+    });
+    tb.appendChild(seg);
   }
   function placeNow(nl) {
     const h0 = Number(nl.dataset.h0); const m = nowMin();
@@ -3781,7 +4186,9 @@
   function renderMeetings() {
     const pendBox = $('#meet-pending'); pendBox.replaceChildren();
     renderMeetNotes();
-    const all = pendingInvites(); const pend = all.filter((p) => !p.done); const done = all.filter((p) => p.done);
+    const all = pendingInvites(); state.pendCache = all;
+    const pendCard = pendBox.closest('section'); if (pendCard) pendCard.hidden = true; // las convocatorias se responden en el propio calendario
+    renderPendMenu(); const pend = all.filter((p) => !p.done); const done = all.filter((p) => p.done);
     if (!pend.length) pendBox.appendChild(el('div', 'empty', 'No tienes reuniones pendientes de confirmar.'));
     const nTot = pendingCount(pend);
     if (pend.length) pendBox.appendChild(el('p', 'note mt-sum', nTot + (nTot === 1 ? ' invitación' : ' invitaciones') + ' sin responder' + (nTot !== pend.length ? ' en ' + pend.length + (pend.length === 1 ? ' reunión' : ' reuniones') : '') + (state.invites && state.invites.capturado ? ' · revisado en Outlook ' + fmtStamp.format(new Date(state.invites.capturado)) : '')));
@@ -3796,6 +4203,9 @@
     const noted = daysWithNotes();
     const days = [...new Set(Object.keys(state.agenda).concat([...noted].filter((d) => d && d < todayISO)))].sort();
     const sel = $('#agenda-day');
+    if (state.agendaFree && state.agendaDay && !days.includes(state.agendaDay)) { days.push(state.agendaDay); days.sort(); }
+    if (!state.agendaWeek) state.agendaWeek = mondayOf(state.agendaDay || todayISO);
+    renderAgTools(days); sel.hidden = state.agendaView === 'semana';
     if (!state.agendaDay || !days.includes(state.agendaDay)) state.agendaDay = days.includes(todayISO) ? todayISO : (days.find((d) => d >= todayISO) || days[days.length - 1] || todayISO);
     sel.replaceChildren();
     const shift = (n) => { const t = new Date(todayISO + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
@@ -3824,9 +4234,18 @@
       wrap.appendChild(dd); sel.appendChild(wrap);
     }
     const h2 = $('#agenda-card h2'); if (h2) h2.textContent = state.agendaDay < todayISO ? 'Reuniones · ' + lbl(state.agendaDay) : 'Agenda y reuniones';
-    const ag = $('#agenda-box'); ag.replaceChildren();
-    if (!days.length) ag.appendChild(el('div', 'empty', 'Aún no he leído tu calendario.'));
-    else ag.appendChild(dayTimeline(state.agendaDay, null).wrap);
+    const ag = $('#agenda-box');
+    const oldSc = ag.querySelector('.cal-scroll'); const keepTop = oldSc && state.agKeep === state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay) ? oldSc.scrollTop : null;
+    state.agKeep = state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay);
+    ag.replaceChildren();
+    const lay = el('div', 'ag-lay');
+    if (state.agendaSide) lay.appendChild(miniCal());
+    const main = el('div', 'ag-main'); lay.appendChild(main); ag.appendChild(lay);
+    if (state.agendaView === 'semana') main.appendChild(weekGrid(state.agendaWeek).wrap);
+    else if (!days.length) main.appendChild(el('div', 'empty', 'Aún no he leído tu calendario.'));
+    else main.appendChild(dayTimeline(state.agendaDay, null).wrap);
+    if (keepTop != null) requestAnimationFrame(() => requestAnimationFrame(() => { const sc = ag.querySelector('.cal-scroll'); if (sc && !state.calPop) sc.scrollTop = keepTop; }));
+    const tip = $('#agenda-card .mt-tip'); if (tip) tip.hidden = state.agendaView === 'semana';
   }
 
   function renderHoy() {
@@ -4521,8 +4940,29 @@
     const ol = document.createElement('a'); ol.className = 'btn'; ol.target = '_blank'; ol.rel = 'noopener'; ol.textContent = 'Outlook ↗'; ol.title = 'Abrir en Outlook (desde ahí entras a Teams)';
     ol.href = ev.enlace || ('https://outlook.cloud.microsoft/calendar/view/day/' + ev.fecha.replace(/-/g, '/')); acts.appendChild(ol);
     if (team) { const fb = el('button', 'btn', 'Ficha del catch-up'); fb.type = 'button'; fb.addEventListener('click', () => { state.cuSel = p.id; show('catchups'); renderCatchups(); }); acts.appendChild(fb); }
-    const x = el('button', 'btn ghost', 'Cerrar'); x.type = 'button'; x.addEventListener('click', () => { state.mtOpen = null; renderMeetRoom(true); recPaint(); }); acts.appendChild(x);
+    const agEv = ((state.agenda[ev.fecha] || {}).eventos || []).find((e) => e.inicio === ev.inicio && cleanTitle(e.titulo) === cleanTitle(ev.titulo));
+    if (agEv && canMove(ev.fecha, agEv)) { const mb = el('button', 'btn', 'Cambiar día u hora'); mb.type = 'button'; mb.setAttribute('aria-expanded', String(!!state.mvForm)); mb.addEventListener('click', () => { state.mvForm = state.mvForm ? null : {fecha: ev.fecha, inicio: agEv.inicio, fin: agEv.fin, lugar: agEv.lugar || ''}; renderMeetRoom(true); }); acts.appendChild(mb); }
+    const x = el('button', 'btn ghost', 'Cerrar'); x.type = 'button'; x.addEventListener('click', () => { state.mtOpen = null; state.mvForm = null; renderMeetRoom(true); recPaint(); }); acts.appendChild(x);
     head.appendChild(acts); host.appendChild(head);
+    if (agEv && state.mvForm && canMove(ev.fecha, agEv)) {
+      const f = state.mvForm; const fm = el('div', 'mv-form');
+      const fld = (lbl, type, val, key, extra) => { const w = el('div', 'field'); const l = el('label', null, lbl); const i = document.createElement('input'); i.type = type; i.value = val || ''; i.id = 'mv-' + key; l.htmlFor = i.id; if (extra) Object.assign(i, extra); i.addEventListener('input', () => { f[key] = i.value; }); w.append(l, i); return w; };
+      fm.appendChild(fld('Día', 'date', f.fecha, 'fecha', {min: todayISO}));
+      fm.appendChild(fld('Empieza', 'time', f.inicio, 'inicio', {step: 900}));
+      fm.appendChild(fld('Termina', 'time', f.fin, 'fin', {step: 900}));
+      const lw = fld('Lugar', 'text', f.lugar, 'lugar', {placeholder: 'Ej.: Valencia, Teams…'}); lw.style.flex = '1 1 200px'; fm.appendChild(lw);
+      const ok = el('button', 'btn primary', 'Mover'); ok.type = 'button';
+      ok.addEventListener('click', () => {
+        if (!f.fecha || !f.inicio || !f.fin || f.fin <= f.inicio) { alert('Revisa el día y las horas.'); return; }
+        const lugarCh = (f.lugar || '') !== (agEv.lugar || '') ? (f.lugar || '') : undefined;
+        if (f.fecha === ev.fecha && f.inicio === agEv.inicio && f.fin === agEv.fin && lugarCh === undefined) { state.mvForm = null; renderMeetRoom(true); return; }
+        moveMeeting(ev.fecha, agEv, f.fecha, f.inicio, f.fin, lugarCh);
+      });
+      const no = el('button', 'btn ghost', 'Cancelar'); no.type = 'button'; no.addEventListener('click', () => { state.mvForm = null; renderMeetRoom(true); });
+      fm.append(ok, no);
+      fm.appendChild(el('p', 'note', 'Se cambia en tu calendario de Outlook y Microsoft avisa a los asistentes. Solo para reuniones que convocas tú.'));
+      host.appendChild(fm);
+    }
     if (team) host.appendChild(el('p', 'note', 'Se guarda también en el historial de catch-ups de ' + (isGroup(p) ? p.nombre : firstName(p.nombre)) + '.'));
     host.appendChild(cuEditor(p, mo.id, {pre: 'mt', kind: team ? null : 'reunion', refresh: () => renderMeetRoom(true), onDone: () => { state.mtOpen = null; renderMeetRoom(true); renderMeetNotes(); }}));
     try { recPaint(); } catch (e) { /* aún no listo */ }
