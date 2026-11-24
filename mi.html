@@ -1249,7 +1249,7 @@
         <span class="mf-more" id="mf-more" role="menu" aria-label="Otros filtros">
         <button class="chip chip-dec chip-urg" type="button" data-c="urgente" aria-pressed="false" title="Alguien está parado esperando tu decisión, hay plazo en 48 h, dinero reclamado o un riesgo legal">Urgente · decide tú <span class="count" id="count-urg"></span></button>
         <button class="chip chip-pide" type="button" data-c="decision" aria-pressed="false" title="Te piden revisar, opinar o contestar, sin bloquear a nadie. Pasa a Urgente si lleva más de 5 días o se acerca el plazo">Te piden algo <span class="count" id="count-dec"></span></button>
-        <button class="chip" type="button" data-c="respuestas" aria-pressed="false">Enviados a Outlook <span class="count" id="count-cola"></span></button>
+        <button class="chip" type="button" data-c="respuestas" aria-pressed="false">Enviados <span class="count" id="count-cola"></span></button>
         <button class="chip" type="button" data-c="pospuestos" aria-pressed="false">Para otro día <span class="count" id="count-pos"></span></button>
         <button class="chip" type="button" data-c="gestionados" aria-pressed="false">Gestionados</button>
         </span>
@@ -1560,7 +1560,7 @@
 
   const PRIO = {Mega: -1, Alta: 0, Media: 1, Baja: 2};
   const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: '', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'abiertas', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}, members: []};
-  const RLABEL = {borrador: 'Borrador en Synqalia', lista: 'En cola → Borradores de Outlook', cola_borrador: 'En cola → Borradores de Outlook', en_outlook: 'En Borradores de Outlook', enviada: 'Enviada', error: 'Revisar'};
+  const RLABEL = {borrador: 'Borrador en Synqalia', lista: 'En cola → Borradores de Outlook', cola_borrador: 'En cola → Borradores de Outlook', en_outlook: 'En Borradores de Outlook', enviando: 'Enviando…', enviada: 'Enviada', error: 'Revisar'};
   let db = null, sample = null, assets = null;
 
   // ---------- vistas ----------
@@ -2666,6 +2666,15 @@
   function mailContext(m) {
     return 'De: ' + m.de + '\nAsunto: ' + m.asunto + '\nÚltimo mensaje: ' + fechaDe(m) + '\nResumen de Claude: ' + m.accion + (m.cuerpo ? '\n\nTexto del correo:\n' + m.cuerpo : '\n\n(Solo hay vista previa; el texto completo aún no se ha leído.)');
   }
+  const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected);
+  async function graphCall(body) {
+    const { data, error } = await window.__sb.functions.invoke('graph', { body });
+    if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch (e) {} throw new Error(t); }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+  window.__sqGraphCall = graphCall;
+  document.addEventListener('sq-graph', () => { try { renderAll(); } catch (e) {} });
   async function saveReply(m, patch, okText) {
     const prev = state.replies[m.id] || {};
     const body = {mail: m.id, para: m.de, asunto: 'RE: ' + m.asunto, texto: prev.texto || '', estado: prev.estado || 'borrador', actualizado: new Date().toISOString(), ...patch};
@@ -2996,10 +3005,21 @@
       sug.addEventListener('click', () => { ta.value = ''; run('', sug); });
       const save = el('button', 'btn', 'Guardar borrador'); save.type = 'button';
       save.addEventListener('click', async () => { if (!ta.value.trim()) { setStatus('La respuesta está vacía.', true); return; } if (await saveReply(m, {texto: ta.value.trim(), estado: 'borrador'}, 'Borrador guardado')) { delete state.drafts[m.id]; setStatus('Borrador guardado.'); } });
-      const ready = el('button', 'btn primary', 'Enviar a Borradores de Outlook'); ready.type = 'button';
+      const direct = graphOn();
+      const ready = el('button', 'btn primary', direct ? 'Enviar' : 'Enviar a Borradores de Outlook'); ready.type = 'button';
+      if (direct) ready.title = 'Envía la respuesta desde tu cuenta de Outlook, en el mismo hilo y con tu firma';
       const review = el('div', 'review'); review.hidden = true;
-      const finish = async (t) => {
-        if (await saveReply(m, {texto: t, estado: 'cola_borrador'}, 'Enviada a la cola de Outlook · la tienes en «Enviados a Outlook»')) { delete state.drafts[m.id]; state.openReply = null; renderAll(); }
+      const finish = async (t, toDrafts) => {
+        if (direct && !toDrafts) {
+          if (!(await saveReply(m, {texto: t, estado: 'enviando'}))) return;
+          ready.disabled = true; setStatus('Enviando…');
+          try {
+            await graphCall({action: 'send', mail: m.id});
+            delete state.drafts[m.id]; state.openReply = null; renderAll();
+          } catch (e) { setStatus('No se pudo enviar: ' + e.message + '. Tu texto sigue aquí.', true); ready.disabled = false; await saveReply(m, {texto: t, estado: 'borrador'}); }
+          return;
+        }
+        if (await saveReply(m, {texto: t, estado: 'cola_borrador'}, 'Enviada a la cola de Outlook · la tienes en «Enviados»')) { delete state.drafts[m.id]; state.openReply = null; renderAll(); }
       };
       ready.addEventListener('click', async () => {
         const t = ta.value.trim();
@@ -3018,10 +3038,10 @@
           review.appendChild(ul);
           review.appendChild(el('div', 'mail-body', String(out.texto).trim()));
           const rb = el('div', 'btns');
-          const useIt = el('button', 'btn primary', 'Usar esta versión y enviar a Borradores'); useIt.type = 'button';
+          const useIt = el('button', 'btn primary', direct ? 'Usar esta versión y enviar' : 'Usar esta versión y enviar a Borradores'); useIt.type = 'button';
           useIt.addEventListener('click', () => finish(String(out.texto).trim()));
           const editIt = el('button', 'btn', 'Editar esta versión'); editIt.type = 'button';
-          editIt.addEventListener('click', () => { ta.value = String(out.texto).trim(); grow(); state.drafts[m.id] = ta.value; review.hidden = true; setStatus('Versión pulida en el editor. Cámbiala y vuelve a pulsar «Enviar a Borradores de Outlook».'); ta.focus(); });
+          editIt.addEventListener('click', () => { ta.value = String(out.texto).trim(); grow(); state.drafts[m.id] = ta.value; review.hidden = true; setStatus('Versión pulida en el editor. Cámbiala y vuelve a pulsar «' + ready.textContent + '».'); ta.focus(); });
           const keep = el('button', 'btn ghost', 'Enviar la mía tal cual'); keep.type = 'button';
           keep.addEventListener('click', () => finish(t));
           rb.appendChild(useIt); rb.appendChild(editIt); rb.appendChild(keep);
@@ -3029,7 +3049,7 @@
           review.hidden = false;
           setStatus('He encontrado cosas que mejorar.');
         } catch (e) {
-          setStatus('No he podido revisarlo; la envío a Borradores tal cual.'); await finish(t);
+          setStatus(direct ? 'No he podido revisarlo; la envío tal cual.' : 'No he podido revisarlo; la envío a Borradores tal cual.'); await finish(t);
         } finally { ready.disabled = false; }
       });
       const tmr = el('button', 'btn', 'Para mañana'); tmr.type = 'button';
@@ -3037,7 +3057,10 @@
         if (ta.value.trim()) await saveReply(m, {texto: ta.value.trim(), estado: 'borrador'});
         if (await write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Programado para mañana')) { delete state.drafts[m.id]; state.openReply = null; renderAll(); }
       });
-      btns.appendChild(save); btns.appendChild(tmr); btns.appendChild(replyOutlookBtn(m, ta, setStatus)); btns.appendChild(ready);
+      btns.appendChild(save); btns.appendChild(tmr);
+      if (direct) { const dr = el('button', 'btn ghost', 'A Borradores de Outlook'); dr.type = 'button'; dr.title = 'No la envía: la deja en tus Borradores de Outlook, dentro del hilo'; dr.addEventListener('click', () => { const t = ta.value.trim(); if (!t) { setStatus('La respuesta está vacía.', true); return; } finish(t, true); }); btns.appendChild(dr); }
+      else btns.appendChild(replyOutlookBtn(m, ta, setStatus));
+      btns.appendChild(ready);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
       if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: Synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
       tLbl = el('div', 'section-label', 'Pasar a tarea'); box.appendChild(tLbl);
@@ -3146,7 +3169,7 @@
   const motivoDe = (m) => escalaPor(m) || m.motivo || '';
   const nivelBadge = (m) => { const n = nivelDe(m); if (!n) return null; const b = el('span', 'mdec' + (n === 'bloquea' ? ' urg' : ''), NIVEL_TXT[n]); const mo = motivoDe(m); if (mo) b.title = mo; return b; };
   const tomorrowISO = (() => { const d = new Date(todayISO + 'T12:00:00'); do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6); return iso(d); })();
-  const OUT = ['lista', 'cola_borrador', 'en_outlook', 'enviada'];
+  const OUT = ['lista', 'cola_borrador', 'en_outlook', 'enviando', 'enviada'];
   const handled = (m) => { const r = state.replies[m.id]; return !!(r && OUT.includes(r.estado)); };
   const snoozed = (m) => !!(m.posponer && m.posponer > todayISO);
   const isPending = (m) => m.estado !== 'gestionado' && !handled(m) && !snoozed(m);
@@ -3427,7 +3450,7 @@
     const q = state.mailQ.trim().toLowerCase();
     let rows = state.mails.filter((m) => !isMeeting(m));
     if (state.mailC === 'gestionados') rows = rows.filter((m) => m.estado === 'gestionado');
-    else if (state.mailC === 'respuestas') rows = rows.filter((m) => handled(m)).sort((a, b) => ['cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[a.id].estado) - ['cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[b.id].estado));
+    else if (state.mailC === 'respuestas') rows = rows.filter((m) => handled(m)).sort((a, b) => ['enviando', 'cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[a.id].estado) - ['enviando', 'cola_borrador', 'lista', 'en_outlook', 'enviada'].indexOf(state.replies[b.id].estado));
     else if (state.mailC === 'pospuestos') rows = rows.filter((m) => m.estado !== 'gestionado' && snoozed(m));
     else rows = rows.filter((m) => isPending(m) && (state.mailC === 'mias' ? isDecision(m) : state.mailC === 'urgente' ? isUrgent(m) : state.mailC === 'decision' ? isDecision(m) && !isUrgent(m) : state.mailC === 'general' ? !isDecision(m) : true));
     {
@@ -3440,7 +3463,7 @@
     }
     if (q) rows = rows.filter((m) => (m.de + ' ' + m.asunto + ' ' + m.accion).toLowerCase().includes(q));
     if (state.mailC !== 'respuestas') rows.sort(sortMails);
-    if (!rows.length) list.appendChild(el('div', 'empty', state.mailC === 'respuestas' ? 'Aún no has enviado nada a Outlook.' : state.mailC === 'pospuestos' ? 'No tienes correos programados para otro día.' : 'Nada pendiente en esta categoría.'));
+    if (!rows.length) list.appendChild(el('div', 'empty', state.mailC === 'respuestas' ? 'Aún no has enviado nada desde Synqalia.' : state.mailC === 'pospuestos' ? 'No tienes correos programados para otro día.' : 'Nada pendiente en esta categoría.'));
     if (state.mailGroup && (state.mailC === 'mias' || state.mailC === 'urgente' || state.mailC === 'decision' || state.mailC === 'general' || state.mailC === 'todos')) {
       const groups = new Map();
       rows.forEach((m) => { const k = personaDe(m.de); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
@@ -3476,7 +3499,7 @@
     const nReady = Object.values(state.replies).filter((x) => x.estado === 'lista' || x.estado === 'cola_borrador').length;
     const hint = $('#ready-hint');
     hint.hidden = true;
-    hint.textContent = nReady ? (nReady === 1 ? '1 respuesta en cola.' : nReady + ' respuestas en cola.') + ' Pasan todas juntas a tus Borradores de Outlook en la actualización automática de cada hora, o al momento si escribes «pasa» en el chat con Claude. Las tienes en «Enviados a Outlook».' : '';
+    hint.textContent = nReady ? (nReady === 1 ? '1 respuesta en cola.' : nReady + ' respuestas en cola.') + (graphOn() ? ' Pasan a tus Borradores de Outlook en unos minutos (sincronización automática). Las tienes en «Enviados».' : ' Pasan todas juntas a tus Borradores de Outlook en la actualización automática de cada hora. Las tienes en «Enviados».') : '';
   }
 
   // Convocatorias por responder: eventos futuros «Sin confirmar» del calendario (con enlace directo)
@@ -4612,8 +4635,21 @@
     const cp = el('button', 'btn', '📋 Copiar texto'); cp.type = 'button';
     const ol = document.createElement('a'); ol.className = 'btn primary'; ol.target = '_blank'; ol.rel = 'noopener'; ol.textContent = 'Abrir en Outlook ↗'; ol.title = 'Abre un correo nuevo en Outlook con el asunto y el texto; lo revisas y lo envías tú';
     const ml = document.createElement('a'); ml.className = 'btn ghost'; ml.textContent = 'App de correo'; ml.title = 'Abre la app de correo del dispositivo (útil en el móvil)';
-    [regen, cp, ml, ol].forEach((b) => bb.appendChild(b)); body.appendChild(bb);
-    body.appendChild(el('p', 'note', 'Synqalia no envía nada: el correo se abre en Outlook para que lo revises y lo envíes tú.'));
+    const direct = graphOn();
+    const snd = el('button', 'btn primary', 'Enviar'); snd.type = 'button'; snd.title = 'Envía el correo desde tu cuenta de Outlook, con tu firma';
+    if (direct) { ol.className = 'btn ghost'; ol.textContent = 'Outlook ↗'; [regen, cp, ol, snd].forEach((b) => bb.appendChild(b)); }
+    else [regen, cp, ml, ol].forEach((b) => bb.appendChild(b));
+    body.appendChild(bb);
+    body.appendChild(el('p', 'note', direct ? 'Al pulsar «Enviar» sale desde tu cuenta de Outlook con tu firma (queda en Elementos enviados). Separa varios destinatarios con «;».' : 'Synqalia no envía nada: el correo se abre en Outlook para que lo revises y lo envíes tú.'));
+    snd.addEventListener('click', async () => {
+      st.classList.remove('err');
+      if (!/@/.test(to.value)) { st.classList.add('err'); st.textContent = 'Pon al menos un destinatario en «Para».'; to.focus(); return; }
+      if (!fullText().trim()) { st.classList.add('err'); st.textContent = 'El correo está vacío.'; return; }
+      if (!confirm('¿Enviar este correo a ' + to.value.trim() + '?')) return;
+      snd.disabled = true; st.textContent = 'Enviando…';
+      try { await graphCall({action: 'sendNew', para: to.value, asunto: sj.value, texto: fullText()}); st.textContent = '✓ Enviado.'; saveCu(id, {correo: {asunto: sj.value, cuerpo: tx.value, para: to.value, enviado: new Date().toISOString()}}); setTimeout(close, 1200); }
+      catch (e) { st.classList.add('err'); st.textContent = 'No se pudo enviar: ' + e.message; snd.disabled = false; }
+    });
     box.appendChild(body); ov.appendChild(box); document.body.appendChild(ov);
     const close = () => { ov.remove(); document.removeEventListener('keydown', esc); };
     const esc = (e) => { if (e.key === 'Escape') close(); };
@@ -4825,6 +4861,8 @@
   async function refresh() {
     try { st = await call('status'); } catch (e) { st = { error: e.message }; }
     trig.forEach((b) => { b.classList.toggle('ok', !!st.connected && !st.last_error); b.classList.toggle('err', !!st.connected && !!st.last_error); });
+    const was = !!(window.__sqGraph && window.__sqGraph.connected); window.__sqGraph = st;
+    if (was !== !!st.connected) document.dispatchEvent(new CustomEvent('sq-graph', { detail: st }));
     label.textContent = st.connected ? (st.last_ok ? 'Microsoft 365 · ' + hora(st.last_ok).split(', ').pop() : 'Microsoft 365 · conectando…') : 'Conectar Microsoft 365';
   }
   function pop(html) {
@@ -4869,7 +4907,7 @@
 <script src="notas.js" defer></script>
 <script src="lista.js?v=20261119f" defer></script>
 <script src="graph-live.js?v=20261117d" defer></script>
-<script src="mensajes.js?v=20261119a" defer></script>
+<script src="mensajes.js?v=20261124a" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
