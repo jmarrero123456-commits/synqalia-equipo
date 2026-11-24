@@ -2515,7 +2515,7 @@
         const a = toMin(e.inicio), b = toMin(e.fin); const k = pos.get(e);
         const pend = /sin confirmar/i.test(e.estado || ''); const okd = pend && e.enlace && answeredLocally(fecha, e.inicio, e.titulo);
         const past = fecha < todayISO || (fecha === todayISO && b <= nowMin());
-        const tag = pend && e.enlace && !okd ? 'a' : 'div';
+        const tag = 'div'; // toda reunión abre su sala (notas y grabar), también las pendientes de responder
         const box = document.createElement(tag); box.className = 'cal-ev' + (pend && !okd ? ' pend' : '') + (okd ? ' okd' : '') + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : '');
         if (tag === 'div') { box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0; const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}; box.addEventListener('click', () => openMeetRoom(ev)); box.addEventListener('keydown', (k) => { if (k.key === 'Enter') openMeetRoom(ev); }); if (mtRecord(ev)) box.classList.add('has-notes'); }
         if (tag === 'a') { box.href = e.enlace; box.target = '_blank'; box.rel = 'noopener'; box.title = 'Abrir en Outlook para aceptar o rechazar'; box.addEventListener('click', () => setTimeout(() => markAnswered({fecha, inicio: e.inicio, titulo: e.titulo, mas: []}, true), 400)); }
@@ -2528,7 +2528,7 @@
         else {
           box.appendChild(el('div', 'ev-t', t));
           box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '')));
-          if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente · toca para aceptar ↗'));
+          if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente de responder'));
         }
         cal.appendChild(box);
       });
