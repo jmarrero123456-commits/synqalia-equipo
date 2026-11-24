@@ -50,7 +50,8 @@
   function diaDe(ts) {
     const d = new Date(ts), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
     if (sameDay(d, now)) return 'Hoy'; if (sameDay(d, y)) return 'Ayer';
-    return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    const t = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).replace(',', '');
+    return t.charAt(0).toUpperCase() + t.slice(1);
   }
   const hhmm = (ts) => new Date(ts).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   const ICON = {
@@ -267,6 +268,24 @@
       <span class="sqm-ctit"><b>${esc(nombre)}</b><span>${esc(sub)}</span></span>${extra}</div>`;
   }
 
+  // Hilo de Teams con corte por día (raya con «Hoy», «Ayer» o la fecha), como en Teams
+  function teamsThread(msgs) {
+    const ok = (m) => m.fecha && !isNaN(new Date(m.fecha));
+    const list = msgs.every(ok) ? [...msgs].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)) : msgs;
+    let html = '', lastDay = '', lastFrom = '';
+    list.forEach((m) => {
+      if (ok(m)) {
+        const day = new Date(m.fecha).toDateString();
+        if (day !== lastDay) { html += dayLine(m.fecha); lastDay = day; lastFrom = ''; }
+      }
+      const who = !m.mio && m.de && m.de !== lastFrom ? `<span class="sqm-bwho">${esc(m.de)}</span>` : '';
+      html += `<div class="sqm-b ${m.mio ? 'me' : ''}">${who}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(ok(m) ? hhmm(m.fecha) : (m.hora || ''))}</span></div>`;
+      lastFrom = m.mio ? '' : m.de;
+    });
+    return html;
+  }
+  const dayLine = (ts) => `<p class="sqm-day" role="separator"><span>${esc(diaDe(ts))}</span></p>`;
+
   const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
   function paintTeamsConv(host) {
     const id = st.open, d = st.teams.get(id);
@@ -276,7 +295,7 @@
     const url = safeUrl(d.enlace);
     const msgs = Array.isArray(d.mensajes) ? d.mensajes : null;
     const bubbles = msgs && msgs.length
-      ? msgs.map((m) => `<div class="sqm-b ${m.mio ? 'me' : ''}">${!m.mio && m.de ? `<span class="sqm-bwho">${esc(m.de)}</span>` : ''}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(m.hora || '')}</span></div>`).join('')
+      ? teamsThread(msgs)
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
          <p class="sqm-info">${live ? 'Cargando el hilo completo…' : 'Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.'}</p>`;
     host.innerHTML = `<div class="sqm-conv">
@@ -312,7 +331,7 @@
       const myLast = [...msgs].reverse().find((m) => m.from_email === me);
       msgs.forEach((m) => {
         const day = new Date(m.created_at).toDateString();
-        if (day !== lastDay) { html += `<p class="sqm-day">${esc(diaDe(m.created_at))}</p>`; lastDay = day; lastFrom = ''; }
+        if (day !== lastDay) { html += dayLine(m.created_at); lastDay = day; lastFrom = ''; }
         const mine = m.from_email === me;
         let seen = '';
         if (mine && myLast && m.id === myLast.id && others.length) {
