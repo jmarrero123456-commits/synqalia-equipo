@@ -841,7 +841,8 @@
   @media (max-width: 700px) { .mcal { flex: 1 1 100%; } }
   .wkw { gap: 0; }
   .wk-head, .wk-allday, .wk-body { display: grid; grid-template-columns: 52px var(--wk-tracks); }
-  .wk-head { border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--panel); }
+  .wk-top { position: sticky; top: 0; z-index: 9; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .wk-head { background: var(--panel); }
   .wk-dh { border: 0; border-left: 1px solid var(--line); background: transparent; text-align: left; padding: 6px 8px; cursor: pointer; font: inherit; color: var(--ink); min-width: 0; }
   .wk-dh:hover { background: var(--accent-soft); }
   .wk-dh b { display: block; font-size: 19px; font-weight: 800; line-height: 1.1; }
@@ -849,10 +850,11 @@
   .wk-dh.today { background: var(--accent-soft); }
   .wk-dh.today b { color: var(--accent); }
   .wk-dh .wk-pn { color: #a16207; font-weight: 800; }
-  .wk-allday { border: 1px solid var(--line); border-bottom: 0; background: var(--panel); }
+  .wk-allday { border-top: 1px solid var(--line); background: var(--panel); }
   .wk-allday > div { border-left: 1px solid var(--line); padding: 3px; display: grid; gap: 2px; min-width: 0; align-content: start; }
   .wk-allday .cal-chip { font-size: 11px; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wkw .cal-scroll { border-radius: 0 0 10px 10px; }
+  .wkw .cal-scroll { border-radius: 10px; }
+  .wk-gut, .wk-head > div:first-child, .wk-allday > div:first-child { border-left: 0 !important; }
   .wk-body { position: relative; }
   .wk-gut { position: relative; }
   .wk-gut span { position: absolute; right: 8px; font-size: 11px; font-weight: 600; color: var(--muted); transform: translateY(-7px); font-variant-numeric: tabular-nums; }
@@ -2842,13 +2844,14 @@
       b.addEventListener('click', () => { setAgView('dia'); state.agendaDay = p.f; state.agendaFree = true; state.mtOpen = null; state.calPop = null; renderMeetRoom(true); renderMeetings(); });
       head.appendChild(b);
     });
-    wrap.appendChild(head);
+    const top = el('div', 'wk-top'); top.appendChild(head);
     if (per.some((p) => p.blocks.length)) {
       const ad = el('div', 'wk-allday'); ad.appendChild(el('div'));
       per.forEach((p) => { const c = el('div'); p.blocks.forEach((e) => c.appendChild(el('span', 'cal-chip', cleanTitle(e.titulo) + ' · ' + e.inicio + '–' + e.fin))); ad.appendChild(c); });
-      wrap.appendChild(ad);
+      top.appendChild(ad);
     }
-    const scroller = el('div', 'cal-scroll');
+    // cabecera dentro del mismo contenedor que la rejilla (fija arriba al desplazar): así las columnas casan aunque haya barra de desplazamiento
+    const scroller = el('div', 'cal-scroll'); scroller.appendChild(top);
     const body = el('div', 'wk-body'); body.style.height = ((h1 - h0) * PX) + 'px';
     const gut = el('div', 'wk-gut'); body.appendChild(gut);
     for (let h = h0; h <= h1; h++) {
