@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>/* Tablets (pantalla táctil con lado corto ≥ 700 px): todo un 20 % más grande para que la letra se lea como en el PC, en cualquier tablet y también en la aplicación instalada. El PC con ratón no cambia. */
+<script>/* Tablets (pantalla táctil con lado corto ≥ 700 px): todo un 30 % más grande para que la letra se lea como en el PC, en cualquier tablet y también en la aplicación instalada. El PC con ratón no cambia. */
 (function () {
   var m = document.querySelector('meta[name="viewport"]'); if (!m || !window.matchMedia) return;
-  var ESCALA = 1.2, MIN_ANCHO = 700;
+  var ESCALA = 1.3, MIN_ANCHO = 700;
   function fit() {
     var s = window.screen, corto = Math.min(s.width, s.height), largo = Math.max(s.width, s.height);
     var ua = navigator.userAgent, tablet = matchMedia('(pointer: coarse)').matches || /Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -16,9 +16,21 @@
     m.content = 'width=' + Math.round(w / k);
     document.documentElement.classList.add('sq-tablet');
   }
-  fit(); addEventListener('orientationchange', function () { setTimeout(fit, 150); });
+  fit(); addEventListener('orientationchange', function () { setTimeout(fit, 150); }); addEventListener('resize', function () { clearTimeout(fit._t); fit._t = setTimeout(fit, 200); });
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', function () { setTimeout(fit, 150); });
 })();</script>
+<script>/* Correo: llevar un correo arriba de la lista. En PC/tablet (lista y lectura lado a lado) solo se mueve la lista, nunca la página: así la barra de arriba no tapa los filtros. */
+function mailRowTop(r) { const L = document.getElementById('mail-list'), sp = document.getElementById('mail-split');
+  if (L && sp && sp.classList.contains('on') && getComputedStyle(L).overflowY !== 'visible') { L.scrollTop += r.getBoundingClientRect().top - L.getBoundingClientRect().top; return; }
+  r.scrollIntoView({block: 'start'}); }
+/* La lista y la lectura ocupan justo el alto que queda en pantalla, sin que la página tenga que moverse */
+function fitMailSplit() { const sp = document.getElementById('mail-split'); if (!sp) return;
+  if (!sp.classList.contains('on') || !sp.offsetParent) { sp.style.height = ''; return; }
+  const se = document.scrollingElement, y = se.scrollTop || 0, r = sp.getBoundingClientRect();
+  const below = Math.max(0, se.scrollHeight - (r.bottom + y)); // lo que hay debajo de la lista (márgenes de la tarjeta y de la página)
+  sp.style.height = Math.max(360, Math.floor(window.innerHeight - (r.top + y) - below - 2)) + 'px'; }
+addEventListener('resize', () => requestAnimationFrame(fitMailSplit));
+addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#view-correo > .card'); if (c && window.ResizeObserver) { let lastH = 0; new ResizeObserver(() => { const h = document.getElementById('mail-split')?.getBoundingClientRect().top || 0; if (h !== lastH) { lastH = h; fitMailSplit(); } }).observe(c); } });</script>
 <title>Synqalia · Mi trabajo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22%23121821%22/%3E%3Cg transform=%22translate%287 7%29%22%3E%3Ccircle cx=%2221%22 cy=%2220%22 r=%229.5%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%226%22/%3E%3Cpath d=%22M30.5 20v16%22 stroke=%22%23fff%22 stroke-width=%226%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2230.5%22 cy=%2244%22 r=%223.6%22 fill=%22%235fe0cf%22/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1193,7 +1205,7 @@
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
-<link rel="stylesheet" href="synqalia.css?v=20261124x">
+<link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
 <link rel="stylesheet" href="buzon.css?v=20261124i">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
@@ -3506,7 +3518,7 @@
             delete state.drafts[m.id]; state.openReply = null; state.scrollToMid = nid;
             await write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Enviado ✓ · correo gestionado');
             renderAll();
-            if (nid) [60, 400, 1200].forEach((ms) => setTimeout(() => { const r = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === nid); if (r && !document.querySelector('#mail-list .mrow.mob-open')) r.scrollIntoView({block: 'start'}); }, ms));
+            if (nid) [60, 400, 1200].forEach((ms) => setTimeout(() => { const r = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === nid); if (r && !document.querySelector('#mail-list .mrow.mob-open')) mailRowTop(r); }, ms));
           } catch (e) { setStatus('No se pudo enviar: ' + e.message + '. Tu texto sigue aquí.', true); ready.disabled = false; await saveReply(m, {texto: t, estado: 'borrador'}); }
           return;
         }
@@ -3831,7 +3843,7 @@
           // antes que el propio «Gestionado»: recordar el correo siguiente y llevar la lista hasta él cuando se redibuje
           const nx = row.nextElementSibling; const id = nx && nx.dataset.mid ? nx.dataset.mid : null;
           state.scrollToMid = id; state.openReply = null;
-          const go = () => { const r = id && [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === id); if (r) r.scrollIntoView({block: 'start'}); };
+          const go = () => { const r = id && [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === id); if (r) mailRowTop(r); };
           [60, 400, 1200].forEach((t) => setTimeout(go, t));
         }, {capture: true}); ft.appendChild(done); }
       // botones: solo «Outlook ↗» (copia la respuesta sugerida si la hay) y «Pasar a tarea»; sin «Cerrar» (se cierra tocando el remitente)
@@ -3987,7 +3999,7 @@
   function renderMail() {
     const split = splitMQ.matches;
     const list = $('#mail-list'); list.replaceChildren();
-    $('#mail-split').classList.toggle('on', split);
+    $('#mail-split').classList.toggle('on', split); requestAnimationFrame(fitMailSplit);
     const q = state.mailQ.trim().toLowerCase();
     let rows = state.mails.filter((m) => !isMeeting(m));
     if (state.mailC === 'gestionados') rows = rows.filter((m) => m.estado === 'gestionado');
@@ -4018,11 +4030,11 @@
       state._lastIdx = rows.findIndex((x) => x.id === state.openReply);
       $$('#mail-list .mrow').forEach((r) => r.classList.toggle('sel', r.dataset.mid === state.openReply));
       renderMailPane(rows);
-      const selRow = list.querySelector('.mrow.sel'); if (selRow && !state._mailScrolled) { selRow.scrollIntoView({block: 'nearest'}); }
+      const selRow = list.querySelector('.mrow.sel'); if (selRow && !state._mailScrolled) { (function(){ const L = list, a = selRow.getBoundingClientRect(), b = L.getBoundingClientRect(); if (a.top < b.top) L.scrollTop -= b.top - a.top; else if (a.bottom > b.bottom) L.scrollTop += a.bottom - b.bottom; })(); }
     } else {
       const pn = $('#mail-pane'); if (pn) pn.replaceChildren();
       // móvil: tras cerrar o gestionar un correo, la lista vuelve al punto donde ibas (ese correo o el siguiente, arriba)
-      if (state.scrollToMid) { const id = state.scrollToMid; state.scrollToMid = null; requestAnimationFrame(() => { const r = [...list.querySelectorAll('.mrow')].find((x) => x.dataset.mid === id); if (r) r.scrollIntoView({block: 'start'}); }); }
+      if (state.scrollToMid) { const id = state.scrollToMid; state.scrollToMid = null; requestAnimationFrame(() => { const r = [...list.querySelectorAll('.mrow')].find((x) => x.dataset.mid === id); if (r) mailRowTop(r); }); }
     }
     state._mailRows = rows.map((x) => x.id);
     const pend = state.mails.filter(isPending);

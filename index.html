@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>/* Tablets (pantalla táctil con lado corto ≥ 700 px): todo un 20 % más grande para que la letra se lea como en el PC, en cualquier tablet y también en la aplicación instalada. El PC con ratón no cambia. */
+<script>/* Tablets (pantalla táctil con lado corto ≥ 700 px): todo un 30 % más grande para que la letra se lea como en el PC, en cualquier tablet y también en la aplicación instalada. El PC con ratón no cambia. */
 (function () {
   var m = document.querySelector('meta[name="viewport"]'); if (!m || !window.matchMedia) return;
-  var ESCALA = 1.2, MIN_ANCHO = 700;
+  var ESCALA = 1.3, MIN_ANCHO = 700;
   function fit() {
     var s = window.screen, corto = Math.min(s.width, s.height), largo = Math.max(s.width, s.height);
     var ua = navigator.userAgent, tablet = matchMedia('(pointer: coarse)').matches || /Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -16,7 +16,7 @@
     m.content = 'width=' + Math.round(w / k);
     document.documentElement.classList.add('sq-tablet');
   }
-  fit(); addEventListener('orientationchange', function () { setTimeout(fit, 150); });
+  fit(); addEventListener('orientationchange', function () { setTimeout(fit, 150); }); addEventListener('resize', function () { clearTimeout(fit._t); fit._t = setTimeout(fit, 200); });
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', function () { setTimeout(fit, 150); });
 })();</script>
 <title>Synqalia · Equipo</title>
@@ -448,7 +448,7 @@
   .nav .mylink span { font-size:11.5px; font-weight:500; color:rgba(255,255,255,.55); }
   .nav .mylink:hover { background:rgba(95,224,207,.16); }
 </style>
-<link rel="stylesheet" href="synqalia.css?v=20261124x">
+<link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
