@@ -292,11 +292,24 @@
         if (day !== lastDay) { html += dayLine(m.fecha); lastDay = day; lastFrom = ''; }
       }
       const who = !m.mio && m.de && m.de !== lastFrom ? `<span class="sqm-bwho">${esc(m.de)}</span>` : '';
-      html += `<div class="sqm-b ${m.mio ? 'me' : ''}">${who}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(ok(m) ? hhmm(m.fecha) : (m.hora || ''))}</span></div>`;
+      const imgs = Array.isArray(m.imgs) ? m.imgs.map((p) => `<button type="button" class="sqm-timg" data-tpath="${esc(p)}" aria-label="Ver la imagen"><img alt="Imagen" data-tsrc="${esc(p)}"></button>`).join('') : '';
+      const adj = Array.isArray(m.adjuntos) ? m.adjuntos.map((a) => { const u = safeFile(a.url); return u ? `<a class="sqm-tadj" href="${esc(u)}" target="_blank" rel="noopener">📎 ${esc(a.nombre)}</a>` : `<span class="sqm-tadj">📎 ${esc(a.nombre)}</span>`; }).join('') : '';
+      html += `<div class="sqm-b ${m.mio ? 'me' : ''}${imgs ? ' sqm-bimg' : ''}">${who}${imgs}${adj}${m.texto ? `<p>${esc(m.texto)}</p>` : ''}<span class="sqm-bt">${esc(ok(m) ? hhmm(m.fecha) : (m.hora || ''))}</span></div>`;
       lastFrom = m.mio ? '' : m.de;
     });
     return html;
   }
+  // archivos de Teams: enlaces de SharePoint/OneDrive de la empresa
+  const safeFile = (u) => { try { const x = new URL(String(u || '')); return x.protocol === 'https:' && /(^|\.)(sharepoint\.com|microsoft\.com|office\.com|live\.com|1drv\.ms)$/i.test(x.hostname) ? x.href : null; } catch { return null; } };
+  // imágenes de Teams: guardadas por el servidor en el cubo privado «personal» (<uid>/teams/…), enlace firmado 1 h
+  const tImg = new Map();
+  async function tSigned(p) {
+    const h = tImg.get(p); if (h && h.exp > Date.now() + 60000) return h.url;
+    const { data, error } = await sb.storage.from('personal').createSignedUrl(p, 3600);
+    if (error || !data) throw error || new Error('sin enlace');
+    tImg.set(p, { url: data.signedUrl, exp: Date.now() + 3600e3 }); return data.signedUrl;
+  }
+  function hydrateTeams(scope) { scope.querySelectorAll('img[data-tsrc]').forEach(async (img) => { if (img.getAttribute('src')) return; try { img.src = await tSigned(img.dataset.tsrc); } catch { img.alt = 'No se ha podido cargar la imagen'; } }); }
   const dayLine = (ts) => `<p class="sqm-day" role="separator"><span>${esc(diaDe(ts))}</span></p>`;
 
   const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
@@ -326,7 +339,7 @@
         <p class="sqm-hint">${graphOn() ? 'Este chat se enlaza con Teams en la próxima sincronización (unos minutos); mientras, al pulsar se copia tu respuesta y se abre el chat en Teams.' : 'Hasta conectar Microsoft 365, al pulsar se copia tu respuesta y se abre el chat en Teams para pegarla.'}</p>`}
       </div></div>`;
     if (keepTxt) { const t = host.querySelector('#sqm-in'); if (t) t.value = keepTxt; }
-    const th = host.querySelector('.sqm-thread'); if (th) th.scrollTop = th.scrollHeight;
+    const th = host.querySelector('.sqm-thread'); if (th) { hydrateTeams(th); th.scrollTop = th.scrollHeight; th.querySelectorAll('img[data-tsrc]').forEach((i) => i.addEventListener('load', () => { if (th.scrollHeight - th.scrollTop - th.clientHeight < 400) th.scrollTop = th.scrollHeight; }, { once: true })); }
   }
 
   function paintSynqConv(host) {
@@ -418,6 +431,8 @@
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
+    const ti = t.closest('.sqm-timg');
+    if (ti) { try { window.open(await tSigned(ti.dataset.tpath), '_blank', 'noopener'); } catch {} return; }
     const tb = t.closest('[data-tipo]');
     if (tb) { st.tipo = tb.dataset.tipo; try { localStorage.setItem('sqm-tipo', st.tipo); } catch {} st.keep.clear(); if (st.open) st.keep.add(st.open); paint(); return; }
     const chip = t.closest('.chips .chip');

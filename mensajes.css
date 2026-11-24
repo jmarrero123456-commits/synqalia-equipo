@@ -144,3 +144,10 @@ body.sqm-lock { overflow: hidden; }
 .sqm-pick { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: var(--muted); padding: 24px; }
 .sqm-pick b { color: var(--ink); font-size: 16px; }
 .sqm-pick span { font-size: 13.5px; }
+
+/* imágenes y archivos de Teams en el hilo */
+.sqm-bimg { padding: 4px; }
+.sqm-bimg p, .sqm-bimg .sqm-bwho, .sqm-bimg .sqm-bt { padding-left: 8px; padding-right: 8px; }
+.sqm-timg { display: block; border: 0; padding: 0; margin: 0 0 4px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--ink) 8%, var(--panel)); cursor: zoom-in; min-width: 120px; min-height: 80px; }
+.sqm-timg img { display: block; max-width: min(300px, 64vw); max-height: 320px; width: auto; height: auto; }
+.sqm-tadj { display: block; margin: 2px 0 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--panel)); font-size: 13.5px; font-weight: 700; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
