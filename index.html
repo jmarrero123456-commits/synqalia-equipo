@@ -3,6 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Tablets (pantalla táctil con lado corto ≥ 700 px): todo un 20 % más grande para que la letra se lea como en el PC, en cualquier tablet y también en la aplicación instalada. El PC con ratón no cambia. */
+(function () {
+  var m = document.querySelector('meta[name="viewport"]'); if (!m || !window.matchMedia) return;
+  var ESCALA = 1.2, MIN_ANCHO = 700;
+  function fit() {
+    var s = window.screen, corto = Math.min(s.width, s.height), largo = Math.max(s.width, s.height);
+    var ua = navigator.userAgent, tablet = matchMedia('(pointer: coarse)').matches || /Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (!tablet || corto < 700) { m.content = 'width=device-width, initial-scale=1'; return; }
+    var w = matchMedia('(orientation: landscape)').matches ? largo : corto;
+    var k = Math.max(1, Math.min(ESCALA, w / MIN_ANCHO));
+    m.content = 'width=' + Math.round(w / k);
+    document.documentElement.classList.add('sq-tablet');
+  }
+  fit(); addEventListener('orientationchange', function () { setTimeout(fit, 150); });
+  if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', function () { setTimeout(fit, 150); });
+})();</script>
 <title>Synqalia · Equipo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22%23121821%22/%3E%3Cg transform=%22translate%287 7%29%22%3E%3Ccircle cx=%2221%22 cy=%2220%22 r=%229.5%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%226%22/%3E%3Cpath d=%22M30.5 20v16%22 stroke=%22%23fff%22 stroke-width=%226%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2230.5%22 cy=%2244%22 r=%223.6%22 fill=%22%235fe0cf%22/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
