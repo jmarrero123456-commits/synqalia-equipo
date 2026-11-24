@@ -2248,7 +2248,21 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       box.appendChild(b);
     });
   }
+  // Al repintar la lista (marcar hecha, aplazar, editar…) la pantalla no se mueve: se guarda y se repone el desplazamiento
+  function scrollBoxes(node) { const out = [document.scrollingElement || document.documentElement]; for (let e = node && node.parentElement; e && e !== document.body; e = e.parentElement) { const o = getComputedStyle(e).overflowY; if ((o === 'auto' || o === 'scroll') && e.scrollHeight > e.clientHeight) out.push(e); } return out; }
   function renderTasks() {
+    const lst = document.getElementById('task-list');
+    if (!lst || state.view !== 'tareas') return renderTasksInner();
+    const boxes = scrollBoxes(lst).map((b) => [b, b.scrollTop]);
+    const h = lst.offsetHeight; lst.style.minHeight = h + 'px';
+    try { renderTasksInner(); } finally {
+      const fix = () => boxes.forEach(([b, y]) => { if (Math.abs(b.scrollTop - y) > 2) b.scrollTop = y; });
+      fix(); lst.style.minHeight = ''; fix();
+      const fixTop = () => boxes.forEach(([b, y]) => { if (y > 40 && b.scrollTop < 5) b.scrollTop = y; }); // solo si algo la ha mandado arriba del todo
+      requestAnimationFrame(() => { fixTop(); setTimeout(fixTop, 80); });
+    }
+  }
+  function renderTasksInner() {
     const ae = document.activeElement; const keepId = ae && /^(pg|te)-/.test(ae.id || '') ? ae.id : null; const keepSel = keepId && 'selectionStart' in ae ? [ae.selectionStart, ae.selectionEnd] : null;
     setTimeout(() => { if (!keepId) return; const f = document.getElementById(keepId); if (f && document.activeElement !== f) { f.focus(); if (keepSel && f.setSelectionRange) try { f.setSelectionRange(keepSel[0], keepSel[1]); } catch (e) { /* tipo sin selección */ } } }, 0);
     const dl = $('#tf-personas'); if (dl && dl.childElementCount !== knownPeople().length) dl.replaceChildren(...knownPeople().map((n) => new Option(n)));
