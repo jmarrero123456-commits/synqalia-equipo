@@ -130,3 +130,10 @@ body.sqm-lock { overflow: hidden; }
 .sqm-field { display: grid; gap: 6px; padding: 14px; border-bottom: 1px solid var(--line); } .sqm-field span { font-size: 13px; font-weight: 700; color: var(--muted); }
 .sqm-field input { height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 15px; }
 @media (min-width: 700px) { .sqm-dlg { inset: 8vh auto auto 50%; transform: translateX(-50%); width: 480px; height: 76vh; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.35); padding: 0; } }
+
+/* Teams como en la app: lista siempre a la izquierda en el PC, chats de reunión con icono de calendario */
+.sqm-av.meet { background: color-mix(in srgb, var(--sqm-teams) 14%, var(--panel)); color: var(--sqm-teams); }
+.sqm-av.meet svg { width: 22px; height: 22px; }
+.sqm-pick { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: var(--muted); padding: 24px; }
+.sqm-pick b { color: var(--ink); font-size: 16px; }
+.sqm-pick span { font-size: 13.5px; }
