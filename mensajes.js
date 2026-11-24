@@ -552,7 +552,7 @@ ${hist}`;
     if (st.open === info.id) paintConv();
   }
   function toast(msg) {
-    const t = document.createElement('div'); t.className = 'sqm-toast'; t.setAttribute('role', 'status');
+    const t = document.createElement('div'); t.className = 'sqm sqm-toast'; t.setAttribute('role', 'status');
     t.innerHTML = `${ICON.task}<span>${esc(msg)}</span><button type="button" class="sqm-link" data-act="ver-tareas">Ver en Tareas</button>`;
     document.body.appendChild(t); setTimeout(() => t.remove(), 6000);
     t.addEventListener('click', (e) => { if (e.target.closest('[data-act="ver-tareas"]')) { t.remove(); verTareas(); } });
