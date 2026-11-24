@@ -78,13 +78,20 @@ html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) b
 .sqm-empty { padding: 22px 18px; display: grid; gap: 10px; justify-items: start; } .sqm-empty b { font-size: 16px; } .sqm-empty p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .sqm-pane { display: none; }
 
-/* PC ancho: conversaciones a la izquierda, conversación abierta a la derecha */
-@media (min-width: 1100px) {
-  .sqm-canal.split { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 18px; align-items: start; }
-  .sqm-canal.split .sqm-pane { display: block; position: sticky; top: calc(var(--sq-bar, 54px) + 12px); height: calc(100vh - var(--sq-bar, 54px) - 150px); min-height: 520px;
-    border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg); }
-  .sqm-canal.split .sqm-list { max-height: calc(100vh - var(--sq-bar, 54px) - 330px); overflow-y: auto; }
+/* PC: como Teams, lista a la izquierda (con su propio scroll) y conversación a la derecha, a toda la altura */
+@media (min-width: 900px) {
+  .sqm-canal.split { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px;
+    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 480px; }
+  .sqm-canal.split .sqm-side { display: flex; flex-direction: column; min-height: 0; gap: 10px; }
+  .sqm-canal.split .sqm-stick { position: static; margin: 0; padding: 0; background: none; }
+  .sqm-canal.split .sqm-list { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
+  .sqm-canal.split .sqm-pane { display: block; height: 100%; min-height: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg); }
+  .sqm-canal.split .sqm-pane .sqm-conv { height: 100%; }
 }
+.sqm-tipos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.sqm-tipos button { flex: none; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
+.sqm-tipos button span { color: var(--sqm-ok); font-weight: 800; }
+.sqm-tipos button[aria-pressed="true"] { background: color-mix(in srgb, var(--sqm-teams) 14%, var(--panel)); border-color: color-mix(in srgb, var(--sqm-teams) 45%, var(--line)); color: var(--sqm-teams); }
 
 /* ---------- 3 · conversación ---------- */
 .sqm-overlay { position: fixed; inset: 0; z-index: 90; background: var(--bg); color: var(--ink); display: flex; flex-direction: column;
@@ -102,7 +109,9 @@ body.sqm-lock { overflow: hidden; }
 .sqm-ask.pide { border-color: color-mix(in srgb, var(--sqm-ask) 35%, var(--line)); }
 .sqm-ask p { margin: 0; font-size: 14px; line-height: 1.45; font-weight: 600; }
 .sqm-thread { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
-.sqm-day { align-self: center; margin: 8px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, var(--bg)); padding: 3px 10px; border-radius: 999px; }
+.sqm-day { align-self: stretch; display: flex; align-items: center; gap: 10px; margin: 14px 2px 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.sqm-day::before, .sqm-day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.sqm-day span { flex: none; }
 .sqm-b { align-self: flex-start; max-width: 82%; background: var(--panel); border-radius: 4px 16px 16px 16px; padding: 8px 12px; box-shadow: 0 1px 1px rgba(15,27,45,.06); }
 .sqm-b.me { align-self: flex-end; background: var(--sqm-me); color: var(--sqm-me-ink); border-radius: 16px 4px 16px 16px; }
 .sqm-b p { margin: 0; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -128,3 +137,17 @@ body.sqm-lock { overflow: hidden; }
 .sqm-field { display: grid; gap: 6px; padding: 14px; border-bottom: 1px solid var(--line); } .sqm-field span { font-size: 13px; font-weight: 700; color: var(--muted); }
 .sqm-field input { height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 15px; }
 @media (min-width: 700px) { .sqm-dlg { inset: 8vh auto auto 50%; transform: translateX(-50%); width: 480px; height: 76vh; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.35); padding: 0; } }
+
+/* Teams como en la app: lista siempre a la izquierda en el PC, chats de reunión con icono de calendario */
+.sqm-av.meet { background: color-mix(in srgb, var(--sqm-teams) 14%, var(--panel)); color: var(--sqm-teams); }
+.sqm-av.meet svg { width: 22px; height: 22px; }
+.sqm-pick { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: var(--muted); padding: 24px; }
+.sqm-pick b { color: var(--ink); font-size: 16px; }
+.sqm-pick span { font-size: 13.5px; }
+
+/* imágenes y archivos de Teams en el hilo */
+.sqm-bimg { padding: 4px; }
+.sqm-bimg p, .sqm-bimg .sqm-bwho, .sqm-bimg .sqm-bt { padding-left: 8px; padding-right: 8px; }
+.sqm-timg { display: block; border: 0; padding: 0; margin: 0 0 4px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--ink) 8%, var(--panel)); cursor: zoom-in; min-width: 120px; min-height: 80px; }
+.sqm-timg img { display: block; max-width: min(300px, 64vw); max-height: 320px; width: auto; height: auto; }
+.sqm-tadj { display: block; margin: 2px 0 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--panel)); font-size: 13.5px; font-weight: 700; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }

@@ -432,12 +432,12 @@
   .qt-hoy { background: #fdeeee; border-color: #f5c9c9; color: #d93636; }
   .qt-mias { background: #eaf0ff; border-color: #c9d5fb; color: #2340d0; } .qt-mias .qn { color: #1a2b8f !important; }
   .qt-pend { background: #e9f8f0; border-color: #bfe8d2; color: #1f9d55; } .qt-pend .qn { color: var(--ink) !important; }
-  .qt-venc { background: #f3eefe; border-color: #dccff8; color: #7c5cf0; } .qt-venc .qn { color: #4b2aa8 !important; }
+  .qt-hoymia { background: #fff4e5; border-color: #f6d3a6; color: #c2570c; } .qt-hoymia .qn { color: #b4470a !important; }
   .qv.qt[aria-pressed="true"] { background: inherit; color: inherit; box-shadow: 0 0 0 2px currentColor inset; }
   .qv.qt.qt-hoy[aria-pressed="true"] { background: #fdeeee; color: #d93636; border-color: #d93636; }
   .qv.qt.qt-mias[aria-pressed="true"] { background: #eaf0ff; color: #2340d0; border-color: #2340d0; }
   .qv.qt.qt-pend[aria-pressed="true"] { background: #e9f8f0; color: #1f9d55; border-color: #1f9d55; }
-  .qv.qt.qt-venc[aria-pressed="true"] { background: #f3eefe; color: #7c5cf0; border-color: #7c5cf0; }
+  .qv.qt.qt-hoymia[aria-pressed="true"] { background: #fff4e5; color: #c2570c; border-color: #c2570c; }
   :root[data-theme="dark"] .qv.qt { background: var(--panel) !important; }
   .tk-dd { display: flex !important; gap: 6px; align-items: stretch; margin: 0 0 8px !important; }
   .tk-pill { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
@@ -1089,7 +1089,7 @@
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124a">
-<link rel="stylesheet" href="mensajes.css?v=20261118b">
+<link rel="stylesheet" href="mensajes.css?v=20261124d">
 <link rel="stylesheet" href="buzon.css?v=20261124b">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1707,15 +1707,11 @@
     if (t.origen === 'correo') {
       const src = t.ref && state.mails.find((x) => x.id === t.ref);
       if (src) {
-        const url = mailLink(src);
-        if (url) {
-          mailAct = {url};
-          const lk = chip('link', 'mail', 'Abrir correo ↗', 'a'); lk.href = url; lk.target = '_blank'; lk.rel = 'noopener'; lk.title = 'Abrir en Outlook el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
-          meta.appendChild(lk);
-        } else if (!compact) {
-          const lk = chip('link', 'mail', 'Ver correo', 'button'); lk.type = 'button'; lk.title = 'Correo de ' + personaDe(src.de);
-          const goMail = () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); };
-          mailAct = {fn: goMail};
+        // Abre el correo dentro de Synqalia (ya está aquí; no hace falta ir a Outlook)
+        const goMail = () => openMailInApp(src);
+        mailAct = {fn: goMail};
+        if (!compact) {
+          const lk = chip('link', 'mail', 'Abrir correo', 'button'); lk.type = 'button'; lk.title = 'Abrir en Synqalia el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
           lk.addEventListener('click', goMail);
           meta.appendChild(lk);
         }
@@ -2037,16 +2033,15 @@
     setTimeout(() => { const f = document.getElementById('te-titulo-' + t.id); if (f) { f.scrollIntoView({block: 'center', behavior: 'smooth'}); f.focus(); } }, 30);
   }
   // Enlace al correo de origen de una tarea (Outlook), para la ficha y los avances
+  function openMailInApp(src) { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); }
   function mailLinkEl(t) {
     if (t.origen !== 'correo' || !t.ref) return null;
     const src = state.mails.find((x) => x.id === t.ref); if (!src) return null;
-    const url = mailLink(src);
-    const a = el(url ? 'a' : 'button', 'ts-mail te-mail');
+    const a = el('button', 'ts-mail te-mail'); a.type = 'button';
     a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>';
-    a.appendChild(el('span', null, url ? 'Abrir el correo en Outlook ↗' : 'Ver el correo'));
-    a.title = 'Correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
-    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; }
-    else { a.type = 'button'; a.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); }); }
+    a.appendChild(el('span', null, 'Abrir correo'));
+    a.title = 'Abrir en Synqalia el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
+    a.addEventListener('click', () => openMailInApp(src));
     return a;
   }
   function taskEditor(t) {
@@ -2103,13 +2098,13 @@
     {k: 'hoy', label: 'Hoy', set: {taskF: 'hoy'}, test: forToday, hot: true},
     {k: 'mias', label: 'Mis tareas', short: 'Mis', set: {taskW: 'mia'}, test: (t) => t.estado !== 'hecha' && espOf(t) === 'mia'},
     {k: 'pend', label: 'Pendientes', short: 'Pend.', set: {}, test: (t) => t.estado !== 'hecha'},
-    {k: 'venc', label: 'Vencidas', short: 'Venc.', set: {taskF: 'vencidas'}, test: (t) => t.estado !== 'hecha' && isLate(t)},
+    {k: 'hoymia', label: 'Hoy de mí', short: 'Hoy mías', set: {taskF: 'hoy', taskW: 'mia'}, test: (t) => forToday(t) && espOf(t) === 'mia', hot: true},
   ];
   const QICON = {
     hoy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/></svg>',
     mias: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="4.8" cy="7" r="1"/><circle cx="4.8" cy="12" r="1"/><circle cx="4.8" cy="17" r="1"/></svg>',
     pend: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/></svg>',
-    venc: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M12 12.5v3"/><circle cx="12" cy="17.6" r=".6"/></svg>',
+    hoymia: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><circle cx="12" cy="13.2" r="1.7"/><path d="M8.8 18c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4"/></svg>',
   };
   const quickBase = {taskF: 'abiertas', taskW: '', taskPr: '', taskP: '', empF: '', taskQ: ''};
   function applyQuick(qv) {
@@ -2523,7 +2518,7 @@
         const a = toMin(e.inicio), b = toMin(e.fin); const k = pos.get(e);
         const pend = /sin confirmar/i.test(e.estado || ''); const okd = pend && e.enlace && answeredLocally(fecha, e.inicio, e.titulo);
         const past = fecha < todayISO || (fecha === todayISO && b <= nowMin());
-        const tag = pend && e.enlace && !okd ? 'a' : 'div';
+        const tag = 'div'; // toda reunión abre su sala (notas y grabar), también las pendientes de responder
         const box = document.createElement(tag); box.className = 'cal-ev' + (pend && !okd ? ' pend' : '') + (okd ? ' okd' : '') + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : '');
         if (tag === 'div') { box.classList.add('tap'); box.setAttribute('role', 'button'); box.tabIndex = 0; const ev = {fecha, inicio: e.inicio, fin: e.fin, titulo: e.titulo, organiza: e.organiza || null, lugar: e.lugar || null, enlace: e.enlace || null}; box.addEventListener('click', () => openMeetRoom(ev)); box.addEventListener('keydown', (k) => { if (k.key === 'Enter') openMeetRoom(ev); }); if (mtRecord(ev)) box.classList.add('has-notes'); }
         if (tag === 'a') { box.href = e.enlace; box.target = '_blank'; box.rel = 'noopener'; box.title = 'Abrir en Outlook para aceptar o rechazar'; box.addEventListener('click', () => setTimeout(() => markAnswered({fecha, inicio: e.inicio, titulo: e.titulo, mas: []}, true), 400)); }
@@ -2536,7 +2531,7 @@
         else {
           box.appendChild(el('div', 'ev-t', t));
           box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '')));
-          if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente · toca para aceptar ↗'));
+          if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente de responder'));
         }
         cal.appendChild(box);
       });
@@ -4385,6 +4380,7 @@
     return {p: {id: 'mt-' + normTxt(nm).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60), nombre: nm, tipo: 'grupo', reunion: true, miembros: org && !isMe(org) ? [org] : []}, team: false};
   }
   const mtRecord = (ev) => state.catchups.find((c) => c.evento && c.evento.fecha === ev.fecha && c.evento.inicio === ev.inicio && normTxt(cleanTitle(c.evento.titulo)) === normTxt(cleanTitle(ev.titulo)));
+  window.__sqOpenMeet = (ev) => openMeetRoom(ev);
   function openMeetRoom(ev) {
     const {p, team} = mtEntity(ev);
     const ex = mtRecord(ev);
@@ -4909,8 +4905,9 @@
 </script>
 <script src="notas.js" defer></script>
 <script src="lista.js?v=20261119f" defer></script>
-<script src="graph-live.js?v=20261117d" defer></script>
-<script src="mensajes.js?v=20261124a" defer></script>
+<script src="graph-live.js?v=20261124a" defer></script>
+<script src="aviso-reunion.js?v=20261124a" defer></script>
+<script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
 <script src="buzon.js?v=20261124b" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
