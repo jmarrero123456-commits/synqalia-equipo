@@ -17,7 +17,7 @@
 .top .vt { display: none; }
 .app > * { order: 2; } .app > .top { order: 0; } .app .tabs { order: 1; }
 
-@media (min-width: 861px) {
+@media (min-width: 700px) {
   body { overflow-x: clip; }
   .sq-side { display: flex; flex-direction: column; position: fixed; inset: 0 auto 0 0; width: 188px; z-index: 20; color: #fff;
     background: radial-gradient(900px 260px at 78% -30%, rgba(56,208,189,.16), transparent 60%), radial-gradient(700px 240px at 10% -50%, rgba(43,79,216,.22), transparent 60%), linear-gradient(180deg, var(--navy-2), var(--navy)); }
@@ -60,7 +60,7 @@
 }
 
 /* Tableta y móvil: el selector entra en la cabecera */
-@media (max-width: 860px) {
+@media (max-width: 699px) {
   .brand .sq-switch-m { order: 5; margin-left: 6px; align-self: center; min-width: 190px; }
 }
 @media (max-width: 560px) {
@@ -99,7 +99,7 @@ body:has(.login) .sq-bar { display: none; }
 .sq-has-bar .brand::after { display: none !important; }
 
 /* Mi trabajo */
-@media (min-width: 861px) {
+@media (min-width: 700px) {
   .sq-has-bar .sq-side { top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px)); padding-top: 8px; }
 }
 @media (max-width: 560px) {
@@ -110,7 +110,7 @@ body:has(.login) .sq-bar { display: none; }
 .sq-has-bar .shell { height: calc(100dvh - var(--sq-bar) - env(safe-area-inset-top, 0px)); }
 .sq-has-bar .side .brand { padding: 10px 12px 2px; justify-content: flex-end; min-height: 0; }
 .sq-has-bar .shell.collapsed .side-x { visibility: visible; }
-@media (max-width: 860px) {
+@media (max-width: 699px) {
   .sq-has-bar .side { top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px)); }
   .sq-has-bar .side-backdrop.open { top: calc(var(--sq-bar) + env(safe-area-inset-top, 0px)); }
 }
@@ -120,7 +120,7 @@ body:has(.login) .sq-bar { display: none; }
 .sq-sec { display: flex; align-items: center; justify-content: space-between; }
 .sq-collapse { border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.75); width: 26px; height: 24px; border-radius: 7px; cursor: pointer; font: 700 13px/1 system-ui; padding: 0; }
 .sq-collapse:hover { color: #fff; background: rgba(255,255,255,.12); }
-@media (min-width: 861px) {
+@media (min-width: 700px) {
   .sq-side, .app { transition: width .18s ease, margin .18s ease; }
   body.sq-mini .sq-side { width: 52px; }
   body.sq-mini .app { margin-left: 52px; }
@@ -160,7 +160,7 @@ body:has(.login) .sq-bar { display: none; }
   .mline { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "from date" "sub sub"; gap: 2px 10px; padding: 9px 0; }
   .mfrom { grid-area: from; } .mdate { grid-area: date; } .msub { grid-area: sub; }
 }
-@media (min-width: 861px) { .sq-side > .sq-sec { display: flex; padding-right: 12px; } body.sq-mini .sq-side > .sq-sec { padding-right: 0; } }
+@media (min-width: 700px) { .sq-side > .sq-sec { display: flex; padding-right: 12px; } body.sq-mini .sq-side > .sq-sec { padding-right: 0; } }
 #view-correo .card > .row-between h2 { display: none; }
 #view-correo .card > .row-between { justify-content: flex-end; margin-bottom: -6px; }
 #mail-filter .count:not(:empty) { display: inline-block; min-width: 18px; padding: 1px 6px; border-radius: 999px; font-size: 11px; line-height: 16px; text-align: center; margin-left: 4px; }
@@ -205,7 +205,7 @@ body:has(.login) .sq-bar { display: none; }
 /* ---------- Barra inferior del móvil: Hoy · Correo · Mensajes · Tareas · Más ---------- */
 .tab-mas { display: none !important; }
 .sq-more[hidden] { display: none; }
-@media (max-width: 860px) and (min-width: 561px) { .app .tabs { overflow-x: auto; scrollbar-width: none; } }
+@media (max-width: 699px) and (min-width: 561px) { .app .tabs { overflow-x: auto; scrollbar-width: none; } }
 @media (max-width: 560px) {
   .app .tabs { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
   .app .tabs #tab-reuniones, .app .tabs #tab-catchups, .app .tabs #tab-notas, .app .tabs #tab-lista { display: none !important; }
@@ -332,7 +332,7 @@ body:has(.login) .sq-bar { display: none; }
 }
 
 /* ---------- Mi trabajo en PC: sin faldón azul; el nombre de la sección va en la franja de arriba ---------- */
-@media (min-width: 861px) {
+@media (min-width: 700px) {
   .sq-has-bar .app { padding-top: 18px; }
   .sq-has-bar .app > .top { position: fixed; top: env(safe-area-inset-top, 0px); left: 168px; right: 286px; height: var(--sq-bar); z-index: 61;
     margin: 0; padding: 0 0 0 18px; background: none; border: 0; box-shadow: none; border-radius: 0; border-left: 1px solid rgba(255,255,255,.12);
@@ -347,10 +347,10 @@ body:has(.login) .sq-bar { display: none; }
   .sq-has-bar .top .sync-line, .sq-has-bar .top .date > :not(.date-row) { font-size: 11px; color: rgba(255,255,255,.6); white-space: nowrap; }
   .cu-mini .cu-roster { margin-top: -18px; }
 }
-@media (min-width: 861px) and (max-width: 1180px) {
+@media (min-width: 700px) and (max-width: 1180px) {
   .sq-has-bar .top .date-row #today-label, .sq-has-bar .top .date > :not(.date-row) { display: none; }
 }
-@media (min-width: 861px) { .sq-has-bar .top .date > .olk { display: none; } .sq-has-bar .top .date > .status { order: -1; } }
+@media (min-width: 700px) { .sq-has-bar .top .date > .olk { display: none; } .sq-has-bar .top .date > .status { order: -1; } }
 
 /* ---------- Correo: resumen y «Te piden» en el panel de lectura ---------- */
 .pane-sum { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel, #fff); }
@@ -570,7 +570,7 @@ body:has(.login) .sq-bar { display: none; }
 .item.pane-item .composer .prop-wrap > textarea { min-height: 300px; }
 
 /* ---------- Menú recogido (PC): icono grande y el número pequeño debajo, sin burbuja ---------- */
-@media (min-width: 861px) {
+@media (min-width: 700px) {
   body.sq-mini .sq-side .tabs button { flex-direction: column; gap: 2px; padding: 7px 0 6px; min-height: 44px; }
   body.sq-mini .sq-side .tabs .ti svg { width: 22px; height: 22px; }
   body.sq-mini .sq-side .tabs .count { position: static; margin: 0 !important; align-self: center; text-align: center; background: none !important; color: rgba(255,255,255,.55) !important; font-size: 9.5px; font-weight: 700; line-height: 1; padding: 0; min-width: 0; border-radius: 0; }

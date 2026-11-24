@@ -40,7 +40,7 @@
 .sqm-stick::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--line); opacity: 0; }
 /* html/body llevan overflow-x:hidden, que impide que la cabecera se quede fija: en Mensajes se cambia por clip (mismo efecto sin romper sticky) */
 html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) body { overflow-x: clip; }
-@media (max-width: 860px) { .sqm-stick { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; } }
+@media (max-width: 699px) { .sqm-stick { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; } }
 .sqm-head { display: flex; align-items: center; gap: 8px; }
 .sqm-head h2 { margin: 0; flex: 1; font: 800 21px/1.1 "Manrope", system-ui, sans-serif; letter-spacing: -.01em; }
 .sqm-ib { flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
