@@ -1688,7 +1688,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   $('#today-label').textContent = fmtLong.format(now).replace(/^./, (c) => c.toUpperCase());
 
   const PRIO = {Mega: -1, Alta: 0, Media: 1, Baja: 2};
-  const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: '', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'abiertas', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}, members: []};
+  const state = {taskMode: (() => { try { return localStorage.getItem('sq-tk-mode') || 'lista'; } catch (e) { return 'lista'; } })(), tkSort: (() => { try { return JSON.parse(localStorage.getItem('sq-tk-sort')) || {k: 'vence', dir: 1}; } catch (e) { return {k: 'vence', dir: 1}; } })(), tkExp: null, taskG: 'persona', taskQ: '', taskP: '', editTask: null, editDraft: null, progTask: null, progDraft: {}, taskW: 'mia', taskPr: '', mailGroup: false, mailP: '', mailSort: 'fecha', tasks: [], mails: [], replies: {}, brief: null, view: 'hoy', taskF: 'hoy', empF: '', mailC: 'todos', mailQ: '', proposals: [], openReply: null, drafts: {}, asks: {}, autoSum: {}, summaries: {}, decisions: {}, agenda: {}, agendaDay: null, autoDraft: {}, team: [], catchups: [], cuSel: null, cuOpen: null, cuDraft: {}, cuSugg: {}, cuPrep: {}, cuHist: {}, members: []};
   const RLABEL = {borrador: 'Borrador en Synqalia', lista: 'En cola → Borradores de Outlook', cola_borrador: 'En cola → Borradores de Outlook', en_outlook: 'En Borradores de Outlook', enviando: 'Enviando…', enviada: 'Enviada', error: 'Revisar'};
   let db = null, sample = null, assets = null;
 
@@ -1697,7 +1697,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   function show(view) {
     if (view === 'captura') view = 'catchups';
     if (!VIEWS.includes(view)) view = 'hoy';
+    const prevView = state.view;
     state.view = view;
+    // Tareas se abre siempre en «Hoy de mí» (25/11), salvo al volver de un correo (se queda como estaba)
+    if (view === 'tareas' && prevView !== 'tareas' && !(state.backTo && state.backTo.view === 'tareas')) { try { applyQuick(QUICK.find((q) => q.k === 'hoymia')); } catch (e) { /* al arrancar aún no están los filtros */ } }
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
     const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Reuniones', tareas: 'Tareas', catchups: 'Catch-ups', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
@@ -2276,6 +2279,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     hoymia: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><circle cx="12" cy="13.2" r="1.7"/><path d="M8.8 18c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4"/></svg>',
   };
   const quickBase = {taskF: 'abiertas', taskW: '', taskPr: '', taskP: '', empF: '', taskQ: ''};
+  { const e1 = $('#tk-estado'), e2 = $('#tk-who'); if (e1) e1.value = state.taskF; if (e2) e2.value = state.taskW; } // filtros de arranque: Hoy de mí
   function applyQuick(qv) {
     const st = Object.assign({}, quickBase, qv ? qv.set : {});
     Object.assign(state, st);
