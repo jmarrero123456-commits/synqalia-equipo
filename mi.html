@@ -151,6 +151,9 @@
   .composer .change input { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 10px; width: 100%; }
   .rstate { font-size: 12px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--line); color: var(--muted); }
   .rstate.lista { border-color: var(--accent); color: var(--accent); }
+  .cc-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .cc-row input { height: 36px; border: 1px solid #c9d2dc; border-radius: 6px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); min-width: 0; }
+  .cc-row input:focus { outline: none; border-color: #0b0e13; box-shadow: 0 0 0 2px color-mix(in srgb, #5fe0cf 45%, transparent); }
   .rstate.en_outlook { background: var(--accent); border-color: var(--accent); color: #fff; }
   .rstate.enviada { background: var(--ok); border-color: var(--ok); color: #fff; }
   .rstate.error { border-color: var(--bad); color: var(--bad); }
@@ -1090,7 +1093,7 @@
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124b">
 <link rel="stylesheet" href="mensajes.css?v=20261124d">
-<link rel="stylesheet" href="buzon.css?v=20261124c">
+<link rel="stylesheet" href="buzon.css?v=20261124d">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -2672,6 +2675,26 @@
     return data;
   }
   window.__sqGraphCall = graphCall;
+  async function buzonCall(body) {
+    const { data, error } = await window.__sb.functions.invoke('buzon', { body });
+    if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch (e) {} throw new Error(t); }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+  // direcciones para el CC: las que ya has usado y las que aparecen en tus correos
+  function rememberCc(v) {
+    try { const h = JSON.parse(localStorage.getItem('sq-cc-hist') || '[]'); v.split(/[;,\s]+/).filter(Boolean).forEach((x) => { const i = h.indexOf(x.toLowerCase()); if (i >= 0) h.splice(i, 1); h.unshift(x.toLowerCase()); }); localStorage.setItem('sq-cc-hist', JSON.stringify(h.slice(0, 60))); } catch (e) {}
+  }
+  function fillCcList() {
+    let dl = document.getElementById('sq-cc-list');
+    if (!dl) { dl = document.createElement('datalist'); dl.id = 'sq-cc-list'; document.body.appendChild(dl); }
+    const set = new Set();
+    try { JSON.parse(localStorage.getItem('sq-cc-hist') || '[]').forEach((x) => set.add(x)); } catch (e) {}
+    const re = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+    state.mails.forEach((x) => [x.de, x.para, x.cc, x.deMail].forEach((f) => (String(f || '').match(re) || []).forEach((a) => set.add(a.toLowerCase()))));
+    dl.replaceChildren(...[...set].slice(0, 300).map((a) => { const o = document.createElement('option'); o.value = a; return o; }));
+  }
+  window.__sqFillCcList = fillCcList; window.__sqRememberCc = rememberCc;
   document.addEventListener('sq-graph', () => { try { renderAll(); } catch (e) {} });
   async function saveReply(m, patch, okText) {
     const prev = state.replies[m.id] || {};
@@ -3007,12 +3030,38 @@
       const ready = el('button', 'btn primary', direct ? 'Enviar' : 'Enviar a Borradores de Outlook'); ready.type = 'button';
       if (direct) ready.title = 'Envía la respuesta desde tu cuenta de Outlook, en el mismo hilo y con tu firma';
       const review = el('div', 'review'); review.hidden = true;
+      // Copia (CC): gente que añades a la respuesta (24/11)
+      const ccRow = el('label', 'cc-row');
+      ccRow.appendChild(el('span', null, 'CC'));
+      const ccIn = document.createElement('input');
+      ccIn.type = 'text'; ccIn.inputMode = 'email'; ccIn.autocomplete = 'off'; ccIn.setAttribute('list', 'sq-cc-list');
+      ccIn.placeholder = 'Añadir en copia: correo@ejemplo.com; otro@ejemplo.com';
+      ccIn.value = (state.ccs && state.ccs[m.id]) || '';
+      ccIn.addEventListener('input', () => { (state.ccs = state.ccs || {})[m.id] = ccIn.value; });
+      ccIn.addEventListener('focus', fillCcList);
+      ccRow.appendChild(ccIn);
+      const ccOk = () => {
+        const v = ccIn.value.trim();
+        if (!v) return '';
+        const bad = v.split(/[;,\s]+/).filter(Boolean).filter((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+        if (bad.length) { setStatus('Revisa la copia (CC): «' + bad[0] + '» no es una dirección de correo.', true); ccIn.focus(); return null; }
+        return v;
+      };
       const finish = async (t, toDrafts) => {
+        const cc = ccOk();
+        if (cc === null) return;
+        if (direct && toDrafts && cc) {
+          setStatus('Guardando en Borradores de Outlook con la copia…');
+          try { await buzonCall({op: 'pendiente', mail: m.id, texto: t, cc, enviar: false}); delete state.drafts[m.id]; setStatus('En tus Borradores de Outlook, con la copia.'); renderAll(); }
+          catch (e) { setStatus('No se pudo guardar: ' + e.message, true); }
+          return;
+        }
         if (direct && !toDrafts) {
           if (!(await saveReply(m, {texto: t, estado: 'enviando'}))) return;
           ready.disabled = true; setStatus('Enviando…');
           try {
-            await graphCall({action: 'send', mail: m.id});
+            if (cc) { await buzonCall({op: 'pendiente', mail: m.id, texto: t, cc}); rememberCc(cc); }
+            else await graphCall({action: 'send', mail: m.id});
             // Enviado = gestionado: el correo se cierra solo y la lista queda en el siguiente (24/11)
             const row = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === m.id);
             const nid = row && row.nextElementSibling && row.nextElementSibling.dataset.mid ? row.nextElementSibling.dataset.mid : null;
@@ -3065,6 +3114,7 @@
       if (direct) { const dr = el('button', 'btn ghost', 'A Borradores de Outlook'); dr.type = 'button'; dr.title = 'No la envía: la deja en tus Borradores de Outlook, dentro del hilo'; dr.addEventListener('click', () => { const t = ta.value.trim(); if (!t) { setStatus('La respuesta está vacía.', true); return; } finish(t, true); }); btns.appendChild(dr); }
       else btns.appendChild(replyOutlookBtn(m, ta, setStatus));
       btns.appendChild(ready);
+      if (direct) box.appendChild(ccRow);
       bar.appendChild(btns); box.appendChild(bar); box.appendChild(review);
       if (r.estado === 'lista' || r.estado === 'cola_borrador') { const n = el('div', 'bar'); n.appendChild(el('span', 'note', 'En cola: Synqalia la dejará en tus Borradores de Outlook, dentro de su hilo. Si la cambias, vuelve a pulsar «Enviar a Borradores de Outlook».')); const sb = el('button', 'btn', 'Ya la he enviado'); sb.type = 'button'; sb.addEventListener('click', () => markSent(m)); n.appendChild(sb); box.appendChild(n); }
       tLbl = el('div', 'section-label', 'Pasar a tarea'); box.appendChild(tLbl);
@@ -4917,7 +4967,7 @@
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124c" defer></script>
+<script src="buzon.js?v=20261124d" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>
