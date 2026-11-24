@@ -173,7 +173,7 @@
   function startRec(l) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast('Este navegador no permite dictar aquí. Usa el micrófono del teclado en «Añadir».'); return; }
-    if (window.__sqRecording) { toast('Hay otra grabación en marcha (Reuniones, Catch-ups o Notas): párala primero.'); return; }
+    if (window.__sqRecording) { toast('Hay otra grabación en marcha (Agenda, Reuniones o Notas): párala primero.'); return; }
     let want = true, r;
     S.heard = ''; S.live = '';
     const go = () => {
