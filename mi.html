@@ -872,7 +872,10 @@
   .cal-ev.drag::after { content: attr(data-drag); position: absolute; right: 4px; top: 2px; background: var(--ink); color: var(--panel); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
   .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
   .cal-pop { position: absolute; z-index: 20; width: min(400px, 94%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15,27,45,.24); padding: 4px 4px 8px; }
-  .cal-pop .item { border: 0; box-shadow: none; background: transparent; }
+  .cal-pop .item { border: 0; box-shadow: none; background: transparent; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 6px; }
+  .cal-pop .item > .stripe { display: none; }
+  .cal-pop .item .actions { justify-content: flex-start; order: 3; }
+  .cal-pop .item > div:not(.actions) { padding-right: 22px; }
   .cal-pop-x { position: absolute; right: 6px; top: 4px; border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--muted); z-index: 2; line-height: 1; padding: 4px 6px; }
   .cal-pop-more { display: flex; justify-content: flex-end; gap: 6px; padding: 0 8px; }
   .ag-pend { position: relative; display: inline-flex; }
