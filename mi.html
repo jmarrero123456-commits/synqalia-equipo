@@ -155,6 +155,7 @@
   .inline-compose .ic-status { margin: 0; font-size: 13px; font-weight: 600; color: #0b6e63; }
   .inline-compose .ic-status:empty { display: none; }
   .inline-compose .ic-status.bad { color: var(--bad); }
+  .tmsg-link { color: #0b6e63; text-decoration: underline; overflow-wrap: anywhere; }
   .cc-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .cc-row input { height: 36px; border: 1px solid #c9d2dc; border-radius: 6px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); min-width: 0; }
   .cc-row input:focus { outline: none; border-color: #0b0e13; box-shadow: 0 0 0 2px color-mix(in srgb, #5fe0cf 45%, transparent); }
@@ -3458,13 +3459,27 @@
     if (!d || !mo) return '';
     return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0') + 'T' + hh;
   }
+  // texto del correo con los enlaces clicables (Drive, SharePoint, webs…), sin innerHTML
+  function bodyWithLinks(text) {
+    const d = el('div', 'tmsg-body');
+    const t = String(text || ''); const re = /\bhttps?:\/\/[^\s<>"'()\[\]{}]+/g; let last = 0, mm;
+    while ((mm = re.exec(t))) {
+      let u = mm[0]; while (/[.,;:!?]$/.test(u)) u = u.slice(0, -1);
+      if (mm.index > last) d.appendChild(document.createTextNode(t.slice(last, mm.index)));
+      const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = u.length > 70 ? u.slice(0, 67) + '…' : u; a.className = 'tmsg-link';
+      d.appendChild(a); last = mm.index + u.length; re.lastIndex = last;
+    }
+    if (last < t.length) d.appendChild(document.createTextNode(t.slice(last)));
+    return d;
+  }
   function threadView(text, m) {
     // el cuerpo guarda el hilo como «— Nombre, día, hora —» + texto; aquí se ordena siempre del más reciente al más antiguo
     // y se quitan los mensajes repetidos (mismo autor, mismo día y hora), por si el barrido los ha juntado mal
     const wrap = el('div', 'thread');
     const parts = String(text || '').split(/^(— .+ —)\s*$/m);
-    if (parts.length < 3) { wrap.appendChild(el('div', 'tmsg-body', text)); return wrap; }
-    if (parts[0].trim()) wrap.appendChild(el('div', 'tmsg-body', parts[0].trim()));
+    if (parts.length < 3) { wrap.appendChild(bodyWithLinks(text)); return wrap; }
+    if (parts[0].trim()) wrap.appendChild(bodyWithLinks(parts[0].trim()));
     const year = +(String((m && m.fecha) || todayISO).slice(0, 4)) || new Date().getFullYear();
     let msgs = [];
     for (let i = 1; i < parts.length; i += 2) {
@@ -3487,7 +3502,7 @@
       const msg = el('div', 'tmsg' + (n === 0 ? ' last' : ''));
       const h = el('div', 'tmsg-head'); const av = el('span', 'tav', (x.who.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?').toUpperCase());
       h.appendChild(av); h.appendChild(el('b', null, x.who)); h.appendChild(el('span', 'tmsg-when', x.when)); msg.appendChild(h);
-      msg.appendChild(el('div', 'tmsg-body', x.body || '(sin texto)'));
+      msg.appendChild(bodyWithLinks(x.body || '(sin texto)'));
       wrap.appendChild(msg);
     });
     return wrap;
@@ -5007,7 +5022,7 @@
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124g" defer></script>
+<script src="buzon.js?v=20261124h" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>

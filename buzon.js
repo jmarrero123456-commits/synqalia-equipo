@@ -288,7 +288,18 @@
   }
 
   /* ---------- conversación abierta (hilo completo, el más reciente arriba) ---------- */
-  const linkify = (t) => esc(t).replace(/\bhttps?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u.length > 70 ? u.slice(0, 67) + '…' : u}</a>`);
+  // enlaces clicables (se buscan en el texto original y luego se escapa; antes «<https://…>» se rompía)
+  const URL_RE = /\bhttps?:\/\/[^\s<>"'()\[\]{}]+/g;
+  const linkify = (t) => {
+    t = String(t || ''); let out = '', last = 0, mm;
+    URL_RE.lastIndex = 0;
+    while ((mm = URL_RE.exec(t))) {
+      let u = mm[0]; while (/[.,;:!?]$/.test(u)) u = u.slice(0, -1);
+      out += esc(t.slice(last, mm.index)) + `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u.length > 70 ? u.slice(0, 67) + '…' : u)}</a>`;
+      last = mm.index + u.length; URL_RE.lastIndex = last;
+    }
+    return out + esc(t.slice(last));
+  };
   function reading(on) {
     root.classList.toggle('bz-reading', on);
     if (on && mqNarrow.matches) { try { if (!history.state?.bz) history.pushState({ bz: 1 }, ''); } catch {} window.scrollTo({ top: 0 }); }
