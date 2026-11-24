@@ -196,8 +196,16 @@
     return rows.sort((a, b) => t(b) - t(a));
   }
 
+  // Posición de la lista: al abrir/cerrar una conversación o al llegar mensajes nuevos se repinta,
+  // pero el desplazamiento se conserva (antes volvía arriba del todo).
+  const listPos = { key: '', top: 0, win: 0 };
   function paintCanal() {
     const k = st.canal, C = CANALES[k];
+    const key = [k, st.tipo, st.f, st.q].join('|');
+    const oldList = root.querySelector('.sqm-list');
+    if (oldList && listPos.key === key) { listPos.top = oldList.scrollTop; if (!overlay) listPos.win = window.scrollY; }
+    else if (listPos.key !== key) { listPos.top = 0; listPos.win = 0; }
+    listPos.key = key;
     const sw = ['teams', 'synqalia'].map((x) => {
       const n = sinLeer(x);
       return `<button type="button" data-canal="${x}" aria-pressed="${x === k}">${CANALES[x].nombre}${n ? ` <span>${n}</span>` : ''}</button>`;
@@ -237,6 +245,9 @@
     </div>`;
     if (st.open) paintConv();
     fitSplit();
+    const nl = root.querySelector('.sqm-list');
+    if (nl && listPos.top) nl.scrollTop = listPos.top;
+    if (!wide() && listPos.win) scrollTo(0, listPos.win);
   }
   // PC: la lista y la conversación ocupan justo el alto que queda de pantalla (la página no se desplaza y el nombre queda siempre a la vista)
   function fitSplit() {
@@ -269,6 +280,7 @@
   document.addEventListener('sq-graph', () => { if (st.open) paint(); });
 
   async function openConv(id) {
+    if (!st.open) { const l = root.querySelector('.sqm-list'); if (l) listPos.top = l.scrollTop; listPos.win = window.scrollY; }
     st.open = id; st.keep.add(id);
     if (!wide() && !(history.state && history.state.sqm)) history.pushState({ sqm: 1 }, '');
     if (st.canal === 'teams') {
