@@ -141,7 +141,6 @@
         <button type="button" class="bz-chip" data-tg="adjuntos" aria-pressed="false">Con adjuntos</button>
       </div>
       <label class="bz-search">${svg('search', 16)}<span class="bz-sr">Buscar en todo el buzón</span><input type="search" id="bz-q" placeholder="Buscar en todo el buzón" enterkeyhint="search"></label>
-      <button type="button" class="bz-new" id="bz-new">${svg('pen', 15)}<span>Nuevo</span></button>
     </div>
   </div>
   <div class="bz-body">
@@ -151,6 +150,11 @@
   </div>`;
   const $ = (s) => root.querySelector(s);
   modebar.appendChild(root.querySelector('.bz-acc'));
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button'; newBtn.className = 'bz-new'; newBtn.id = 'bz-new';
+  newBtn.innerHTML = `${svg('pen', 15)}<span>Nuevo correo</span>`;
+  newBtn.setAttribute('aria-label', 'Nuevo correo');
+  modebar.appendChild(newBtn);
   const list = $('.bz-list'), pane = $('.bz-pane'), statusEl = $('.bz-status'), foot = $('.bz-foot'), folders = $('.bz-folders'), fsel = $('#bz-fsel');
 
   /* ---------- filtros ---------- */
@@ -169,7 +173,7 @@
   let qT = null;
   $('#bz-q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { st.q = e.target.value.trim(); reload(); }, 450); });
   $('#bz-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qT); st.q = e.target.value.trim(); reload(); } });
-  $('#bz-new').addEventListener('click', () => openCompose({ tipo: 'nuevo' }));
+  newBtn.addEventListener('click', () => { if (st.modo !== 'bandeja') setModo('bandeja'); openCompose({ tipo: 'nuevo' }); });
   function paintFilters() {
     root.querySelectorAll('[data-ver]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.ver === st.ver)));
     root.querySelectorAll('[data-quick]').forEach((x) => x.setAttribute('aria-pressed', String(st.ver === 'noleidos')));
@@ -491,15 +495,21 @@
       pane.innerHTML = `<div class="bz-phead"><div class="bz-ptools"><button type="button" class="bz-back" data-cl>${svg('back', 20)}<span>Volver</span></button></div><h3>Correo nuevo</h3></div><p class="bz-msgst" aria-live="polite"></p><div class="bz-compose-slot"></div>`;
       slot = pane.querySelector('.bz-compose-slot');
     }
-    const quien = o.tipo === 'todos' ? [m.de?.nombre || m.de?.mail, ...(m.para || []).map((p) => p.nombre || p.mail), ...(m.cc || []).map((p) => p.nombre || p.mail)].filter(Boolean).join(', ')
+    const yo = String(st.outlook || '').toLowerCase();
+    const quien = o.tipo === 'todos' ? [m.de, ...(m.para || []), ...(m.cc || [])].filter((p) => p && (!yo || String(p.mail || '').toLowerCase() !== yo)).map((p) => p.nombre || p.mail).filter(Boolean).join(', ')
       : o.tipo === 'responder' ? (m.de?.nombre || m.de?.mail || '') : '';
     slot.innerHTML = `<form class="bz-compose" novalidate>
       <div class="bz-ctit"><b>${o.sugerida ? 'Respuesta sugerida' : TIT[o.tipo]}</b>${quien ? `<span>a ${esc(quien)}</span>` : ''}</div>
+      ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>De</span><select name="cuenta" required>
+        ${st.cuenta === 'todas' ? '<option value="" selected disabled>¿Desde qué cuenta?</option>' : ''}
+        <option value="outlook"${st.cuenta === 'outlook' ? ' selected' : ''}>Outlook · ${esc(st.outlook || 'cuenta de trabajo')}</option>
+        <option value="gmail" disabled>Gmail · todavía sin conectar</option>
+      </select></label>` : ''}
       ${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? `<label class="bz-f"><span>Para</span><input name="para" type="text" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com; otro@ejemplo.com" required></label>` : ''}
-      ${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? `<label class="bz-f"><span>CC</span><input name="cc" type="text" inputmode="email" placeholder="Opcional"></label>` : ''}
+      <label class="bz-f"><span>CC</span><input name="cc" type="text" inputmode="email" autocomplete="off" list="sq-cc-list" placeholder="${o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'Opcional' : 'Añadir en copia (opcional)'}"></label>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
       <label class="bz-sr" for="bz-txt">Texto del correo</label>
-      <textarea id="bz-txt" name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea>
+      <textarea id="bz-txt" name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea>
       <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}.</p>
       <div class="bz-cacts">
         <button type="submit" class="bz-btn send">Enviar</button>
@@ -508,6 +518,7 @@
       </div>
     </form>`;
     const f = slot.querySelector('form');
+    f.querySelectorAll('[list="sq-cc-list"]').forEach((x) => x.addEventListener('focus', () => { if (typeof window.__sqFillCcList === 'function') window.__sqFillCcList(); }));
     f.addEventListener('submit', (e) => { e.preventDefault(); send(f, o, true); });
     f.querySelector('[data-draft]').addEventListener('click', () => send(f, o, false));
     pane.querySelectorAll('[data-cl]').forEach((x) => x.addEventListener('click', () => {
@@ -515,17 +526,21 @@
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       slot.innerHTML = '';
     }));
-    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'input[name="para"]' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
+    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? 'input[name="para"]' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
   }
   async function send(f, o, enviar) {
     const fd = new FormData(f);
-    const body = { tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
+    if (o.tipo === 'nuevo' && !fd.get('cuenta')) { msgStatus('Elige desde qué cuenta lo envías («De»).', true); f.querySelector('select[name="cuenta"]')?.focus(); return; }
+    const body = { cuenta: fd.get('cuenta') || 'outlook', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
     if (enviar && (o.tipo === 'nuevo' || o.tipo === 'reenviar') && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { msgStatus('Escribe al menos una dirección de correo en «Para».', true); f.querySelector('input[name="para"]')?.focus(); return; }
+    const badCc = String(body.cc || '').split(/[;,\s]+/).filter(Boolean).find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if (badCc) { msgStatus(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('input[name="cc"]')?.focus(); return; }
     if (enviar && o.tipo !== 'reenviar' && !body.texto.trim()) { msgStatus('El correo está vacío.', true); f.querySelector('textarea')?.focus(); return; }
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
     msgStatus(enviar ? 'Enviando…' : 'Guardando en Borradores…');
     try {
       await call('redactar', body);
+      if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);
       st.compose = null;
       toast(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook');
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
@@ -549,7 +564,7 @@
   /* ---------- arranque ---------- */
   async function start() {
     st.cargando = true; paintList();
-    try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; paintFolders(); }
+    try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; paintFolders(); }
     catch (e) {
       st.cargando = false;
       st.err = /no está conectado/i.test(e.message) ? 'Conecta Microsoft 365 para ver aquí todo tu correo.' : 'No se pudo abrir el buzón: ' + e.message;
