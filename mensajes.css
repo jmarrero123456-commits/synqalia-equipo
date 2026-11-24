@@ -151,3 +151,10 @@ body.sqm-lock { overflow: hidden; }
 .sqm-timg { display: block; border: 0; padding: 0; margin: 0 0 4px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--ink) 8%, var(--panel)); cursor: zoom-in; min-width: 120px; min-height: 80px; }
 .sqm-timg img { display: block; max-width: min(300px, 64vw); max-height: 320px; width: auto; height: auto; }
 .sqm-tadj { display: block; margin: 2px 0 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--panel)); font-size: 13.5px; font-weight: 700; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+/* varias imágenes en un mensaje: cuadrícula dentro de la burbuja, sin salirse */
+.sqm-b.sqm-bimg { max-width: min(82%, 360px); }
+.sqm-bimg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.sqm-bimg > :not(.sqm-timg) { grid-column: 1 / -1; }
+.sqm-bimg .sqm-timg:only-of-type { grid-column: 1 / -1; }
+.sqm-timg { min-width: 0; margin: 0; }
+.sqm-timg img { max-width: 100%; width: 100%; height: auto; max-height: 320px; object-fit: cover; }
