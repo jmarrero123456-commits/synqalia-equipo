@@ -237,6 +237,7 @@
     paint();
   }
   addEventListener('popstate', () => { if (st.open && !wide()) closeConv(true); });
+  document.addEventListener('sq-graph', () => { if (st.open) paint(); });
 
   async function openConv(id) {
     st.open = id; st.keep.add(id);
@@ -244,6 +245,8 @@
     if (st.canal === 'teams') {
       const d = st.teams.get(id);
       if (d && teamsUnread(id, d)) setVisto(id, true); // abrirla basta para darla por leída
+      // con Microsoft 365 conectado: trae el hilo completo (llega por tiempo real)
+      if (graphOn() && d && d.gid && (!d.hilo_at || Date.now() - new Date(d.hilo_at).getTime() > 60000)) window.__sqGraphCall({ action: 'teamsThread', id }).catch(() => {});
     } else if (st.canal === 'synqalia') {
       if (!st.msgs.has(id)) { paint(); await loadMsgs(id); }
       markRead(id);
@@ -264,26 +267,34 @@
       <span class="sqm-ctit"><b>${esc(nombre)}</b><span>${esc(sub)}</span></span>${extra}</div>`;
   }
 
+  const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
   function paintTeamsConv(host) {
     const id = st.open, d = st.teams.get(id);
     if (!d) { closeConv(); return; }
+    const live = graphOn() && !!d.gid;
+    const keepTxt = host.querySelector('#sqm-in')?.value || '';
     const url = safeUrl(d.enlace);
     const msgs = Array.isArray(d.mensajes) ? d.mensajes : null;
     const bubbles = msgs && msgs.length
       ? msgs.map((m) => `<div class="sqm-b ${m.mio ? 'me' : ''}">${!m.mio && m.de ? `<span class="sqm-bwho">${esc(m.de)}</span>` : ''}<p>${esc(m.texto)}</p><span class="sqm-bt">${esc(m.hora || '')}</span></div>`).join('')
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
-         <p class="sqm-info">Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.</p>`;
+         <p class="sqm-info">${live ? 'Cargando el hilo completo…' : 'Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.'}</p>`;
     host.innerHTML = `<div class="sqm-conv">
       ${convHead(d.nombre || 'Chat de Teams', 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
       ${d.accion ? `<div class="sqm-ask${isTrue(d.pide) ? ' pide' : ''}"><span class="sqm-pide">${isTrue(d.pide) ? 'Te pide algo' : 'Resumen'}</span><p>${esc(d.accion)}</p></div>` : ''}
       <div class="sqm-thread">${bubbles}</div>
       <div class="sqm-foot">
         ${isTrue(d.noLeido) ? '<button type="button" class="sqm-link" data-act="noleido">Marcar como no leído</button>' : ''}
-        <form class="sqm-compose" data-act="teams-copy"><label class="sr" for="sqm-in">Respuesta</label>
+        ${live ? `<form class="sqm-compose" data-act="teams-send"><label class="sr" for="sqm-in">Respuesta</label>
+          <textarea id="sqm-in" rows="1" placeholder="Responde en Teams…"></textarea>
+          <button type="submit" class="sqm-send" aria-label="Enviar a Teams" title="Envía el mensaje a este chat de Teams">${ICON.send}</button></form>`
+        : `<form class="sqm-compose" data-act="teams-copy"><label class="sr" for="sqm-in">Respuesta</label>
           <textarea id="sqm-in" rows="1" placeholder="Escribe la respuesta…"></textarea>
           <button type="submit" class="sqm-send" aria-label="Copiar y abrir en Teams" title="Copia el texto y abre el chat en Teams">${ICON.ext}</button></form>
-        <p class="sqm-hint">Hasta conectar Microsoft 365, al pulsar se copia tu respuesta y se abre el chat en Teams para pegarla.</p>
+        <p class="sqm-hint">${graphOn() ? 'Este chat se enlaza con Teams en la próxima sincronización (unos minutos); mientras, al pulsar se copia tu respuesta y se abre el chat en Teams.' : 'Hasta conectar Microsoft 365, al pulsar se copia tu respuesta y se abre el chat en Teams para pegarla.'}</p>`}
       </div></div>`;
+    if (keepTxt) { const t = host.querySelector('#sqm-in'); if (t) t.value = keepTxt; }
+    const th = host.querySelector('.sqm-thread'); if (th) th.scrollTop = th.scrollHeight;
   }
 
   function paintSynqConv(host) {
@@ -397,6 +408,15 @@
       const d = st.teams.get(st.open), url = safeUrl(d?.enlace) || 'https://teams.microsoft.com/v2/';
       if (body) { try { await navigator.clipboard.writeText(body); } catch {} }
       window.open(url, '_blank', 'noopener');
+      return;
+    }
+    if (f.dataset.act === 'teams-send') {
+      if (!body || !st.open) return;
+      const id = st.open, btn = f.querySelector('button');
+      btn.disabled = true; ta.disabled = true;
+      try { await window.__sqGraphCall({ action: 'teamsSend', id, texto: body }); ta.value = ''; }
+      catch (err) { alert('No se ha podido enviar a Teams: ' + err.message); }
+      finally { btn.disabled = false; ta.disabled = false; ta.focus(); }
       return;
     }
     if (!body || !st.open) return;
