@@ -196,7 +196,7 @@
   }
 
   /* ---------- carpetas ---------- */
-  const WKN = { inbox: 'Bandeja', drafts: 'Borradores', sentitems: 'Enviados', archive: 'Archivo', deleteditems: 'Eliminados', junkemail: 'Correo no deseado' };
+  const WKN = { inbox: 'Bandeja', drafts: 'Borradores', sentitems: 'Enviados', archive: 'Archivo', deleteditems: 'Eliminados', junkemail: 'Correo no deseado', outbox: 'Programados y salida' };
   const fname = (f) => WKN[f.wk] || f.nombre;
   function paintFolders() {
     const main = st.carpetas.filter((f) => f.wk), mine = st.carpetas.filter((f) => !f.wk);
@@ -633,6 +633,44 @@
     return { commit };
   }
 
+
+  /* ---------- programar el envío (24/11): para no mandar correos fuera de horas ---------- */
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const fueraDeHora = (d = new Date()) => d.getDay() === 0 || d.getDay() === 6 || d.getHours() < 8 || d.getHours() >= 20;
+  const at = (base, addDays, h, mi = 0) => { const d = new Date(base); d.setDate(d.getDate() + addDays); d.setHours(h, mi, 0, 0); return d; };
+  function nextWorkday(h) { const now = new Date(); for (let i = 0; i < 8; i++) { const d = at(now, i, h); if (d > now && d.getDay() !== 0 && d.getDay() !== 6) return d; } return at(now, 1, h); }
+  const progLabel = (d) => {
+    const now = new Date(), man = at(now, 1, 0);
+    const hm = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+    if (d.toDateString() === now.toDateString()) return `hoy a las ${hm}`;
+    if (d.toDateString() === man.toDateString()) return `mañana a las ${hm}`;
+    return `el ${DIAS[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} a las ${hm}`;
+  };
+  function schedulePanel(onPick) {
+    const box = document.createElement('div');
+    box.className = 'bz-prog';
+    const opts = [];
+    const n8 = nextWorkday(8), n9 = nextWorkday(9);
+    opts.push(n8, n9);
+    const lunes = (() => { const now = new Date(); const add = ((8 - now.getDay()) % 7) || 7; return at(now, add, 8); })();
+    if (!opts.some((x) => x.toDateString() === lunes.toDateString())) opts.push(lunes);
+    const minLocal = (() => { const d = new Date(Date.now() + 5 * 60000); d.setSeconds(0, 0); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); })();
+    box.innerHTML = `<div class="bz-prog-t">Programar el envío</div>
+      <div class="bz-prog-o">${opts.map((d, i) => `<button type="button" class="bz-chip" data-i="${i}">${esc(progLabel(d).replace(/^./, (c) => c.toUpperCase()))}</button>`).join('')}</div>
+      <label class="bz-prog-c"><span>Otro día y hora</span><input type="datetime-local" min="${minLocal}" step="300"></label>
+      <div class="bz-prog-a"><button type="button" class="bz-btn send" data-ok disabled>Programar</button><button type="button" class="bz-link" data-x>Cancelar</button></div>`;
+    let chosen = null;
+    const okBtn = box.querySelector('[data-ok]'), inp = box.querySelector('input');
+    const mark = () => { box.querySelectorAll('.bz-chip').forEach((c) => c.setAttribute('aria-pressed', String(chosen && +c.dataset.i === opts.indexOf(chosen)))); okBtn.disabled = !chosen; okBtn.textContent = chosen ? 'Programar para ' + progLabel(chosen) : 'Programar'; };
+    box.querySelectorAll('.bz-chip').forEach((c) => c.addEventListener('click', () => { chosen = opts[+c.dataset.i]; inp.value = ''; mark(); }));
+    inp.addEventListener('input', () => { const d = inp.value ? new Date(inp.value) : null; chosen = d && d > new Date() ? d : null; if (chosen) opts.indexOf(chosen); mark(); });
+    okBtn.addEventListener('click', () => { if (chosen) onPick(chosen); });
+    box.querySelector('[data-x]').addEventListener('click', () => { box.remove(); onPick(null); });
+    mark();
+    return box;
+  }
+  window.__sqSchedule = { panel: schedulePanel, label: progLabel, offHours: fueraDeHora, next: nextWorkday };
+
   /* ---------- redactar: responder, a todos, reenviar, nuevo ---------- */
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
   function openCompose(o) {
@@ -679,9 +717,12 @@
       <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
       <div class="bz-cacts">
         <button type="submit" class="bz-btn send">Enviar</button>
+        <button type="button" class="bz-btn" data-prog title="Elegir cuándo se envía">⏱ Programar</button>
         <button type="button" class="bz-btn" data-draft>A Borradores</button>
         <button type="button" class="bz-link" data-cl>Cancelar</button>
       </div>
+      <div class="bz-prog-slot"></div>
+      ${fueraDeHora() ? `<p class="bz-offh">Es fuera de horario: <button type="button" class="bz-link" data-prog-quick>programarlo para ${esc(progLabel(nextWorkday(8)))}</button></p>` : ''}
     </form>`;
     const f = slot.querySelector('form');
     o.files = o.files || [];
@@ -710,7 +751,13 @@
     f.addEventListener('drop', (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); f.classList.remove('bz-dragging'); addFiles([...e.dataTransfer.files]); });
     f.querySelector('textarea').addEventListener('paste', (e) => { const fl = [...(e.clipboardData?.files || [])]; if (fl.length) { e.preventDefault(); addFiles(fl); } });
     paintFiles();
-    f.addEventListener('submit', (e) => { e.preventDefault(); send(f, o, true); });
+    f.addEventListener('submit', (e) => { e.preventDefault(); o.programar = null; send(f, o, true); });
+    const progSlot = f.querySelector('.bz-prog-slot');
+    f.querySelector('[data-prog]').addEventListener('click', () => {
+      if (progSlot.firstChild) { progSlot.innerHTML = ''; return; }
+      progSlot.appendChild(schedulePanel((d) => { progSlot.innerHTML = ''; if (d) { o.programar = d; send(f, o, true); } }));
+    });
+    f.querySelector('[data-prog-quick]')?.addEventListener('click', () => { o.programar = nextWorkday(8); send(f, o, true); });
     f.querySelector('[data-draft]').addEventListener('click', () => send(f, o, false));
     (ext ? slot : pane).querySelectorAll('[data-cl]').forEach((x) => x.addEventListener('click', () => {
       if (ext) { slot.innerHTML = ''; ext.onCancel?.(); return; }
@@ -725,13 +772,14 @@
     if (o.commitChips && !o.commitChips()) return;
     const fd = new FormData(f);
     if (o.tipo === 'nuevo' && !fd.get('cuenta')) { say('Elige desde qué cuenta lo envías («De»).', true); f.querySelector('select[name="cuenta"]')?.focus(); return; }
-    const body = { cuenta: fd.get('cuenta') || 'outlook', destinatarios: o.tipo === 'responder' || o.tipo === 'todos', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
+    const prog = o.programar ? o.programar.toISOString() : null;
+    const body = { programar: prog, cuenta: fd.get('cuenta') || 'outlook', destinatarios: o.tipo === 'responder' || o.tipo === 'todos', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
     if (enviar && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { say('Falta al menos un destinatario en «Para».', true); f.querySelector('[data-chips="para"] input')?.focus(); return; }
     const badCc = String(body.cc || '').split(/[;,\s]+/).filter(Boolean).find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
     if (badCc) { say(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('[data-chips="cc"] input')?.focus(); return; }
     if (enviar && o.tipo !== 'reenviar' && !body.texto.trim()) { say('El correo está vacío.', true); f.querySelector('textarea')?.focus(); return; }
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
-    say(enviar ? 'Enviando…' : 'Guardando en Borradores…');
+    say(enviar ? (prog ? 'Programando…' : 'Enviando…') : 'Guardando en Borradores…');
     try {
       if (o.files?.length) {
         // 1) borrador preparado, 2) se suben los adjuntos, 3) se envía (o se queda en Borradores)
@@ -749,15 +797,16 @@
             }
           }
         }
-        if (enviar) { say('Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo }); }
+        if (enviar) { say(prog ? 'Programando…' : 'Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo, programar: prog }); }
       } else await call('redactar', body);
       if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);
-      toast(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook');
-      if (o.ext) { o.ext.slot.innerHTML = ''; o.ext.onDone?.(enviar); return; }
+      const okTxt = enviar ? (prog ? `Programado: sale ${progLabel(o.programar)} ✓` : 'Enviado ✓') : 'Guardado en Borradores de Outlook';
+      toast(okTxt);
+      if (o.ext) { o.ext.slot.innerHTML = ''; o.ext.onDone?.(enviar, prog ? okTxt : null); return; }
       st.compose = null;
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       f.parentElement.innerHTML = '';
-      say(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook.');
+      say(okTxt);
       if (enviar) { loadSmart().catch(() => null); const c = st.sel; if (c) setTimeout(() => { if (st.sel === c && !st.compose) openThread(c); }, 2500); }
     } catch (err) {
       say('No se pudo ' + (enviar ? 'enviar' : 'guardar') + ': ' + err.message, true);
