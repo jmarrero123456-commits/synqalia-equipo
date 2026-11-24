@@ -1704,15 +1704,11 @@
     if (t.origen === 'correo') {
       const src = t.ref && state.mails.find((x) => x.id === t.ref);
       if (src) {
-        const url = mailLink(src);
-        if (url) {
-          mailAct = {url};
-          const lk = chip('link', 'mail', 'Abrir correo ↗', 'a'); lk.href = url; lk.target = '_blank'; lk.rel = 'noopener'; lk.title = 'Abrir en Outlook el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
-          meta.appendChild(lk);
-        } else if (!compact) {
-          const lk = chip('link', 'mail', 'Ver correo', 'button'); lk.type = 'button'; lk.title = 'Correo de ' + personaDe(src.de);
-          const goMail = () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); };
-          mailAct = {fn: goMail};
+        // Abre el correo dentro de Synqalia (ya está aquí; no hace falta ir a Outlook)
+        const goMail = () => openMailInApp(src);
+        mailAct = {fn: goMail};
+        if (!compact) {
+          const lk = chip('link', 'mail', 'Abrir correo', 'button'); lk.type = 'button'; lk.title = 'Abrir en Synqalia el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
           lk.addEventListener('click', goMail);
           meta.appendChild(lk);
         }
@@ -2034,16 +2030,15 @@
     setTimeout(() => { const f = document.getElementById('te-titulo-' + t.id); if (f) { f.scrollIntoView({block: 'center', behavior: 'smooth'}); f.focus(); } }, 30);
   }
   // Enlace al correo de origen de una tarea (Outlook), para la ficha y los avances
+  function openMailInApp(src) { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); }
   function mailLinkEl(t) {
     if (t.origen !== 'correo' || !t.ref) return null;
     const src = state.mails.find((x) => x.id === t.ref); if (!src) return null;
-    const url = mailLink(src);
-    const a = el(url ? 'a' : 'button', 'ts-mail te-mail');
+    const a = el('button', 'ts-mail te-mail'); a.type = 'button';
     a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>';
-    a.appendChild(el('span', null, url ? 'Abrir el correo en Outlook ↗' : 'Ver el correo'));
-    a.title = 'Correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
-    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; }
-    else { a.type = 'button'; a.addEventListener('click', () => { state.openReply = src.id; state.mailC = src.estado === 'gestionado' ? 'gestionados' : chipDe(src); syncMailChips(); renderAll(); show(isMeeting(src) ? 'reuniones' : 'correo'); }); }
+    a.appendChild(el('span', null, 'Abrir correo'));
+    a.title = 'Abrir en Synqalia el correo de ' + personaDe(src.de) + ': «' + (src.asunto || '') + '»';
+    a.addEventListener('click', () => openMailInApp(src));
     return a;
   }
   function taskEditor(t) {
