@@ -155,6 +155,18 @@
   newBtn.innerHTML = `${svg('pen', 15)}<span>Nuevo correo</span>`;
   newBtn.setAttribute('aria-label', 'Nuevo correo');
   modebar.appendChild(newBtn);
+  // PC ancho (≥1100 px): los filtros de Pendientes y el «Último barrido» suben a esta barra, sin dejar hueco (24/11)
+  const mfilt = document.getElementById('mail-filter'), mupd = document.getElementById('mail-updated');
+  if (mfilt && mupd) {
+    const ph1 = document.createComment('mail-filter'), ph2 = document.createComment('mail-updated');
+    mfilt.before(ph1); mupd.before(ph2);
+    const wideMQ = matchMedia('(min-width: 1100px)');
+    const placeTop = () => {
+      if (wideMQ.matches) { modes.after(mfilt); modebar.insertBefore(mupd, newBtn); modebar.classList.add('bz-wide'); }
+      else { ph1.after(mfilt); ph2.after(mupd); modebar.classList.remove('bz-wide'); }
+    };
+    placeTop(); wideMQ.addEventListener('change', placeTop);
+  }
   const list = $('.bz-list'), pane = $('.bz-pane'), statusEl = $('.bz-status'), foot = $('.bz-foot'), folders = $('.bz-folders'), fsel = $('#bz-fsel');
 
   /* ---------- filtros ---------- */

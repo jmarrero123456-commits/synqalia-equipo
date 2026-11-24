@@ -229,8 +229,8 @@ body:has(.login) .sq-bar { display: none; }
 @media (min-width: 1100px) {
   #view-correo > .card { padding-bottom: 12px; }
   .mail-split.on { display: grid; grid-template-columns: var(--mail-list-w, 380px) 7px minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-    height: calc(100vh - var(--sq-bar, 54px) - 250px); min-height: 520px; }
-  .mail-split.on > .list.inbox { border: 0; border-radius: 0; overflow-y: auto; min-width: 0; }
+    height: calc(100vh - var(--sq-bar, 54px) - 230px); min-height: 520px; }
+  .mail-split.on > .list.inbox { border: 0; border-radius: 0; overflow-y: auto; min-width: 0; align-content: start; }
   /* separador arrastrable entre la lista y el correo (ancho guardado en este navegador) */
   .mail-split.on > .mail-resizer { display: block; cursor: col-resize; touch-action: none; position: relative; background: var(--line); background-clip: content-box; padding: 0 3px; }
   .mail-split.on > .mail-resizer::after { content: ''; position: absolute; top: 50%; left: 50%; width: 3px; height: 34px; transform: translate(-50%, -50%); border-radius: 3px; background: var(--muted); opacity: .35; transition: opacity .12s; }

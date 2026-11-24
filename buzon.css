@@ -265,3 +265,13 @@
 .bz-chips.bz-acw { position: relative; }
 
 .bz-ta { display: block; }
+
+/* PC ancho: filtros de Pendientes en la barra de arriba (24/11) */
+@media (min-width: 1100px) {
+  .bz-modebar.bz-wide { margin-bottom: 0; }
+  #view-correo .card:has(.bz-modebar.bz-wide) > .mail-bar { margin-top: 0; }
+  .bz-modebar.bz-wide > #mail-filter { margin: 0; }
+  .bz-modebar.bz-wide > #mail-updated { margin-left: auto; font-size: 12.5px; white-space: nowrap; }
+  #view-correo .card.bz-on .bz-modebar > #mail-filter, #view-correo .card.bz-on .bz-modebar > #mail-updated { display: none !important; }
+  #view-correo .card > .row-between { display: none; }
+}
