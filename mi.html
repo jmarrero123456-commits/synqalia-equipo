@@ -2319,6 +2319,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     rows.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
     let keys = [...groups.keys()];
     keys.sort(order ? (a, b) => order.indexOf(a) - order.indexOf(b) : (a, b) => (b === ME_GROUP) - (a === ME_GROUP) || (a === 'Sin persona') - (b === 'Sin persona') || groups.get(b).length - groups.get(a).length || a.localeCompare(b));
+    // Mientras se trabaja con la misma vista, los grupos no cambian de sitio (al aplazar o cerrar una tarea, el resto de esa persona se queda donde estaba)
+    { const sig = [state.taskF, state.taskW, state.taskPr, state.empF, state.taskP, state.taskG, q].join('|');
+      if (!order && state.grpSig === sig && Array.isArray(state.grpOrder)) { const prev = state.grpOrder.filter((k) => groups.has(k)); keys = prev.concat(keys.filter((k) => !prev.includes(k))); }
+      state.grpSig = sig; state.grpOrder = keys.slice(); }
     if (g !== '__none') keys.forEach((k) => {
       if (!g) { groups.get(k).forEach((t) => list.appendChild(taskItem(t))); return; }
       const head = el('div', 'group-head'); head.appendChild(el('span', null, k)); { const gn = groups.get(k).length; head.appendChild(el('span', 'count', gn === 1 ? '1 tarea' : gn + ' tareas')); }
