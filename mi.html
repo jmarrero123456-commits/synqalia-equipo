@@ -151,6 +151,10 @@
   .composer .change input { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 10px; width: 100%; }
   .rstate { font-size: 12px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--line); color: var(--muted); }
   .rstate.lista { border-color: var(--accent); color: var(--accent); }
+  .inline-compose { display: grid; gap: 6px; margin: 8px 0 4px; }
+  .inline-compose .ic-status { margin: 0; font-size: 13px; font-weight: 600; color: #0b6e63; }
+  .inline-compose .ic-status:empty { display: none; }
+  .inline-compose .ic-status.bad { color: var(--bad); }
   .cc-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .cc-row input { height: 36px; border: 1px solid #c9d2dc; border-radius: 6px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); min-width: 0; }
   .cc-row input:focus { outline: none; border-color: #0b0e13; box-shadow: 0 0 0 2px color-mix(in srgb, #5fe0cf 45%, transparent); }
@@ -1093,7 +1097,7 @@
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124b">
 <link rel="stylesheet" href="mensajes.css?v=20261124d">
-<link rel="stylesheet" href="buzon.css?v=20261124f">
+<link rel="stylesheet" href="buzon.css?v=20261124g">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -3314,13 +3318,40 @@
       rp.addEventListener('click', () => { if (open && !o.split) state.scrollToMid = m.id; state.openReply = open ? null : m.id; renderAll(); if (!open) { const t = document.getElementById('rp-' + m.id); if (t) t.focus(); } });
       if (!o.pane) act.appendChild(rp);
       if (!isMeeting(m)) act.appendChild(outlookBtn(m));
-      if (!isMeeting(m) && m.conv && typeof window.__sqOpenInBandeja === 'function') {
+      if (!isMeeting(m) && m.conv && typeof window.__sqInlineCompose === 'function') {
+        // Responder a todos / Reenviar se abren aquí mismo, debajo de los botones, sin cambiar de pantalla (24/11)
+        state.inlineC = state.inlineC || {};
+        let ic = state.inlineC[m.id];
+        const toggle = (t) => {
+          if (ic && ic.tipo === t) { ic.node.remove(); delete state.inlineC[m.id]; ic = null; paintIc(); return; }
+          if (ic) ic.node.remove();
+          const node = el('div', 'inline-compose');
+          const st2 = el('p', 'ic-status'); st2.setAttribute('aria-live', 'polite');
+          const slot = el('div', 'ic-slot');
+          node.appendChild(st2); node.appendChild(slot);
+          ic = state.inlineC[m.id] = {tipo: t, node};
+          act.after(node); paintIc();
+          const say = (txt, bad) => { st2.textContent = txt || ''; st2.classList.toggle('bad', !!bad); };
+          window.__sqInlineCompose(slot, m.conv, t, {
+            status: say,
+            onCancel: () => { if (state.inlineC[m.id] === ic) { ic.node.remove(); delete state.inlineC[m.id]; ic = null; paintIc(); } },
+            onDone: (enviado) => {
+              const mine = ic;
+              say(enviado ? (t === 'reenviar' ? 'Reenviado ✓' : 'Enviado ✓') : 'Guardado en Borradores de Outlook ✓');
+              setTimeout(() => { if (state.inlineC[m.id] === mine) { mine.node.remove(); delete state.inlineC[m.id]; ic = null; paintIc(); } }, 2200);
+            },
+          });
+        };
+        const icBtns = {};
         [['todos', 'Responder a todos'], ['reenviar', 'Reenviar']].forEach(([t, txt]) => {
           const bb = el('button', 'btn', txt); bb.type = 'button';
-          bb.title = t === 'reenviar' ? 'Abre el hilo en la Bandeja con el reenvío preparado' : 'Abre el hilo en la Bandeja: puedes quitar o añadir gente en Para y CC';
-          bb.addEventListener('click', () => window.__sqOpenInBandeja(m.conv, t));
-          act.appendChild(bb);
+          bb.addEventListener('click', () => toggle(t));
+          icBtns[t] = bb; act.appendChild(bb);
         });
+        const paintIc = () => Object.entries(icBtns).forEach(([t, bb]) => { const on = !!(ic && ic.tipo === t); bb.classList.toggle('primary', on); bb.setAttribute('aria-expanded', String(on)); });
+        // si la lista se vuelve a pintar (llega correo nuevo), el formulario sigue donde estaba, con lo escrito
+        if (ic) setTimeout(() => { if (state.inlineC[m.id] === ic && act.isConnected) act.after(ic.node); }, 0);
+        paintIc();
       }
       if (!isMeeting(m) && !handled(m) && !open) { const sg = el('button', 'btn', '✨ Sugerir respuesta'); sg.type = 'button'; sg.title = 'Abre el correo y te propongo una respuesta con IA'; sg.addEventListener('click', () => { state.openReply = m.id; state.autoDraft[m.id] = true; renderAll(); }); act.appendChild(sg); }
       if (!isMeeting(m)) {
@@ -4976,7 +5007,7 @@
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124f" defer></script>
+<script src="buzon.js?v=20261124g" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>

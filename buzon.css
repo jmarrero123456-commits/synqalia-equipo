@@ -263,3 +263,5 @@
 .bz-person button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
 .bz-f .bz-chips .bz-ac, .bz-f.bz-acw .bz-ac { left: 0; }
 .bz-chips.bz-acw { position: relative; }
+
+.bz-ta { display: block; }

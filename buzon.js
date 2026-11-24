@@ -332,7 +332,7 @@
       if (hadUnread) call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
     } catch (e) { if (n === openN) pane.innerHTML = `<div class="bz-empty err">${esc(e.message)}</div>`; }
   }
-  const lastIn = () => (st.hilo || []).find((x) => !x.mio) || (st.hilo || [])[0];
+  const lastIn = (h = st.hilo) => (h || []).find((x) => !x.mio) || (h || [])[0];
   const safeOutlook = (u) => { try { const x = new URL(u || ''); return x.protocol === 'https:' && /(^|\.)(office\.com|outlook\.com|cloud\.microsoft|office365\.com|live\.com)$/i.test(x.hostname) ? x.href : ''; } catch { return ''; } };
   function msgHtml(x, i) {
     const open = i === 0;
@@ -548,6 +548,18 @@
     input.addEventListener('blur', () => setTimeout(close, 150));
   }
   window.__sqPeopleAC = peopleAC;
+  // Pendientes: Responder a todos / Reenviar en la misma pantalla, debajo del correo (24/11)
+  window.__sqInlineCompose = async (slot, conv, tipo, opt = {}) => {
+    const status = opt.status || (() => {});
+    slot.innerHTML = '<p class="bz-loading">Preparando…</p>';
+    try {
+      if (!st.outlook) { try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; } catch {} }
+      const r = await call('hilo', { conv, marcar: false });
+      if (!r.mensajes?.length) throw new Error('No encuentro este correo en tu buzón.');
+      slot.innerHTML = '';
+      openCompose({ tipo, ext: { slot, hilo: r.mensajes, status, onDone: opt.onDone, onCancel: opt.onCancel } });
+    } catch (e) { slot.innerHTML = ''; status('No se pudo preparar: ' + e.message, true); opt.onCancel?.(); }
+  };
   // Desde Pendientes: abrir ese hilo en la Bandeja con Responder a todos o Reenviar ya preparado
   window.__sqOpenInBandeja = async (conv, tipo) => {
     if (!conv) return;
@@ -559,7 +571,7 @@
 
   /* ---------- Para / CC en fichas: ✕ para quitar a alguien, escribir para añadir ---------- */
   const isMail = (x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(x || '').trim());
-  function chipField(box, initial) {
+  function chipField(box, initial, say = msgStatus) {
     const input = box.querySelector('input'), hidden = box.parentElement.querySelector('input[type="hidden"]');
     let list = [];
     const seen = (a) => list.some((p) => p.mail.toLowerCase() === a.toLowerCase());
@@ -579,7 +591,7 @@
     const commit = () => {
       const parts = input.value.split(/[;,\s]+/).filter(Boolean);
       const bad = parts.find((x) => !isMail(x));
-      if (bad) { msgStatus(`«${bad}» no es una dirección de correo: elige una sugerencia o escríbela completa.`, true); input.focus(); return false; }
+      if (bad) { say(`«${bad}» no es una dirección de correo: elige una sugerencia o escríbela completa.`, true); input.focus(); return false; }
       parts.forEach((a) => add({ mail: a })); input.value = ''; return true;
     };
     input.dataset.chips = '1';
@@ -602,11 +614,15 @@
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
   function openCompose(o) {
     // se responde al último mensaje que te llegó (si el último es tuyo, al anterior); se reenvía el último del hilo
-    const m = o.tipo === 'nuevo' ? null : o.tipo === 'reenviar' ? st.hilo?.[0] : lastIn();
+    const ext = o.ext || null; // redactar dentro de otra pantalla (Pendientes), sin moverse de ella
+    const hilo = ext ? ext.hilo : st.hilo;
+    const say = ext ? ext.status : msgStatus;
+    o.say = say;
+    const m = o.tipo === 'nuevo' ? null : o.tipo === 'reenviar' ? hilo?.[0] : lastIn(hilo);
     if (o.tipo !== 'nuevo' && !m) return;
     o.target = m?.id;
-    st.compose = o;
-    let slot = pane.querySelector('.bz-compose-slot');
+    if (!ext) st.compose = o;
+    let slot = ext ? ext.slot : pane.querySelector('.bz-compose-slot');
     if (o.tipo === 'nuevo') {
       if (st.sel) closeMsg(true);
       st.compose = o; paintList(); reading(true);
@@ -629,8 +645,8 @@
       <div class="bz-f"><span>Para</span><div class="bz-chips" data-chips="para"><input type="text" inputmode="email" aria-label="Para" placeholder="Escribe un nombre o correo"></div><input type="hidden" name="para"></div>
       <div class="bz-f"><span>CC</span><div class="bz-chips" data-chips="cc"><input type="text" inputmode="email" aria-label="CC" placeholder="Añadir en copia"></div><input type="hidden" name="cc"></div>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
-      <label class="bz-sr" for="bz-txt">Texto del correo</label>
-      <textarea id="bz-txt" name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea>
+      <label class="bz-ta"><span class="bz-sr">Texto del correo</span>
+      <textarea name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea></label>
       <div class="bz-drop" data-drop>
         <input type="file" multiple hidden data-files>
         <button type="button" class="bz-btn" data-pick>${svg('clip', 15)}<span>Adjuntar</span></button>
@@ -646,7 +662,7 @@
     </form>`;
     const f = slot.querySelector('form');
     o.files = o.files || [];
-    const chipFields = [...f.querySelectorAll('[data-chips]')].map((box) => chipField(box, ini[box.dataset.chips] || []));
+    const chipFields = [...f.querySelectorAll('[data-chips]')].map((box) => chipField(box, ini[box.dataset.chips] || [], say));
     o.commitChips = () => chipFields.every((c) => c.commit());
     const drop = f.querySelector('[data-drop]'), fin = f.querySelector('[data-files]'), flist = f.querySelector('.bz-files');
     const total = () => o.files.reduce((a, x) => a + x.size, 0);
@@ -657,7 +673,7 @@
     const addFiles = (list) => {
       for (const x of list) {
         if (!x || !x.size) continue;
-        if (total() + x.size > 25 * 1024 * 1024) { msgStatus(`«${x.name}» no cabe: el correo pasaría de 25 MB.`, true); continue; }
+        if (total() + x.size > 25 * 1024 * 1024) { say(`«${x.name}» no cabe: el correo pasaría de 25 MB.`, true); continue; }
         const name = x.name && x.name !== 'image.png' ? x.name : `imagen-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${(x.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`;
         o.files.push(new File([x], name, { type: x.type || 'application/octet-stream' }));
       }
@@ -673,7 +689,8 @@
     paintFiles();
     f.addEventListener('submit', (e) => { e.preventDefault(); send(f, o, true); });
     f.querySelector('[data-draft]').addEventListener('click', () => send(f, o, false));
-    pane.querySelectorAll('[data-cl]').forEach((x) => x.addEventListener('click', () => {
+    (ext ? slot : pane).querySelectorAll('[data-cl]').forEach((x) => x.addEventListener('click', () => {
+      if (ext) { slot.innerHTML = ''; ext.onCancel?.(); return; }
       st.compose = null;
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       slot.innerHTML = '';
@@ -681,44 +698,46 @@
     if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? '[data-chips="para"] input' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
   }
   async function send(f, o, enviar) {
+    const say = o.say || msgStatus;
     if (o.commitChips && !o.commitChips()) return;
     const fd = new FormData(f);
-    if (o.tipo === 'nuevo' && !fd.get('cuenta')) { msgStatus('Elige desde qué cuenta lo envías («De»).', true); f.querySelector('select[name="cuenta"]')?.focus(); return; }
+    if (o.tipo === 'nuevo' && !fd.get('cuenta')) { say('Elige desde qué cuenta lo envías («De»).', true); f.querySelector('select[name="cuenta"]')?.focus(); return; }
     const body = { cuenta: fd.get('cuenta') || 'outlook', destinatarios: o.tipo === 'responder' || o.tipo === 'todos', tipo: o.tipo, id: o.target, texto: String(fd.get('texto') || ''), para: fd.get('para') || '', cc: fd.get('cc') || '', asunto: fd.get('asunto') || '', enviar };
-    if (enviar && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { msgStatus('Falta al menos un destinatario en «Para».', true); f.querySelector('[data-chips="para"] input')?.focus(); return; }
+    if (enviar && !/[^@\s]+@[^@\s]+\.[^@\s]+/.test(body.para)) { say('Falta al menos un destinatario en «Para».', true); f.querySelector('[data-chips="para"] input')?.focus(); return; }
     const badCc = String(body.cc || '').split(/[;,\s]+/).filter(Boolean).find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
-    if (badCc) { msgStatus(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('[data-chips="cc"] input')?.focus(); return; }
-    if (enviar && o.tipo !== 'reenviar' && !body.texto.trim()) { msgStatus('El correo está vacío.', true); f.querySelector('textarea')?.focus(); return; }
+    if (badCc) { say(`Revisa la copia (CC): «${badCc}» no es una dirección de correo.`, true); f.querySelector('[data-chips="cc"] input')?.focus(); return; }
+    if (enviar && o.tipo !== 'reenviar' && !body.texto.trim()) { say('El correo está vacío.', true); f.querySelector('textarea')?.focus(); return; }
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
-    msgStatus(enviar ? 'Enviando…' : 'Guardando en Borradores…');
+    say(enviar ? 'Enviando…' : 'Guardando en Borradores…');
     try {
       if (o.files?.length) {
         // 1) borrador preparado, 2) se suben los adjuntos, 3) se envía (o se queda en Borradores)
         const { draft } = await call('redactar', { ...body, preparar: true });
         for (let i = 0; i < o.files.length; i++) {
           const x = o.files[i];
-          msgStatus(`Subiendo adjuntos ${i + 1} de ${o.files.length}: ${x.name}…`);
+          say(`Subiendo adjuntos ${i + 1} de ${o.files.length}: ${x.name}…`);
           if (x.size <= 3 * 1024 * 1024) await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size, b64: await b64Of(x) });
           else {
             const { url } = await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size });
             const CH = 9 * 327680;
             for (let s0 = 0; s0 < x.size; s0 += CH) {
-              msgStatus(`Subiendo ${x.name}: ${Math.round((s0 / x.size) * 100)} %…`);
+              say(`Subiendo ${x.name}: ${Math.round((s0 / x.size) * 100)} %…`);
               await call('trozo', { url, start: s0, total: x.size, b64: await b64Of(x.slice(s0, s0 + CH)) });
             }
           }
         }
-        if (enviar) { msgStatus('Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo }); }
+        if (enviar) { say('Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo }); }
       } else await call('redactar', body);
       if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);
-      st.compose = null;
       toast(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook');
+      if (o.ext) { o.ext.slot.innerHTML = ''; o.ext.onDone?.(enviar); return; }
+      st.compose = null;
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       f.parentElement.innerHTML = '';
-      msgStatus(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook.');
+      say(enviar ? 'Enviado ✓' : 'Guardado en Borradores de Outlook.');
       if (enviar) { loadSmart().catch(() => null); const c = st.sel; if (c) setTimeout(() => { if (st.sel === c && !st.compose) openThread(c); }, 2500); }
     } catch (err) {
-      msgStatus('No se pudo ' + (enviar ? 'enviar' : 'guardar') + ': ' + err.message, true);
+      say('No se pudo ' + (enviar ? 'enviar' : 'guardar') + ': ' + err.message, true);
       f.querySelectorAll('button').forEach((x) => { x.disabled = false; });
     }
   }
