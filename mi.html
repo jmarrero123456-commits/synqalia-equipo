@@ -739,6 +739,18 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cu-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cu-state { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
   .cu-dot2 { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--line); }
+  /* reuniones abiertas (sin «Terminar reunión»): punto rojo en el menú y arriba de la lista */
+  .odot { display: inline-block; flex: none; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.22); vertical-align: middle; }
+  .odot[hidden] { display: none !important; }
+  body.sq-mini .sq-side .tabs .odot { position: absolute; top: 5px; right: 9px; margin: 0; box-shadow: 0 0 0 2px #0d1015; }
+  .cu-sec.open { color: #c62a2f; }
+  .cu-sec.open .cu-sec-n { background: #fde8e8; color: #c62a2f; }
+  .cu-row.has-open .cu-name { color: #c62a2f; }
+  .cu-row.has-open .cu-state { color: #c62a2f; font-weight: 600; }
+  .cu-dot2.open { background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.2); }
+  .cu-row.cu-open-row { background: color-mix(in srgb, #e5484d 6%, var(--panel)); margin-bottom: 2px; }
+  .cu-row.cu-open-row:hover { background: color-mix(in srgb, #e5484d 11%, var(--panel)); }
+  .cu-go { font-size: 11.5px; font-weight: 700; color: #c62a2f; white-space: nowrap; }
   .cu-dot2.ok { background: var(--ok); } .cu-dot2.due { background: #d89614; } .cu-dot2.none { background: #b8c0cc; }
   .cu-n { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
   .cu-addbox { margin: 8px 8px 0; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -771,6 +783,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     .tabs button[aria-selected="true"] .ti { color: var(--gold-2); }
     .tabs .ti { display: block; line-height: 0; }
     .tabs .tlab { font-size: 10.5px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; line-height: 1.1; }
+    .tabs .odot { position: absolute; top: 4px; left: calc(50% + 9px); margin: 0; box-shadow: 0 0 0 2px #0d1015; }
     .tabs .count { position: absolute; top: 1px; left: calc(50% + 5px); min-width: 16px; height: 16px; padding: 0 4px; font-size: 9.5px; font-weight: 800; line-height: 16px; border-radius: 999px; background: #e5484d; color: #fff; box-shadow: 0 0 0 2px #0d1015; text-align: center; box-sizing: border-box; }
     .app { padding-bottom: 104px; }
   }
@@ -1239,11 +1252,11 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     <button role="tab" id="tab-mensajes" data-view="mensajes" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/></svg></span><span class="tlab">Mensajes</span><span class="count" id="count-mensajes"></span></button>
     <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Agenda</span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
-    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Reuniones</span><span class="count" id="count-catchups"></span></button>
+    <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Reuniones</span><span class="odot" id="dot-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
     <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
     <button role="tab" id="tab-lista" data-view="lista" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2.2l2.2 11h10.4l2-8H6.3"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg></span><span class="tlab">Listas</span></button>
     <button role="tab" id="tab-asistente" data-view="asistente" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><span class="tlab">Asistente</span></button>
-    <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="count" id="count-mas"></span></button>
+    <button type="button" id="tab-mas" class="tab-mas" aria-haspopup="true" aria-expanded="false" aria-controls="sq-more"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg></span><span class="tlab">Más</span><span class="odot" id="dot-mas" hidden></span><span class="count" id="count-mas"></span></button>
     </nav>
     <button type="button" class="ms-side ms-trigger" id="ms-side" title="Conectar tu correo, agenda y Teams"><span class="dot"></span><span class="ms-lab">Conectar Microsoft 365</span></button>
     <div class="sq-me" id="sq-me"></div>
@@ -1251,7 +1264,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   <div class="sq-more" id="sq-more" hidden>
     <div class="sq-more-panel" role="menu" aria-label="Más secciones">
       <button type="button" role="menuitem" data-go="reuniones">Agenda <span class="count" id="more-c-reuniones"></span></button>
-      <button type="button" role="menuitem" data-go="catchups">Reuniones</button>
+      <button type="button" role="menuitem" data-go="catchups">Reuniones <span class="odot" id="more-dot-catchups" hidden></span></button>
       <button type="button" role="menuitem" data-go="notas">Notas</button>
       <button type="button" role="menuitem" data-go="lista">Listas</button>
       <button type="button" role="menuitem" data-go="asistente">Asistente</button>
@@ -4468,31 +4481,46 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     return null;
   }
   const cuDue = (p) => { const last = cusOfP(p)[0]; return !last || daysSince(last.fecha) >= 7; };
+  // Reuniones abiertas: empezadas y sin «Terminar reunión» (las notas de reuniones de la agenda van aparte)
+  const cuTeamOf = (c) => state.team.find((p) => (c.equipoId ? p.id === c.equipoId : (!isGroup(p) && sameName(c.persona, p.nombre))));
+  const openCus = () => state.catchups.filter((c) => c.tipo !== 'reunion' && !c.cerrado && cuTeamOf(c)).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || String(b.creado).localeCompare(String(a.creado)));
+  const openOfP = (p) => cusOfP(p).filter((c) => c.tipo !== 'reunion' && !c.cerrado);
+  function paintOpenDot() {
+    const n = openCus().length; const tip = n ? n + (n === 1 ? ' reunión abierta sin terminar' : ' reuniones abiertas sin terminar') : '';
+    ['dot-catchups', 'dot-mas', 'more-dot-catchups'].forEach((k) => { const d = document.getElementById(k); if (d) { d.hidden = !n; d.title = tip; } });
+    const c = document.getElementById('count-catchups'); if (c) c.textContent = '';
+  }
+  const openCuEditor = (p, c) => {
+    state.cuSel = p.id; state.cuOpen = c.id; state.cuDraft[c.id] = {persona: c.persona, equipoId: p.id, fecha: c.fecha, notas: c.notas || ''};
+    renderCatchups();
+    setTimeout(() => { const t = document.getElementById('cu-notes'); if (t) t.scrollIntoView({block: 'center', behavior: 'smooth'}); }, 40);
+  };
 
   function renderCatchups() {
     const box = $('#cu-people'); if (!box) return;
+    paintOpenDot();
     const ed = document.getElementById('cu-editor');
     if (ed && ed.contains(document.activeElement) && /TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)) { state.cuPending = true; return; }
     state.cuPending = false;
     const team = state.team.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
     const due = team.filter(cuDue).length;
-    $('#count-catchups').textContent = due ? String(due) : '';
-    $('#cu-sub').textContent = team.length ? (due ? due + ' sin catch-up esta semana' : 'Todos al día') : '';
+    const opens = openCus(); const openIds = new Set(opens.map((c) => cuTeamOf(c).id));
+    $('#cu-sub').textContent = team.length ? [opens.length ? opens.length + ' sin terminar' : '', due ? due + ' sin catch-up esta semana' : opens.length ? '' : 'Todos al día'].filter(Boolean).join(' · ') : '';
     box.replaceChildren();
     if (!team.length) box.appendChild(el('div', 'empty', 'Añade a las personas o grupos con los que haces catch-up.'));
     if (state.cuSel && !team.some((p) => p.id === state.cuSel)) state.cuSel = null;
-    if (!state.cuSel && team.length) state.cuSel = (team.find(cuDue) || team[0]).id;
+    if (!state.cuSel && team.length) state.cuSel = (opens.length ? cuTeamOf(opens[0]) : team.find(cuDue) || team[0]).id;
     const initials = (p) => String(p.nombre).split(/\s+/).filter((w) => w.length > 2 || /^[A-ZÁÉÍÓÚ]/.test(w)).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
     const row = (p) => {
-      const last = cusOfP(p)[0]; const nt = tasksOfP(p).length; const nx = nextMeetingFor(p); const due = cuDue(p);
-      const c = el('button', 'cu-row' + (state.cuSel === p.id ? ' on' : '')); c.type = 'button'; c.title = p.nombre; c.setAttribute('aria-pressed', String(state.cuSel === p.id));
+      const last = cusOfP(p)[0]; const nt = tasksOfP(p).length; const nx = nextMeetingFor(p); const due = cuDue(p); const op = openOfP(p)[0];
+      const c = el('button', 'cu-row' + (state.cuSel === p.id ? ' on' : '') + (op ? ' has-open' : '')); c.type = 'button'; c.title = p.nombre; c.setAttribute('aria-pressed', String(state.cuSel === p.id));
       c.appendChild(el('span', 'cu-av' + (isGroup(p) ? ' grp' : ''), initials(p)));
       const main = el('span', 'cu-main');
       main.appendChild(el('span', 'cu-name', p.nombre));
       main.appendChild(el('span', 'cu-sub', isGroup(p) ? membersOf(p).join(', ') || 'Sin participantes' : (p.rol || 'Catch-up individual')));
       const st = el('span', 'cu-state');
-      st.appendChild(el('span', 'cu-dot2 ' + (!last ? 'none' : due ? 'due' : 'ok')));
-      st.appendChild(document.createTextNode(nx ? (nx.fecha === todayISO ? 'Hoy' : dueLabel(nx.fecha)) + (nx.inicio ? ' · ' + nx.inicio : '') : last ? relDay(last.fecha).replace(/^./, (x) => x.toUpperCase()) : 'Sin catch-ups'));
+      st.appendChild(el('span', 'cu-dot2 ' + (op ? 'open' : !last ? 'none' : due ? 'due' : 'ok')));
+      st.appendChild(document.createTextNode(op ? 'Abierta · ' + relDay(op.fecha) : nx ? (nx.fecha === todayISO ? 'Hoy' : dueLabel(nx.fecha)) + (nx.inicio ? ' · ' + nx.inicio : '') : last ? relDay(last.fecha).replace(/^./, (x) => x.toUpperCase()) : 'Sin catch-ups'));
       main.appendChild(st);
       c.appendChild(main);
       if (nt) { const n = el('span', 'cu-n', String(nt)); n.title = nt + (nt === 1 ? ' tarea abierta' : ' tareas abiertas'); c.appendChild(n); }
@@ -4504,7 +4532,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const lim = iso(new Date(Date.now() - 90 * 86400000));
     const freq = (p) => cusOfP(p).filter((c) => String(c.fecha) >= lim).length;
     const lastF = (p) => String((cusOfP(p)[0] || {}).fecha || '');
-    const byUse = (a, b) => freq(b) - freq(a) || lastF(b).localeCompare(lastF(a)) || String(a.nombre).localeCompare(String(b.nombre), 'es');
+    const byUse = (a, b) => (openIds.has(b.id) - openIds.has(a.id)) || freq(b) - freq(a) || lastF(b).localeCompare(lastF(a)) || String(a.nombre).localeCompare(String(b.nombre), 'es');
     state.cuQ = state.cuQ || {}; state.cuAll = state.cuAll || {};
     const section = (key, title, arr, ph) => {
       if (!arr.length) return;
@@ -4521,13 +4549,26 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       let show;
       if (q) show = sorted.filter((p) => normTxt(p.nombre + ' ' + (p.rol || '') + ' ' + membersOf(p).join(' ')).includes(q));
       else if (state.cuAll[key] || arr.length <= 4 || document.getElementById('view-catchups').classList.contains('cu-mini')) show = sorted;
-      else { show = sorted.slice(0, 3); const cur = sorted.find((p) => p.id === state.cuSel); if (cur && !show.includes(cur)) show.push(cur); }
+      else { show = sorted.slice(0, 3); sorted.filter((p) => openIds.has(p.id) && !show.includes(p)).forEach((p) => show.push(p)); const cur = sorted.find((p) => p.id === state.cuSel); if (cur && !show.includes(cur)) show.push(cur); }
       const lw = el('div', 'cu-list-' + key);
       show.forEach((p) => lw.appendChild(row(p)));
       if (q && !show.length) lw.appendChild(el('div', 'cu-none', 'Nadie coincide con «' + state.cuQ[key] + '»'));
       box.appendChild(lw);
       if (!q && arr.length > 4) { const mb = el('button', 'cu-more', state.cuAll[key] ? 'Ver solo los más habituales' : 'Ver ' + (key === 'g' ? 'todos los grupos' : 'todas las personas') + ' (' + arr.length + ')'); mb.type = 'button'; mb.addEventListener('click', () => { state.cuAll[key] = !state.cuAll[key]; renderCatchups(); }); box.appendChild(mb); }
     };
+    // Abiertas: reuniones empezadas sin «Terminar reunión», arriba del todo
+    if (opens.length) {
+      const sec = el('div', 'cu-sec open'); sec.appendChild(el('span', null, 'Abiertas')); sec.appendChild(el('span', 'cu-sec-n', String(opens.length))); box.appendChild(sec);
+      opens.forEach((c) => {
+        const p = cuTeamOf(c); const r = el('button', 'cu-row cu-open-row' + (state.cuOpen === c.id ? ' on' : '')); r.type = 'button'; r.title = 'Seguir anotando o terminar la reunión con ' + p.nombre;
+        r.appendChild(el('span', 'cu-av' + (isGroup(p) ? ' grp' : ''), initials(p)));
+        const m = el('span', 'cu-main'); m.appendChild(el('span', 'cu-name', p.nombre));
+        const st = el('span', 'cu-state'); st.appendChild(el('span', 'cu-dot2 open')); st.appendChild(document.createTextNode('Sin terminar · ' + relDay(c.fecha))); m.appendChild(st); r.appendChild(m);
+        r.appendChild(el('span', 'cu-go', state.cuOpen === c.id ? 'Abierta' : 'Seguir ›'));
+        r.addEventListener('click', () => { openCuEditor(p, c); if (window.innerWidth < 900) setTimeout(() => $('#cu-detail').scrollIntoView({behavior: 'smooth', block: 'start'}), 60); });
+        box.appendChild(r);
+      });
+    }
     section('p', 'Personas', people, 'Buscar persona…');
     section('g', 'Grupos', groups, 'Buscar grupo…');
     // sugerencias
@@ -4593,7 +4634,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     kpi('Registrados', String(hist.length));
     const acts = el('div', 'btns cu-acts');
     const prepB = el('button', 'btn', '✨ Preparar el próximo'); prepB.type = 'button';
-    const newB = el('button', 'btn primary', state.cuOpen ? 'Catch-up abierto abajo' : '+ Empezar catch-up'); newB.type = 'button'; newB.disabled = !!state.cuOpen;
+    const newB = el('button', 'btn primary', state.cuOpen ? 'Reunión abierta abajo' : '+ Empezar reunión'); newB.type = 'button'; newB.disabled = !!state.cuOpen;
     acts.appendChild(prepB); acts.appendChild(newB); top.appendChild(acts); head.appendChild(top); head.appendChild(kpis);
     if (isGroup(p)) {
       const gd = document.createElement('details'); gd.className = 'cu-gedit'; gd.appendChild(el('summary', null, 'Editar grupo y participantes'));
@@ -4972,7 +5013,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const bar = el('div', 'bar'); const st = el('span', 'status', cu && cu.resumen ? 'Ya tiene resumen; puedes rehacerlo si añades notas.' : (isMt ? 'Se guarda solo. Puedes cerrar y volver a abrir la reunión cuando quieras.' : '')); bar.appendChild(st);
     const btns = el('div', 'btns');
     const ai = el('button', 'btn', '✨ Resumir: temas y próximos pasos'); ai.type = 'button';
-    const close = el('button', 'btn primary', isMt ? 'Terminar reunión' : cu && cu.cerrado ? 'Guardar y cerrar' : 'Terminar catch-up'); close.type = 'button';
+    const close = el('button', 'btn primary', 'Terminar reunión'); close.type = 'button';
     const cancel = el('button', 'btn ghost', cu ? 'Cerrar' : 'Descartar'); cancel.type = 'button';
     const em = el('button', 'btn', '✉️ Resumen por correo'); em.type = 'button'; em.title = 'Prepara un correo con lo hablado para copiarlo o abrirlo en Outlook'; em.hidden = true;
     em.addEventListener('click', async () => {
@@ -4989,7 +5030,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       close.disabled = true;
       const ok = await saveCu(id, {persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas, cerrado: true});
       if (!ok) { close.disabled = false; return; }
-      setSync(isMt ? 'Reunión guardada' : 'Catch-up guardado en el historial');
+      setSync(isMt ? 'Reunión guardada' : 'Reunión terminada y guardada en el historial');
       if (opts.kind === 'reunion') { done(); return; }
       // catch-up terminado: se cierra todo (también la sala de reunión) y se muestra el historial, del más nuevo al más antiguo
       clearTimeout(tmr); delete state.cuDraft[id]; state.cuOpen = null;
