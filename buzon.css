@@ -2,7 +2,10 @@
 .bz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Bandeja ↔ Pendientes */
-.bz-modes { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; background: var(--panel); margin-left: 12px; margin-right: auto; }
+.bz-modebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.bz-modebar .bz-acc { margin-left: auto; }
+#view-correo .card:not(.bz-on) .bz-modebar .bz-acc { display: none; }
+.bz-modes { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; background: var(--panel); }
 .bz-modes button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .bz-modes button[aria-selected="true"] { background: #0b0e13; color: #fff; font-weight: 750; }
 .bz-modes .bz-cnt:empty { display: none; }
@@ -15,7 +18,9 @@
 #view-correo .card.bz-on > #ready-hint { display: none !important; }
 
 /* barra de filtros */
-.bz { display: grid; gap: 10px; margin-top: 6px; }
+.bz { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 6px; min-width: 0; }
+.bz-top, .bz-row, .bz-body, .bz-col, .bz-list, .bz-item, .bz-rowbtn { min-width: 0; }
+.bz-rowbtn .r1, .bz-rowbtn .r2, .bz-rowbtn .r3 { max-width: 100%; }
 .bz-top { display: grid; gap: 8px; }
 .bz-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bz-more { display: contents; }
@@ -38,7 +43,7 @@
 .bz-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 13.5px; color: var(--ink); }
 .bz-search:focus-within { border-color: #0b0e13; box-shadow: 0 0 0 2px color-mix(in srgb, #5fe0cf 45%, transparent); }
 .bz-new { height: 34px; padding: 0 14px; border: 0; border-radius: 6px; background: #5fe0cf; color: #0b0e13; font: inherit; font-size: 13.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.bz-fsel select { height: 34px; border: 1px solid #0b0e13; border-radius: 6px; background: #0b0e13; color: #fff; font: inherit; font-size: 13px; font-weight: 700; padding: 0 8px; max-width: 100%; }
+.bz-fsel select { width: 100%; min-width: 0; text-overflow: ellipsis; height: 34px; border: 1px solid #0b0e13; border-radius: 6px; background: #0b0e13; color: #fff; font: inherit; font-size: 13px; font-weight: 700; padding: 0 8px; max-width: 100%; }
 .bz-only-s, .bz-fsel { display: none; }
 
 /* tres columnas */
@@ -132,7 +137,7 @@
 
 /* Z Fold abierto (opción A): carpetas · lista · correo, más estrecho */
 @media (max-width: 1099px) {
-  .bz-body { grid-template-columns: 128px minmax(240px, 290px) minmax(0, 1fr); height: calc(100dvh - var(--sq-bar, 54px) - 250px); }
+  .bz-body { grid-template-columns: 120px minmax(220px, 280px) minmax(0, 1fr); height: calc(100dvh - var(--sq-bar, 54px) - 250px); }
   .bz-folders button { padding: 7px 8px; font-size: 13px; }
   .bz-pane { padding: 12px 14px 20px; }
   .bz-phead h3 { font-size: 16.5px; }
@@ -143,17 +148,19 @@
 @media (max-width: 860px) { .bz-body { height: calc(100dvh - var(--sq-bar, 52px) - 320px); } }
 
 /* Z Fold cerrado: lista a todo el ancho y el correo a pantalla completa */
-@media (max-width: 759px) {
-  .bz-modes { margin-left: 0; }
+@media (max-width: 599px) {
+  .bz-modebar { gap: 6px; flex-wrap: nowrap; }
+  .bz-modes { flex: 1 1 0; min-width: 0; padding: 2px; }
+  .bz-modes button { flex: 1; padding: 6px 4px; font-size: 13px; white-space: nowrap; }
+  .bz-modebar .bz-acc { margin-left: 0; flex: 1.15 1 0; min-width: 0; display: flex; }
+  .bz-modebar .bz-acc button { flex: 1; padding: 0 4px; font-size: 12.5px; height: 36px; }
   .bz-modes button { padding: 6px 12px; }
-  .bz-acc { display: flex; }
-  .bz-acc button { flex: 1; }
   .bz-only-s, .bz-fsel { display: inline-flex; }
   .bz-only-l { display: none; }
   .bz-row { gap: 6px; }
-  .bz-fsel { flex: 1.3; min-width: 0; }
+  .bz-fsel { flex: 1.2 1 0; min-width: 0; }
   .bz-fsel select { width: 100%; }
-  .bz-row > .bz-chip.bz-only-s { flex: 1; min-width: 0; padding: 0 6px; }
+  .bz-row > .bz-chip.bz-only-s { flex: 1 1 0; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; }
   .bz-fsel select { padding: 0 4px; }
   .bz-more { display: none; }
   .bz.bz-fopen .bz-more { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; order: 5; }
@@ -201,8 +208,21 @@
 .bz-m .bz-text { border-top: 0; padding-top: 0; }
 .bz-qt { justify-self: start; padding: 0; }
 .bz-quoted { color: var(--muted); font-size: 13.5px; border-left: 3px solid var(--line); padding-left: 10px; }
-@media (max-width: 759px) {
+@media (max-width: 599px) {
   .bz-close { display: none; }
   .bz-m { border-radius: 6px; }
   .bz-mh .who small { display: none; }
+}
+
+/* Z Fold abierto (600–899 px): correo más compacto en la columna de la derecha */
+@media (min-width: 600px) and (max-width: 899px) {
+  .bz-body { grid-template-columns: 112px minmax(210px, 260px) minmax(0, 1fr); }
+  .bz-tools { flex-wrap: nowrap; }
+  .bz-tools .bz-ibtn { width: 30px; }
+  .bz-reply { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .bz-reply .bz-btn { padding: 0 4px; font-size: 12.5px; }
+  .bz-reply .bz-btn:nth-child(2) span { font-size: 0; }
+  .bz-reply .bz-btn:nth-child(2) span::after { content: "A todos"; font-size: 12.5px; }
+  .bz-mh .who small { display: none; }
+  .bz-phead h3 { font-size: 15.5px; }
 }

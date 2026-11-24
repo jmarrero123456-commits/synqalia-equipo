@@ -60,7 +60,7 @@
   const largo = (iso) => { if (!iso) return ''; const d = new Date(iso); return `${DOW[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()} · ${hhmm(d)}`; };
   const nombres = (l) => (l || []).map((p) => p.nombre || p.mail).filter(Boolean).join(', ');
   const mails = (l) => (l || []).map((p) => p.mail).filter(Boolean).join('; ');
-  const mqNarrow = window.matchMedia('(max-width: 759px)');
+  const mqNarrow = window.matchMedia('(max-width: 599px)');
 
   async function call(op, extra = {}) {
     const { data, error } = await sb.functions.invoke('buzon', { body: { op, ...extra } });
@@ -89,7 +89,11 @@
   const modes = document.createElement('div');
   modes.className = 'bz-modes'; modes.setAttribute('role', 'tablist'); modes.setAttribute('aria-label', 'Vista del correo');
   modes.innerHTML = `<button type="button" role="tab" data-m="bandeja">Bandeja</button><button type="button" role="tab" data-m="pend">Pendientes <span class="bz-cnt" id="bz-cnt-pend"></span></button>`;
-  head.querySelector('h2').after(modes);
+  // barra propia arriba de la tarjeta (en el móvil la cabecera del Correo está oculta)
+  const modebar = document.createElement('div');
+  modebar.className = 'bz-modebar';
+  modebar.appendChild(modes);
+  card.insertBefore(modebar, card.firstChild);
   const root = document.createElement('div');
   root.className = 'bz';
   card.appendChild(root);
@@ -146,13 +150,14 @@
     <article class="bz-pane" aria-live="polite"></article>
   </div>`;
   const $ = (s) => root.querySelector(s);
+  modebar.appendChild(root.querySelector('.bz-acc'));
   const list = $('.bz-list'), pane = $('.bz-pane'), statusEl = $('.bz-status'), foot = $('.bz-foot'), folders = $('.bz-folders'), fsel = $('#bz-fsel');
 
   /* ---------- filtros ---------- */
-  root.querySelector('.bz-acc').addEventListener('click', (e) => {
+  modebar.querySelector('.bz-acc').addEventListener('click', (e) => {
     const b = e.target.closest('[data-acc]'); if (!b) return;
     st.cuenta = b.dataset.acc;
-    root.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    modebar.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
     reload();
   });
   root.querySelector('.bz-ver').addEventListener('click', (e) => { const b = e.target.closest('[data-ver]'); if (b) { st.ver = b.dataset.ver; paintFilters(); reload(); } });
