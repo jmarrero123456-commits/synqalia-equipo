@@ -1093,7 +1093,7 @@
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124b">
 <link rel="stylesheet" href="mensajes.css?v=20261124d">
-<link rel="stylesheet" href="buzon.css?v=20261124d">
+<link rel="stylesheet" href="buzon.css?v=20261124e">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
@@ -3040,6 +3040,7 @@
       ccIn.addEventListener('input', () => { (state.ccs = state.ccs || {})[m.id] = ccIn.value; });
       ccIn.addEventListener('focus', fillCcList);
       ccRow.appendChild(ccIn);
+      if (typeof window.__sqPeopleAC === 'function') window.__sqPeopleAC(ccIn);
       const ccOk = () => {
         const v = ccIn.value.trim();
         if (!v) return '';
@@ -4967,7 +4968,7 @@
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="mensajes.js?v=20261124d" defer></script>
 <script src="correo.js?v=20261118a" defer></script>
-<script src="buzon.js?v=20261124d" defer></script>
+<script src="buzon.js?v=20261124e" defer></script>
 <script src="asistente.js?v=20261119a" defer></script>
 </body>
 </html>
