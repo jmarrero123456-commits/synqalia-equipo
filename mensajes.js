@@ -158,7 +158,7 @@
   /* ---------- pintar ---------- */
   function paint() {
     paintCounts();
-    if (st.nivel === 'hub') return paintHub();
+    if (st.nivel === 'hub') { paintHub(); fitSplit(); return; }
     paintCanal();
   }
 
@@ -236,7 +236,18 @@
       <div class="sqm-pane">${st.open ? '' : `<div class="sqm-pick">${chIcon(k, 'lg')}<b>Elige una conversación</b><span>Se abre aquí; la lista sigue a la izquierda.</span></div>`}</div>
     </div>`;
     if (st.open) paintConv();
+    fitSplit();
   }
+  // PC: la lista y la conversación ocupan justo el alto que queda de pantalla (la página no se desplaza y el nombre queda siempre a la vista)
+  function fitSplit() {
+    const el = root.querySelector('.sqm-canal.split');
+    if (!el) { document.documentElement.classList.remove('sqm-fit'); return; }
+    document.documentElement.classList.add('sqm-fit');
+    scrollTo(0, 0);
+    const top = el.getBoundingClientRect().top;
+    el.style.height = Math.max(420, window.innerHeight - top - 14) + 'px';
+  }
+  addEventListener('resize', () => { if (!view.hidden) fitSplit(); });
 
   /* ---------- conversación ---------- */
   let overlay = null;
@@ -288,7 +299,7 @@
   }
 
   // Hilo de Teams con corte por día (raya con «Hoy», «Ayer» o la fecha), como en Teams
-  const mtask = (i) => `<button type="button" class="sqm-mtask" data-mtask="${i}" title="Crear tarea con este mensaje" aria-label="Crear tarea con este mensaje">${ICON.task}</button>`;
+  const mtask = (i) => `<button type="button" class="sqm-mtask" data-mtask="${i}" title="Crear tarea con este mensaje" aria-label="Crear tarea con este mensaje">T</button>`;
   function teamsThread(msgs) {
     st.view = [];
     const ok = (m) => m.fecha && !isNaN(new Date(m.fecha));

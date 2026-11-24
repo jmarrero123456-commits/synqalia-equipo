@@ -81,7 +81,8 @@ html:has(#view-mensajes:not([hidden])), html:has(#view-mensajes:not([hidden])) b
 /* PC: como Teams, lista a la izquierda (con su propio scroll) y conversación a la derecha, a toda la altura */
 @media (min-width: 900px) {
   .sqm-canal.split { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px;
-    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 480px; }
+    height: calc(100vh - var(--sq-bar, 54px) - 36px); min-height: 420px; }
+  html.sqm-fit:has(#view-mensajes:not([hidden])), html.sqm-fit:has(#view-mensajes:not([hidden])) body { overflow-y: hidden; }
   .sqm-canal.split .sqm-side { display: flex; flex-direction: column; min-height: 0; gap: 10px; }
   .sqm-canal.split .sqm-stick { position: static; margin: 0; padding: 0; background: none; }
   .sqm-canal.split .sqm-list { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
@@ -160,10 +161,10 @@ body.sqm-lock { overflow: hidden; }
 .sqm-ctasks svg { width: 16px; height: 16px; color: var(--sqm-ok); }
 .sqm-ctasks b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
 .sqm-b { position: relative; }
-.sqm-mtask { position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--sqm-ok); display: none; place-items: center; cursor: pointer; box-shadow: 0 2px 6px rgba(15,27,45,.12); padding: 0; }
-.sqm-b.me .sqm-mtask { right: auto; left: -10px; }
-.sqm-mtask svg { width: 16px; height: 16px; }
-@media (hover: hover) and (pointer: fine) { .sqm-b:hover .sqm-mtask, .sqm-mtask:focus-visible { display: grid; } }
+.sqm-mtask { position: absolute; top: 50%; right: -38px; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--sqm-ok) 45%, var(--line)); background: var(--panel); color: var(--sqm-ok); display: grid; place-items: center; cursor: pointer; padding: 0; font: 800 13px var(--font-body); opacity: .55; }
+.sqm-b.me .sqm-mtask { right: auto; left: -38px; }
+.sqm-mtask:hover, .sqm-mtask:focus-visible, .sqm-b:hover .sqm-mtask { opacity: 1; background: var(--sqm-q); color: #062b27; border-color: var(--sqm-q); }
+.sqm-b.sqm-bimg { overflow: visible; }
 .sqm-b.sqm-hl { outline: 2px solid var(--sqm-q); outline-offset: 2px; }
 
 .sqm-tsheet { position: fixed; inset: 0; z-index: 130; background: rgba(5,10,18,.45); display: flex; align-items: flex-end; justify-content: center; }
