@@ -273,10 +273,24 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .mega-n { margin-left: auto; min-width: 20px; padding: 2px 7px; border-radius: 999px; background: #d93636; color: #fff; font-weight: 800; text-align: center; letter-spacing: 0; }
   .mega-list { display: grid; gap: 6px; }
   .mega-row { display: flex; align-items: baseline; gap: 10px; width: 100%; min-width: 0; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, #d93636 28%, var(--line)); border-left: 4px solid #d93636; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+  /* 25/11: Mega más compacto y menos aire arriba en Tareas (móvil y Fold abierto) */
+  .mega-box { padding: 7px 9px 8px; gap: 5px; border-radius: 12px; }
+  .mega-head { font-size: 11px; gap: 6px; }
+  .mega-head .mega-bolt { width: 16px; height: 16px; font-size: 10px; }
+  .mega-head .mega-n { padding: 0 6px; font-size: 11px; }
+  .mega-list { gap: 4px; }
+  .mega-row { padding: 6px 10px; border-radius: 8px; border-left-width: 3px; }
+  @media (max-width: 699px) {
+    .app:has(#view-tareas:not([hidden])) { padding-top: 6px !important; }
+    #view-tareas { margin-top: 0 !important; gap: 8px !important; }
+    #view-tareas .tk-card { gap: 4px !important; }
+    #view-tareas .tk-tiles { margin-bottom: 2px !important; }
+    #task-list .group-head { margin-top: 0 !important; }
+  }
   .mega-row:hover { border-color: #d93636; }
   .mega-row:focus-visible { outline: 2px solid #d93636; outline-offset: 2px; }
-  .mega-row .mega-title { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mega-row .mega-meta { flex: 0 0 auto; max-width: 45%; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mega-row .mega-title { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mega-row .mega-meta { flex: 0 0 auto; max-width: 45%; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mega-sheet { width: 100%; max-width: none; margin: auto auto 0; padding: 0; border: 0; border-radius: 18px 18px 0 0; background: var(--panel); color: var(--ink); box-shadow: 0 -10px 40px rgba(13,27,51,.25); }
   .mega-sheet::backdrop { background: rgba(13,27,51,.45); }
   .mega-sheet[open] { animation: msUp .18s ease-out; }
@@ -6250,5 +6264,28 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="buzon.js?v=20261125gm3" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
+<script>/* Fold abierto y pantallas medianas (561–699 px): la barra de secciones va abajo, igual que en el móvil.
+   Copia en tiempo de carga las reglas del móvil (max-width: 560px) de la barra de abajo, «Más» y la franja de arriba. */
+(function () {
+  var RX = /\.tabs|\.tab-mas|\.sq-more|\.sqa-|sq-has-bar|\.sq-logo|\.sq-switch|^\s*:root\s*$|^\s*\.app(::before)?\s*$/;
+  function build() {
+    var out = [];
+    for (var i = 0; i < document.styleSheets.length; i++) {
+      var rules; try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+      (function walk(list) {
+        for (var j = 0; j < list.length; j++) {
+          var r = list[j];
+          if (r.type === 4) { var c = r.conditionText || r.media.mediaText; if (/max-width:\s*560px/.test(c) && !/min-width/.test(c)) { for (var k = 0; k < r.cssRules.length; k++) { var x = r.cssRules[k]; if (x.type === 1 && RX.test(x.selectorText) && (!/^\s*:root\s*$/.test(x.selectorText) || /--sq-tabbar/.test(x.style.cssText))) out.push(x.cssText); } } else walk(r.cssRules); }
+          else if (r.cssRules && r.type !== 1) walk(r.cssRules);
+        }
+      })(rules);
+    }
+    if (!out.length) return;
+    var st = document.createElement('style'); st.id = 'sq-midbar';
+    st.textContent = '@media (min-width: 561px) and (max-width: 699px) {\n' + out.join('\n') + '\n}';
+    document.head.appendChild(st);
+  }
+  if (document.readyState === 'complete') build(); else addEventListener('load', build);
+})();</script>
 </body>
 </html>
