@@ -628,12 +628,7 @@ body:has(.login) .sq-bar { display: none; }
   .sq-more-panel .ms-trigger { color: #5b6473 !important; font-size: 13.5px !important; border-top: 1px solid #eef1f5 !important; border-radius: 0 0 10px 10px !important; margin-top: 2px; }
 }
 @media (max-width: 560px) {
-  /* Agenda: ‹ Ayer Hoy Mañana Viernes › en una línea y «Otro día…» debajo a todo lo ancho */
-  #agenda-day { flex-wrap: wrap; gap: 5px; }
-  #agenda-day > .chip { padding-left: 9px; padding-right: 9px; font-size: 13px; }
-  #agenda-day > .chip.day-nav { padding: 0; width: 32px; justify-content: center; }
-  #agenda-day > .chip:nth-last-child(2) { order: 1; } /* › junto a ‹ … */
-  #agenda-day > .day-pick { order: 2; flex: 1 1 100%; }
+  /* Agenda: la barra compacta está en mi.html (.ag-bar) */
   /* Tareas: el círculo de «hecho» algo más pequeño */
   #view-tareas .check.tchk { width: 34px; height: 34px; }
 }

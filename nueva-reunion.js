@@ -100,7 +100,7 @@
 
   // botón en la cabecera de la agenda
   const openBtn = document.createElement('button');
-  openBtn.type = 'button'; openBtn.className = 'btn primary nm-open'; openBtn.textContent = '＋ Nueva reunión';
+  openBtn.type = 'button'; openBtn.className = 'btn primary nm-open'; openBtn.innerHTML = '<span class="nm-l">＋ Nueva reunión</span><span class="nm-s">＋ Nueva</span>'; openBtn.setAttribute('aria-label', 'Nueva reunión');
   const head = agendaCard?.querySelector('.ag-bar') || agendaCard?.querySelector('.row-between');
   if (head) head.appendChild(openBtn); else view.prepend(openBtn);
 
