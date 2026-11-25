@@ -213,6 +213,8 @@
   });
   $('.bz-filters').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fil]'); if (!b) return;
+    // volver a pulsar «No leídos» la refresca (quita los ya leídos); en los demás filtros, volver a pulsar lo quita
+    if (b.dataset.fil === 'noleidos' && st.filtro === 'noleidos') { reload(); return; }
     setFiltro(st.filtro === b.dataset.fil && b.dataset.fil !== 'todos' ? 'todos' : b.dataset.fil);
   });
   function setFiltro(f) {
@@ -491,11 +493,8 @@
     if (st.sel === conv && st.hilo) paintTools();
   }
 
-  // Con «No leídos», la conversación abierta se queda en la lista hasta que la cierras o pasas a otra
-  function dropIfRead(conv) {
-    if (!conv || st.filtro !== 'noleidos') return;
-    st.items = st.items.filter((x) => x.conv !== conv || !x.leido);
-  }
+  // Con «No leídos», lo que ya has leído se queda en la lista (por si fue sin querer) hasta que vuelves a pulsar «No leídos» (25/11)
+  function dropIfRead() {}
   function keepOpen(fresh) {
     if (!st.sel) return fresh;
     const mine = st.items.filter((x) => x.conv === st.sel && !fresh.some((y) => y.id === x.id));
@@ -531,8 +530,10 @@
     try {
       const r = await call('lista', listArgs());
       const fresh = r.items || [];
-      const extra = st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
-      st.items = keepOpen([...fresh, ...extra]);
+      const extra = st.filtro === 'noleidos'
+        ? st.items.filter((x) => !fresh.some((y) => y.id === x.id)) // los ya leídos siguen en la lista
+        : st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
+      st.items = keepOpen([...fresh, ...extra].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))));
       for (const c of st.exp) if (c !== st.sel) st.hcache.delete(c);
       st.exp.forEach((c) => { if (!st.hcache.has(c)) call('hilo', { conv: c, marcar: false, ligero: true }).then((x) => { st.hcache.set(c, x.mensajes || []); paintListSoft(); }).catch(() => null); });
       paintListSoft();
