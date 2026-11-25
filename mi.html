@@ -882,6 +882,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-now { position: absolute; left: calc(var(--cal-g) - 6px); right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
   .cal-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
   /* Agenda: vista semana, minicalendario, convocatorias en el calendario, mover arrastrando (24/11/2026) */
+  .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .ag-bar > .chips { margin: 0; }
+  @media (max-width: 700px) {
+    #agenda-card > .row-between > h2 { display: none; }
+    #agenda-card > .row-between { justify-content: flex-end; gap: 8px; }
+    #agenda-day .chip:not(.day-nav):not([aria-pressed="true"]) { display: none; }
+    .ag-tools .wk-lbl { font-size: 14px; flex-basis: 100%; order: 9; margin: 0; }
+  }
   .ag-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .ag-tools .wk-lbl { font-size: 16px; font-weight: 800; margin: 0 6px; }
   .ag-tools .btn { min-height: 34px; }
@@ -3193,7 +3201,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   // barra de la agenda: plegar el mes, Hoy / ‹ › / semana, y Día | Semana
   function renderAgTools(days) {
     let tb = $('#ag-tools');
-    if (!tb) { tb = el('div', 'ag-tools'); tb.id = 'ag-tools'; $('#agenda-day').before(tb); }
+    if (!tb) { tb = el('div', 'ag-tools'); tb.id = 'ag-tools'; const sel = $('#agenda-day'); const bar = el('div', 'ag-bar'); sel.before(bar); bar.append(tb, sel); }
     tb.replaceChildren();
     const side = el('button', 'btn ghost ag-ico'); side.type = 'button'; side.setAttribute('aria-label', 'Mostrar u ocultar el calendario del mes'); side.title = 'Calendario del mes'; side.setAttribute('aria-pressed', String(state.agendaSide));
     side.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>';
@@ -4583,22 +4591,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     nav('‹', cur > 0 ? days[cur - 1] : null, 'Día anterior');
     const prevDay = days.filter((d) => d < todayISO).pop();
     const quick = [prevDay].concat(days.filter((d) => d >= todayISO).slice(0, 3)).filter(Boolean);
+    if (state.agendaDay && !quick.includes(state.agendaDay)) { quick.push(state.agendaDay); quick.sort(); } // día elegido en el calendario del mes
     quick.forEach((d) => { const c = el('button', 'chip' + (d < todayISO ? ' past' : ''), lbl(d) + (noted.has(d) && d < todayISO ? ' 📝' : '')); c.type = 'button'; c.setAttribute('aria-pressed', String(d === state.agendaDay)); c.addEventListener('click', () => go(d)); sel.appendChild(c); });
     nav('›', cur >= 0 && cur < days.length - 1 ? days[cur + 1] : null, 'Día siguiente');
-    const rest = days.filter((d) => !quick.includes(d));
-    if (rest.length) {
-      const wrap = el('label', 'chip day-pick' + (quick.includes(state.agendaDay) ? '' : ' on'));
-      const dd = document.createElement('select'); dd.setAttribute('aria-label', 'Elegir otro día');
-      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Otro día…'; dd.appendChild(o0);
-      [['Próximos días', rest.filter((d) => d >= todayISO)], ['Días anteriores', rest.filter((d) => d < todayISO).reverse()]].forEach(([g, list]) => {
-        if (!list.length) return;
-        const og = document.createElement('optgroup'); og.label = g;
-        list.forEach((d) => { const o = document.createElement('option'); o.value = d; o.textContent = dayName(d).replace(/^./, (x) => x.toUpperCase()) + (noted.has(d) ? ' · 📝 notas' : ''); if (d === state.agendaDay) o.selected = true; og.appendChild(o); });
-        dd.appendChild(og);
-      });
-      dd.addEventListener('change', () => { if (dd.value) go(dd.value); });
-      wrap.appendChild(dd); sel.appendChild(wrap);
-    }
+    // «Otro día…» ya no hace falta: el calendario del mes (botón del panel) lleva a cualquier día
     const h2 = $('#agenda-card h2'); if (h2) h2.textContent = state.agendaDay < todayISO ? 'Agenda · ' + lbl(state.agendaDay) : 'Agenda y reuniones';
     const ag = $('#agenda-box');
     const oldSc = ag.querySelector('.cal-scroll'); const keepTop = oldSc && state.agKeep === state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay) ? oldSc.scrollTop : null;
