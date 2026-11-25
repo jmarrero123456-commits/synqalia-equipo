@@ -1233,7 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
 <link rel="stylesheet" href="buzon.css?v=20261124j">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
-<link rel="stylesheet" href="inicio.css?v=20261125a">
+<link rel="stylesheet" href="inicio.css?v=20261125b">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -4745,7 +4745,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   function inAskChips() {
     const box = $('#in-ask-chips'); if (!box || box.dataset.done === todayISO + (IN.ask.chat ? 'c' : '')) return;
     box.dataset.done = todayISO + (IN.ask.chat ? 'c' : ''); box.replaceChildren();
-    const qs = IN.ask.chat ? ['Prepárame un correo con esto', '¿Algo más que deba saber?'] : ['¿Qué es lo más importante hoy?', '¿Qué me falta por responder?', 'Prepárame la próxima reunión', '¿Qué he dejado a medias esta semana?'];
+    const qs = IN.ask.chat ? ['Prepárame un correo con esto', '¿Algo más que deba saber?'] : ['¿Qué es lo más importante hoy?', '¿Qué me falta por responder?', 'Prepárame la próxima reunión', '¿Cuándo tengo un hueco esta semana?'];
     qs.forEach((q) => box.appendChild(inBtn(q, 'chip', () => inAsk(q))));
   }
   const askPhone = () => $('#view-hoy').offsetWidth < 560;
@@ -4772,22 +4772,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
   $('#in-ask-form').addEventListener('submit', (e) => { e.preventDefault(); inAsk($('#in-ask-q').value); });
   $('#in-ask-full').addEventListener('click', () => { if (IN.ask.chat && window.__sqAsistenteApi) window.__sqAsistenteApi.open(IN.ask.chat); });
-  {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition, mb = $('#in-ask-mic');
-    if (!SR) mb.hidden = true;
-    else {
-      let rec = null;
-      mb.addEventListener('click', () => {
-        if (rec) { try { rec.stop(); } catch (e) { /* ya parado */ } return; }
-        if (window.__sqRecording) return;
-        const inp = $('#in-ask-q'); let fin = '';
-        rec = new SR(); rec.lang = 'es-ES'; rec.continuous = false; rec.interimResults = true; window.__sqRecording = true; mb.classList.add('on');
-        rec.onresult = (ev) => { let inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t + ' '; else inter += t; } inp.value = (fin + inter).trim(); };
-        rec.onend = () => { rec = null; window.__sqRecording = false; mb.classList.remove('on'); if (inp.value.trim()) inAsk(inp.value); };
-        try { rec.start(); } catch (e) { rec = null; window.__sqRecording = false; mb.classList.remove('on'); }
-      });
-    }
-  }
+  // El micro de «Pregúntame» abre la conversación por voz (voz.js): escucha, contesta hablando, busca huecos y convoca reuniones.
+  $('#in-ask-mic').addEventListener('click', () => { if (window.__sqVoz) window.__sqVoz.open(); });
+  $('#in-ask-mic').setAttribute('aria-label', 'Hablar con el asistente'); $('#in-ask-mic').title = 'Hablar con el asistente';
+
 
   // ---------- catch-ups ----------
   const normTxt = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
@@ -6054,5 +6042,6 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261124j" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
+<script src="voz.js?v=20261125a" defer></script>
 </body>
 </html>
