@@ -3053,7 +3053,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
   // Crear una reunión tocando un hueco del calendario (como en Outlook/Teams): clic = 30 min; con el ratón, arrastrar elige la duración
   function enableSlotCreate(cont, fecha, h0, h1, pxMin, ghostLeft) {
-    if (fecha < todayISO || typeof window.__sqNewMeeting !== 'function') return;
+    if (fecha < todayISO) return;
     cont.classList.add('slots');
     const isBg = (t) => t === cont || (t && t.closest && !t.closest('.cal-ev, .cal-pop, .slot-ghost') && cont.contains(t) && (t.classList.contains('cal-hour') || t.classList.contains('cal-half') || t.classList.contains('cal-free') || t.classList.contains('wk-line') || t.parentElement && (t.parentElement.classList.contains('cal-hour') || t.parentElement.classList.contains('cal-free'))));
     const minAt = (cy) => { const r = cont.getBoundingClientRect(); return h0 * 60 + Math.floor((cy - r.top) / pxMin / 30) * 30; };
@@ -3078,7 +3078,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (!drag) return; const d = drag; drag = null; ghost.hidden = true;
       if (d.touch && Math.abs(k.clientY - d.y) > 8) return; // en el móvil, si se desplazaba no se crea nada
       const a = d.touch ? d.a : d.a2, b = d.touch ? d.a + 30 : d.b;
-      window.__sqNewMeeting({fecha, hora: hmOf(a), duracion: b - a});
+      if (typeof window.__sqNewMeeting === 'function') window.__sqNewMeeting({fecha, hora: hmOf(a), duracion: b - a});
     };
     cont.addEventListener('pointerup', finish);
     cont.addEventListener('pointercancel', () => { drag = null; ghost.hidden = true; });
