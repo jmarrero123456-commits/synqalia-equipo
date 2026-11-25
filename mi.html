@@ -4569,38 +4569,42 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         box.appendChild(r);
       });
     }
-    section('p', 'Personas', people, 'Buscar persona…');
-    section('g', 'Grupos', groups, 'Buscar grupo…');
-    // Otras reuniones: las de la agenda (o grabadas con el Plaud) que no son con una persona o grupo del equipo
-    const mts = state.catchups.filter((c) => c.evento && c.evento.inicio && !cuTeamOf(c)).sort((a, b) => String((b.evento.fecha || b.fecha)).localeCompare(String(a.evento.fecha || a.fecha)) || String(b.evento.inicio).localeCompare(String(a.evento.inicio)));
+    // Reuniones que has tenido: todas (con el equipo, de la agenda o grabadas con el Plaud), la más reciente primero, con buscador
+    const fOf = (c) => String((c.evento && c.evento.fecha) || c.fecha || '');
+    const hOf = (c) => String((c.evento && c.evento.inicio) || '');
+    const tOf = (c) => { const tp = cuTeamOf(c); return c.evento && c.evento.titulo ? cleanTitle(c.evento.titulo) : tp ? (isGroup(tp) ? 'Reunión de ' + tp.nombre : 'Reunión con ' + tp.nombre) : (c.persona || 'Reunión'); };
+    const mts = state.catchups.filter((c) => fOf(c) && fOf(c) <= todayISO && (c.evento || cuTeamOf(c))).sort((a, b) => fOf(b).localeCompare(fOf(a)) || hOf(b).localeCompare(hOf(a)) || String(b.creado || '').localeCompare(String(a.creado || '')));
     if (mts.length) {
-      const sec = el('div', 'cu-sec'); sec.appendChild(el('span', null, 'Otras reuniones')); sec.appendChild(el('span', 'cu-sec-n', String(mts.length))); box.appendChild(sec);
-      const ph = 'Buscar reunión…';
-      if (mts.length > 3) {
-        const sw = el('label', 'cu-srch'); sw.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="m10.5 10.5 3.2 3.2"/></svg>';
-        const inp = document.createElement('input'); inp.type = 'search'; inp.id = 'cu-q-m'; inp.autocomplete = 'off'; inp.placeholder = ph; inp.setAttribute('aria-label', ph); inp.value = state.cuQ.m || '';
-        inp.addEventListener('input', () => { state.cuQ.m = inp.value; renderCatchups(); const n = document.getElementById(inp.id); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } });
-        inp.addEventListener('keydown', (e) => { if (e.key === 'Escape') { state.cuQ.m = ''; renderCatchups(); } });
-        sw.appendChild(inp); box.appendChild(sw);
-      }
+      const sec = el('div', 'cu-sec'); sec.appendChild(el('span', null, 'Reuniones que has tenido')); sec.appendChild(el('span', 'cu-sec-n', String(mts.length))); box.appendChild(sec);
+      const ph = 'Buscar reunión, persona o tema…';
+      const sw = el('label', 'cu-srch'); sw.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="m10.5 10.5 3.2 3.2"/></svg>';
+      const inp = document.createElement('input'); inp.type = 'search'; inp.id = 'cu-q-m'; inp.autocomplete = 'off'; inp.placeholder = ph; inp.setAttribute('aria-label', ph); inp.value = state.cuQ.m || '';
+      inp.addEventListener('input', () => { state.cuQ.m = inp.value; renderCatchups(); const n = document.getElementById(inp.id); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } });
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Escape') { state.cuQ.m = ''; renderCatchups(); } });
+      sw.appendChild(inp); box.appendChild(sw);
       const q = normTxt(state.cuQ.m || '');
-      const hit = q ? mts.filter((c) => normTxt(cleanTitle(c.evento.titulo) + ' ' + (c.persona || '') + ' ' + (c.evento.organiza || '') + ' ' + (c.miembros || []).join(' ') + ' ' + String(c.notas || '').slice(0, 4000)).includes(q)) : mts;
-      const show = q || state.cuAll.m ? hit : hit.slice(0, 4);
+      const hit = q ? mts.filter((c) => normTxt(tOf(c) + ' ' + (c.persona || '') + ' ' + ((c.evento && c.evento.organiza) || '') + ' ' + (c.miembros || []).join(' ') + ' ' + (c.resumen || '') + ' ' + String(c.notas || '').slice(0, 4000) + ' ' + (window.__sqPlaudTexto ? window.__sqPlaudTexto(c.id, 20000) : '')).includes(q)) : mts;
+      const show = q || state.cuAll.m ? hit : hit.slice(0, 5);
       const lw = el('div', 'cu-list-m');
       show.forEach((c) => {
-        const f = c.evento.fecha || c.fecha; const t = cleanTitle(c.evento.titulo || c.persona);
-        const r = el('button', 'cu-row'); r.type = 'button'; r.title = 'Abrir la reunión «' + t + '»';
-        r.appendChild(el('span', 'cu-av grp', (t.match(/[A-Za-zÁÉÍÓÚÑ]/g) || ['·']).slice(0, 2).join('').toUpperCase()));
+        const f = fOf(c); const t = tOf(c); const tp = cuTeamOf(c);
+        const r = el('button', 'cu-row'); r.type = 'button'; r.title = 'Abrir «' + t + '»';
+        r.appendChild(el('span', 'cu-av' + (!tp || isGroup(tp) ? ' grp' : ''), tp ? initials(tp) : (t.match(/[A-Za-zÁÉÍÓÚÑ]/g) || ['·']).slice(0, 2).join('').toUpperCase()));
         const m = el('span', 'cu-main'); m.appendChild(el('span', 'cu-name', t));
-        m.appendChild(el('span', 'cu-sub', dayName(f).replace(/^./, (x) => x.toUpperCase()) + ' · ' + c.evento.inicio + (c.evento.fin ? '–' + c.evento.fin : '') + (/— Grabación del Plaud/.test(c.notas || '') ? ' · 🎙️ grabada' : '')));
+        m.appendChild(el('span', 'cu-sub', dayName(f).replace(/^./, (x) => x.toUpperCase()) + (hOf(c) ? ' · ' + hOf(c) + (c.evento && c.evento.fin ? '–' + c.evento.fin : '') : '') + (/— Grabación del Plaud/.test(c.notas || '') ? ' · 🎙️ grabada' : '') + (c.tipo !== 'reunion' && !c.cerrado && tp ? ' · sin terminar' : '')));
         r.appendChild(m);
-        r.addEventListener('click', () => openMeetRoom(Object.assign({}, c.evento, {fecha: f})));
+        r.addEventListener('click', () => {
+          if (c.evento && c.evento.inicio) openMeetRoom(Object.assign({}, c.evento, {fecha: f}));
+          else if (tp) { openCuEditor(tp, c); if (window.innerWidth < 900) setTimeout(() => $('#cu-detail').scrollIntoView({behavior: 'smooth', block: 'start'}), 60); }
+        });
         lw.appendChild(r);
       });
       if (q && !show.length) lw.appendChild(el('div', 'cu-none', 'Ninguna reunión coincide con «' + state.cuQ.m + '»'));
       box.appendChild(lw);
-      if (!q && mts.length > 4) { const mb = el('button', 'cu-more', state.cuAll.m ? 'Ver solo las últimas' : 'Ver todas las reuniones (' + mts.length + ')'); mb.type = 'button'; mb.addEventListener('click', () => { state.cuAll.m = !state.cuAll.m; renderCatchups(); }); box.appendChild(mb); }
+      if (!q && mts.length > 5) { const mb = el('button', 'cu-more', state.cuAll.m ? 'Ver solo las últimas' : 'Ver todas las reuniones (' + mts.length + ')'); mb.type = 'button'; mb.addEventListener('click', () => { state.cuAll.m = !state.cuAll.m; renderCatchups(); }); box.appendChild(mb); }
     }
+    section('p', 'Personas', people, 'Buscar persona…');
+    section('g', 'Grupos', groups, 'Buscar grupo…');
     // sugerencias
     const sg = $('#cu-sugg'); sg.replaceChildren();
     const counts = new Map();
