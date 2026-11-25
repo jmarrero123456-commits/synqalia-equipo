@@ -286,6 +286,10 @@
     if (st.canal === 'teams') {
       const d = st.teams.get(id);
       if (d && teamsUnread(id, d)) setVisto(id, true); // abrirla basta para darla por leída
+      // y también leída en Teams (necesita el permiso Chat.ReadWrite; si falta, no pasa nada y queda leída solo en Synqalia)
+      if (d && isTrue(d.noLeido) && d.gid && graphOn() && !teamsReadOff) {
+        window.__sqGraphCall({ action: 'teamsRead', id }).then((r) => { if (r && r.permiso === false) teamsReadOff = true; }, () => {});
+      }
       // con Microsoft 365 conectado: trae el hilo completo (llega por tiempo real)
       if (graphOn() && d && d.gid && (!d.hilo_at || Date.now() - new Date(d.hilo_at).getTime() > 60000)) window.__sqGraphCall({ action: 'teamsThread', id }).catch(() => {});
     } else if (st.canal === 'synqalia') {
@@ -345,6 +349,7 @@
   function hydrateTeams(scope) { scope.querySelectorAll('img[data-tsrc]').forEach(async (img) => { if (img.getAttribute('src')) return; try { img.src = await tSigned(img.dataset.tsrc); } catch { img.alt = 'No se ha podido cargar la imagen'; } }); }
   const dayLine = (ts) => `<p class="sqm-day" role="separator"><span>${esc(diaDe(ts))}</span></p>`;
 
+  let teamsReadOff = false; // sin permiso Chat.ReadWrite no se vuelve a intentar en esta sesión
   const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
   function paintTeamsConv(host) {
     const id = st.open, d = st.teams.get(id);
