@@ -1233,6 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
 <link rel="stylesheet" href="buzon.css?v=20261124j">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
+<link rel="stylesheet" href="inicio.css?v=20261125a">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -1247,7 +1248,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     <nav class="sq-switch" aria-label="Zona de Synqalia"><a href="mi.html" aria-current="page">Mi trabajo</a><a href="./?z=equipo">Equipo</a></nav>
     <div class="sq-sec"><span>Mi trabajo</span><button type="button" class="sq-collapse" id="sq-collapse" aria-label="Recoger el menú" title="Recoger el menú">«</button></div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
-    <button role="tab" id="tab-hoy" data-view="hoy" aria-selected="true"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg></span><span class="tlab">Hoy</span></button>
+    <button role="tab" id="tab-hoy" data-view="hoy" aria-selected="true"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg></span><span class="tlab">Inicio</span></button>
     <button role="tab" id="tab-correo" data-view="correo" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg></span><span class="tlab">Correo</span><span class="count" id="count-correo"></span></button>
     <button role="tab" id="tab-mensajes" data-view="mensajes" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/></svg></span><span class="tlab">Mensajes</span><span class="count" id="count-mensajes"></span></button>
     <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Agenda</span><span class="count" id="count-reuniones"></span></button>
@@ -1276,41 +1277,69 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       <svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle class="mark-dot" cx="30.5" cy="44" r="3.6"/></svg>
       <div class="wordmark"><h1>Synq<span class="alia">alia</span></h1><div class="tagline">Tu trabajo, una sola inteligencia</div></div><nav class="sq-switch sq-switch-m" aria-label="Zona de Synqalia"><a href="mi.html" aria-current="page">Mi trabajo</a><a href="./?z=equipo">Equipo</a></nav><button type="button" class="ms-link" id="ms-link" title="Microsoft 365"><span class="dot"></span><span id="ms-label">Microsoft 365</span></button>
     </div>
-    <div class="vt"><h2 id="view-title">Hoy</h2></div>
+    <div class="vt"><h2 id="view-title">Inicio</h2></div>
     <div class="date"><div class="date-row"><div id="today-label"></div><button type="button" id="btn-refresh" class="refresh-btn" title="Actualizar ahora" aria-label="Actualizar ahora"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 5.2A5.6 5.6 0 1 0 13.6 9"/><path d="M13.6 2.4v3h-3"/></svg></button></div><div id="sync-label" class="status">Conectando…</div><div id="olk-label" class="olk"></div></div>
   </header>
 
-  <!-- HOY -->
-  <main id="view-hoy" class="view" style="display:grid; gap:18px;">
-    <div class="nt-top"><div class="nt-strip"><button type="button" class="nt-wide" id="hoy-nt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span>Nueva tarea</span></button><button type="button" class="nt-mic" id="hoy-nt-mic" aria-label="Dictar una tarea nueva" title="Dictar una tarea nueva"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="button" class="nt-mic nt-find" id="hoy-nt-find" aria-label="Buscar tarea" title="Buscar tarea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button><button type="button" class="nt-mic nt-flt" id="hoy-nt-flt" aria-label="Filtros de tareas" title="Filtros de tareas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button></div></div>
-    <section class="stats mini" aria-label="Resumen">
-      <button class="stat key" data-quick="hoy" type="button" title="Tareas que vencen hoy o ya vencidas"><b id="st-hoy">–</b><span>Resolver hoy</span></button>
-      <button class="stat" data-quick="mias" type="button" title="Tareas que dependen de ti"><b id="st-mias">–</b><span>Dependen de mí</span></button>
-      <button class="stat" data-go="correo" data-mailc="urgente" type="button" title="Correos urgentes: alguien espera tu decisión"><b id="st-parati">–</b><span>Urgentes para ti</span></button>
-      <button class="stat" data-go="reuniones" type="button" title="Convocatorias por confirmar (Agenda)"><b id="st-reu">–</b><span>Por confirmar</span></button>
-    </section>
-    <section class="mega-box" id="mega-hoy" aria-label="Tareas mega importantes" hidden></section>
+  <!-- INICIO (antes «Hoy»): tu secretario. Te cuenta el día, apuntas en segundos y le preguntas. Código: renderInicio() + inicio.css -->
+  <main id="view-hoy" class="view in-view">
+    <div class="in-grid">
+      <section class="in-brief" id="in-brief" aria-label="Tu día">
+        <div class="in-brief-top"><h2 id="in-hello">Hola</h2><span id="in-when"></span></div>
+        <ul class="in-lines" id="in-lines"></ul>
+        <div class="in-brief-acts"><button type="button" class="in-dk" id="in-listen" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg><span>Escuchar</span></button><button type="button" class="in-dk in-go1" id="in-first">Empezar por lo primero</button></div>
+      </section>
 
-    <section class="card">
-      <div class="row-between"><h2>Correo</h2><button class="btn ghost" data-go="correo" type="button">Ir a Correo</button></div>
-      <div class="list" id="hoy-mail"></div>
-      <span class="note" id="hoy-mail-more"></span>
-    </section>
+      <section class="in-cap" id="in-cap" aria-label="Apuntar algo">
+        <div class="in-cap-row">
+          <button type="button" class="in-mic" id="in-mic" aria-label="Dictar" title="Dictar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+          <label class="in-cap-in"><span class="in-cap-l">¿Qué tienes en la cabeza?</span><textarea id="in-cap-txt" rows="1" placeholder="Escribe o dicta… «asigna a Olga…», «llamar a Blas mañana», «idea: …». Yo lo ordeno"></textarea></label>
+          <button type="button" class="in-save" id="in-cap-go">Guardar</button>
+        </div>
+        <div class="in-cap-opts">
+          <div class="in-seg" role="group" aria-label="Qué es"><button type="button" data-k="auto" aria-pressed="true">Yo lo ordeno</button><button type="button" data-k="tarea" aria-pressed="false">Tarea</button><button type="button" data-k="nota" aria-pressed="false">Nota</button></div>
+          <button type="button" class="in-mega" id="in-mega" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Mega importante</span></button>
+        </div>
+        <p class="in-cap-st" id="in-cap-st" aria-live="polite"></p>
+        <div class="in-review" id="in-review" hidden></div>
+      </section>
 
-    <section class="card">
-      <div class="row-between"><h2>Agenda</h2><button class="btn ghost" data-go="reuniones" type="button">Ir a Agenda</button></div>
-      <div class="section-label">Tu agenda de hoy</div>
-      <div id="hoy-agenda"></div>
-      <div class="section-label">Convocatorias por decidir</div>
-      <div class="list" id="hoy-meet"></div>
-    </section>
+      <section class="in-imp" aria-label="Lo importante ahora">
+        <div class="in-h"><h2>Lo importante ahora</h2><span class="in-sub" id="in-imp-n"></span></div>
+        <div class="in-list" id="in-imp"></div>
+        <button type="button" class="in-more" id="in-imp-more" hidden></button>
+      </section>
 
-    <section class="card" hidden>
-      <div class="row-between"><h2>Tareas · lo primero</h2><button class="btn ghost" data-go="tareas" type="button">Ir a Tareas</button></div>
-      <div class="list" id="hoy-top"></div>
-    </section>
-    <p class="note" id="brief-resumen"></p>
-    <span class="note" id="brief-updated" hidden></span>
+      <div class="in-day">
+        <section class="in-next" id="in-next" aria-label="Próxima reunión" hidden></section>
+        <section class="in-card" aria-label="Tu agenda de hoy">
+          <div class="in-h"><h2>Tu agenda de hoy</h2><button class="in-link" data-go="reuniones" type="button">Agenda ›</button></div>
+          <div id="hoy-agenda"></div>
+        </section>
+        <section class="in-card" id="in-wait-card" aria-label="Esperando a otros" hidden>
+          <div class="in-h"><h2>Esperando a otros</h2><button class="in-link" type="button" id="in-wait-all">Ver todas ›</button></div>
+          <div class="in-wait" id="in-wait"></div>
+        </section>
+        <div id="in-teams-slot"></div>
+      </div>
+
+      <aside class="in-ask" id="in-ask" aria-label="Pregúntame">
+        <div class="in-h"><h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/></svg> Pregúntame</h2><button type="button" class="in-link" id="in-ask-full" hidden>Seguir en Asistente ›</button></div>
+        <div class="in-ask-thread" id="in-ask-thread"></div>
+        <div class="in-ask-chips" id="in-ask-chips"></div>
+        <form class="in-ask-form" id="in-ask-form"><input type="text" id="in-ask-q" placeholder="Pregúntame lo que sea…" aria-label="Pregunta al asistente" autocomplete="off"><button type="button" class="in-ask-mic" id="in-ask-mic" aria-label="Preguntar dictando" title="Dictar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><button type="submit" class="in-ask-send" aria-label="Preguntar" title="Preguntar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-6 16-2.5-6.5z"/></svg></button></form>
+      </aside>
+    </div>
+
+    <!-- Piezas del «Hoy» anterior que otras partes siguen rellenando (ocultas) -->
+    <div class="in-legacy" hidden>
+      <button type="button" id="hoy-nt"></button><button type="button" id="hoy-nt-mic"></button><button type="button" id="hoy-nt-find"></button><button type="button" id="hoy-nt-flt"></button>
+      <button class="stat" type="button"><b id="st-hoy">–</b></button><b id="st-mias">–</b><b id="st-parati">–</b><b id="st-reu">–</b>
+      <section id="mega-hoy" hidden></section>
+      <section><div id="hoy-mail"></div><span id="hoy-mail-more"></span></section>
+      <div id="hoy-meet"></div><div id="hoy-top"></div>
+      <p id="brief-resumen"></p><span id="brief-updated"></span>
+    </div>
   </main>
 
   <!-- REUNIONES -->
@@ -1716,7 +1745,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (view === 'tareas' && prevView !== 'tareas' && !(state.backTo && state.backTo.view === 'tareas')) { try { applyQuick(QUICK.find((q) => q.k === 'hoymia')); } catch (e) { /* al arrancar aún no están los filtros */ } }
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Hoy', correo: 'Correo', reuniones: 'Agenda', tareas: 'Tareas', catchups: 'Reuniones', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
+    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Inicio', correo: 'Correo', reuniones: 'Agenda', tareas: 'Tareas', catchups: 'Reuniones', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
     { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'notas', 'lista', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
@@ -1725,7 +1754,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     else if (bk && view !== 'correo' && view !== 'reuniones') state.backTo = null;
     paintBack();
   }
-  const VIEW_NAME = {hoy: 'Hoy', tareas: 'Tareas', catchups: 'Reuniones', reuniones: 'Agenda', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'};
+  const VIEW_NAME = {hoy: 'Inicio', tareas: 'Tareas', catchups: 'Reuniones', reuniones: 'Agenda', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'};
   function paintBack() {
     $$('.sq-backbar').forEach((b) => b.remove());
     const bk = state.backTo;
@@ -2562,6 +2591,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 
   // ---------- prioridad Mega: recuadro parpadeante arriba en Hoy y en Tareas (no existe si no hay ninguna) ----------
   function renderMega() {
+    renderInicio();
     const list = state.tasks.filter((t) => t.estado !== 'hecha' && t.prioridad === 'Mega').sort(sortTasks);
     for (const id of ['mega-hoy', 'mega-tk']) {
       const box = document.getElementById(id); if (!box) continue;
@@ -4408,6 +4438,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     pend.slice(0, 4).forEach((p) => rbox.appendChild(inviteRow(p, true)));
     if (!pend.length) rbox.appendChild(el('div', 'empty', 'No tienes reuniones pendientes de confirmar.'));
     else if (pend.length > 4) rbox.appendChild(el('span', 'note', 'y ' + (pend.length - 4) + ' más en Agenda'));
+    renderInicio();
   }
 
   $('#mail-filter').addEventListener('click', (e) => {
@@ -4429,6 +4460,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 
   // ---------- render agenda ----------
   function renderBrief() {
+    renderInicio();
     const b = state.brief; const box = $('#hoy-agenda'); box.replaceChildren();
     if (state.agenda[todayISO]) {
       box.appendChild(dayTimeline(todayISO, null).wrap);
@@ -4446,6 +4478,315 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     });
     $('#brief-resumen').textContent = (b && b.resumen) || '';
     $('#brief-updated').textContent = b && b.actualizado ? 'Actualizado ' + fmtStamp.format(new Date(b.actualizado)) : '';
+  }
+
+
+  // ---------- INICIO: tu secretario (25/11/2026) ----------
+  // Arriba «Tu día» (3–4 frases sacadas de tus datos, sin IA, al instante), apuntar algo en segundos (dictado o escrito; la IA lo separa
+  // en tareas y notas y lo revisas antes de guardar), «Lo importante ahora» (una sola lista ordenada), próxima reunión, agenda de hoy,
+  // «Esperando a otros» y «Pregúntame» (el Asistente dentro del Inicio). Se adapta solo al ancho: Z Fold cerrado (1 columna),
+  // Z Fold abierto y tablet (2 columnas) y PC (2 columnas + el asistente fijo a la derecha).
+  var IN = {more: false, kind: 'auto', mega: false, items: null, raw: '', busy: false, ask: {chat: null, busy: false, last: null}, raf: 0};
+  const inSvg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+  const inBtn = (txt, cls, fn) => { const b = el('button', 'in-b' + (cls ? ' ' + cls : ''), txt); b.type = 'button'; b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); }); return b; };
+  const inNowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+  const inPlural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+  const inMyName = () => { const u = window.__sqUser; const me = u && state.members.find((m) => String(m.email || '').toLowerCase() === String(u.email || '').toLowerCase()); const n = (me && me.name) || (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || ''; return firstName(n) || ''; };
+  const inTodayEvents = () => { const ag = state.agenda[todayISO]; return (ag && Array.isArray(ag.eventos) ? ag.eventos : []).filter((e) => { const a = toMin(e.inicio), b = toMin(e.fin); return a != null && b != null && b - a < 7 * 60 && !/ubicaci/i.test(e.estado || '') && !/^comida\b/i.test(e.titulo || ''); }).sort((a, b) => toMin(a.inicio) - toMin(b.inicio)); };
+  const inClean = (t) => String(t || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const inTeams = (u) => { try { const x = new URL(String(u || '')); return x.protocol === 'https:' && /(^|\.)teams\.(microsoft|live)\.com$/i.test(x.hostname) ? x.href : null; } catch (e) { return null; } };
+  const inMegaNotes = () => (window.__sqNotas ? window.__sqNotas.list() : []).filter((n) => n.mega && !n.archivada);
+  const inMails = () => state.mails.filter((m) => isPending(m) && !isMeeting(m));
+
+  function inBriefLines() {
+    const L = [];
+    const evs = inTodayEvents(), nm = inNowMin();
+    const next = evs.find((e) => toMin(e.fin) > nm);
+    const inv = openInvites();
+    if (evs.length) L.push({t: 'Tienes ' + inPlural(evs.length, 'reunión', 'reuniones') + ' hoy' + (next ? (toMin(next.inicio) <= nm ? '; ahora estás en «' + inClean(next.titulo) + '»' : '; la próxima, «' + inClean(next.titulo) + '» a las ' + next.inicio) : '; ya has terminado todas') + '.' + (inv.length ? ' Y ' + inPlural(inv.length, 'convocatoria', 'convocatorias') + ' por responder.' : '')});
+    else L.push({t: (state.agenda[todayISO] ? 'Hoy no tienes reuniones en la agenda.' : 'Aún no tengo tu agenda de hoy.') + (inv.length ? ' Tienes ' + inPlural(inv.length, 'convocatoria', 'convocatorias') + ' por responder.' : '')});
+    const ms = inMails(), urg = ms.filter(isUrgent), pide = ms.filter((m) => isDecision(m) && !isUrgent(m));
+    if (urg.length) L.push({t: inPlural(urg.length, 'decisión tuya tiene', 'decisiones tuyas tienen') + ' parado a alguien: ' + urg.slice(0, 2).map((m) => '«' + String(m.asunto || '').replace(/^(re|rv|fw|fwd)\s*:\s*/i, '').slice(0, 60) + '»').join(' y ') + (urg.length > 2 ? ' y ' + (urg.length - 2) + ' más' : '') + '.', hot: true});
+    else if (pide.length) L.push({t: 'Nada urgente en el correo; en ' + inPlural(pide.length, 'correo', 'correos') + ' te piden algo.'});
+    else L.push({t: 'El correo está al día: nadie espera una decisión tuya.'});
+    const mt = state.tasks.filter((t) => t.estado !== 'hecha' && t.prioridad === 'Mega'), mn = inMegaNotes();
+    const megas = mt.map((t) => t.titulo).concat(mn.map((n) => n.titulo || String(n.cuerpo || '').slice(0, 60)));
+    if (megas.length) L.push({t: 'Mega importante: «' + megas[0] + '»' + (megas.length > 1 ? ' y ' + (megas.length - 1) + ' más' : '') + '.', key: true});
+    const late = state.tasks.filter((t) => forToday(t) && espOf(t) === 'mia');
+    if (late.length) L.push({t: inPlural(late.length, 'tarea tuya vence', 'tareas tuyas vencen') + ' hoy o ya ' + (late.length === 1 ? 'ha vencido' : 'han vencido') + '.'});
+    const wait = inWaiting().filter((x) => x.dias >= 5);
+    if (wait.length) L.push({t: 'Llevas ' + wait[0].dias + ' días esperando a ' + firstName(wait[0].quien) + (wait.length > 1 ? ' (y ' + (wait.length - 1) + ' encargos más sin respuesta)' : '') + '.'});
+    return L;
+  }
+
+  function inWaiting() {
+    return state.tasks.filter((t) => t.estado !== 'hecha' && espOf(t) === 'tercero').map((t) => {
+      const since = (t.asignadaA && t.asignadaA.fecha) || t.creada || todayISO;
+      return {t, quien: (t.asignadaA && t.asignadaA.nombre) || waitWho(t) || 'Sin indicar', dias: Math.max(0, daysSince(since))};
+    }).sort((a, b) => b.dias - a.dias);
+  }
+
+  // Lo importante: todo mezclado y ordenado por lo que más te urge
+  function inImportant() {
+    const out = [];
+    const postpone = (t) => write(() => db.collection('tareas').doc(t.id).update({vence: tomorrowISO}), 'Pasada a mañana');
+    const doneT = (t) => write(() => db.collection('tareas').doc(t.id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Hecha ✓');
+    state.tasks.filter((t) => t.estado !== 'hecha' && t.prioridad === 'Mega').forEach((t) => out.push({score: 100, key: 't' + t.id, tag: 'Mega · tarea', cls: 'mega', title: t.titulo, sub: [waitWho(t) ? firstName(waitWho(t)) : '', t.vence ? (isLate(t) ? 'vencida' : dueLabel(t.vence)) : ''].filter(Boolean).join(' · '), open: () => megaSheet(t),
+      acts: [['Hecho', 'pri', () => doneT(t)], ['Mañana', '', () => postpone(t)]]}));
+    inMegaNotes().forEach((n) => out.push({score: 99, key: 'n' + n.id, tag: 'Mega · tu nota', cls: 'mega', title: n.titulo || String(n.cuerpo || '').slice(0, 90) || 'Nota', sub: (window.__sqNotas.bookName(n.libreta) || 'Notas') + ' · ' + relDay(n.creada || todayISO), open: () => window.__sqNotas.open(n.id),
+      acts: [['Abrir', 'pri', () => window.__sqNotas.open(n.id)], ['Ya está', '', () => window.__sqNotas.update(n.id, {mega: false})]]}));
+    const mailItem = (m, score, tag, cls) => out.push({score, key: 'm' + m.id, tag, cls, title: String(m.asunto || '(sin asunto)'), who: 'Correo · ' + personaDe(m.de), sub: String(m.peticion || m.resumen || motivoDe(m) || '').slice(0, 180), open: () => window.__sqOpenMail(m.id), age: fechaDe(m),
+      acts: [['Abrir', 'pri', () => window.__sqOpenMail(m.id)], ['Mañana', '', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Lo verás mañana')], ['Gestionado', '', () => write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Correo gestionado')]]});
+    const ms = inMails();
+    ms.filter(isUrgent).forEach((m) => mailItem(m, 90, 'Urgente · decide tú', 'urg'));
+    state.tasks.filter((t) => forToday(t) && espOf(t) === 'mia' && t.prioridad !== 'Mega').forEach((t) => out.push({score: isLate(t) ? 80 : 76, key: 't' + t.id, tag: isLate(t) ? 'Tarea · vencida' : 'Tarea · vence hoy', cls: isLate(t) ? 'late' : 'task', title: t.titulo, sub: [otherPerson(t) ? firstName(otherPerson(t)) : '', t.prioridad && t.prioridad !== 'Media' ? 'prioridad ' + t.prioridad.toLowerCase() : ''].filter(Boolean).join(' · '), open: () => openTaskEdit(t),
+      acts: [['Hecho', 'pri', () => doneT(t)], ['Mañana', '', () => postpone(t)]]}));
+    openInvites().forEach((p) => { const soon = p.fecha <= tomorrowISO; out.push({score: soon ? 70 : 52, key: 'i' + p.key, tag: 'Convocatoria por responder', cls: 'inv', title: p.titulo, sub: dayName(p.fecha).replace(/^./, (c) => c.toUpperCase()) + ' · ' + p.inicio + (p.organiza ? ' · convoca ' + firstName(p.organiza) : ''), invite: p, open: () => window.__sqGoDay(p.fecha), acts: []}); });
+    ms.filter((m) => isDecision(m) && !isUrgent(m)).forEach((m) => mailItem(m, 60, 'Te piden algo', 'pide'));
+    return out.sort((a, b) => b.score - a.score || String(b.age || '').localeCompare(String(a.age || '')));
+  }
+
+  function inCard(it) {
+    const c = el('article', 'in-it in-' + it.cls); c.dataset.k = it.key;
+    const top = el('div', 'in-it-top'); top.appendChild(el('span', 'in-tag', it.tag)); if (it.who) top.appendChild(el('span', 'in-who', it.who)); c.appendChild(top);
+    const t = el('button', 'in-it-t', it.title); t.type = 'button'; t.addEventListener('click', it.open); c.appendChild(t);
+    if (it.sub) c.appendChild(el('div', 'in-it-s', it.sub));
+    const acts = el('div', 'in-acts');
+    it.acts.forEach(([txt, cls, fn]) => acts.appendChild(inBtn(txt, cls, fn)));
+    if (it.invite) {
+      // la convocatoria se contesta aquí mismo (Aceptar / Provisional / Rechazar) con la fila de siempre
+      const box = el('div', 'in-inv'); box.hidden = true;
+      acts.appendChild(inBtn('Responder', 'pri', (b) => { box.hidden = !box.hidden; if (!box.hidden && !box.firstChild) box.appendChild(inviteRow(it.invite, true)); b.textContent = box.hidden ? 'Responder' : 'Cerrar'; }));
+      acts.appendChild(inBtn('Ver el día', '', () => window.__sqGoDay(it.invite.fecha)));
+      c.appendChild(acts); c.appendChild(box); return c;
+    }
+    if (it.acts.length) c.appendChild(acts);
+    return c;
+  }
+
+  function renderInicio() {
+    if (!IN) return; // aún arrancando
+    cancelAnimationFrame(IN.raf);
+    IN.raf = requestAnimationFrame(() => { try { paintInicio(); } catch (e) { console.warn('Inicio', e); } });
+  }
+  function paintInicio() {
+    if (!$('#in-lines')) return;
+    const h = new Date().getHours(), nm = inMyName();
+    $('#in-hello').textContent = (h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches') + (nm ? ', ' + nm : '');
+    $('#in-when').textContent = new Intl.DateTimeFormat('es-ES', {weekday: 'short', day: 'numeric', month: 'short'}).format(new Date()).replace(/\./g, '') + ' · ' + new Intl.DateTimeFormat('es-ES', {hour: '2-digit', minute: '2-digit'}).format(new Date());
+    const ul = $('#in-lines'); ul.replaceChildren();
+    inBriefLines().forEach((l) => { const li = el('li', l.hot ? 'hot' : l.key ? 'key' : null, l.t); ul.appendChild(li); });
+    // lo importante
+    const all = inImportant(); const narrow = $('#view-hoy').offsetWidth < 560;
+    const lim = IN.more ? 15 : (narrow ? 5 : 6);
+    const box = $('#in-imp'); box.replaceChildren();
+    if (!all.length) box.appendChild(el('div', 'in-empty', 'Nada urgente ahora mismo. Aprovecha para lo que tengas en la cabeza: apúntalo arriba.'));
+    all.slice(0, lim).forEach((it) => box.appendChild(inCard(it)));
+    $('#in-imp-n').textContent = all.length ? (Math.min(lim, all.length) + ' de ' + all.length + ' · por prioridad') : '';
+    const mb = $('#in-imp-more'); mb.hidden = all.length <= (narrow ? 5 : 6); mb.textContent = IN.more ? 'Ver menos' : 'Ver ' + (all.length - lim) + ' más';
+    $('#in-first').hidden = !all.length;
+    // próxima reunión
+    const nx = $('#in-next'); const evs = inTodayEvents(); const now2 = inNowMin(); const e = evs.find((x) => toMin(x.fin) > now2);
+    nx.hidden = !e; nx.replaceChildren();
+    if (e) {
+      const a = toMin(e.inicio), mins = a - now2;
+      const k = mins <= 0 ? 'Ahora · hasta las ' + e.fin : mins < 60 ? 'En ' + mins + ' min · ' + e.inicio : 'A las ' + e.inicio;
+      const top = el('div', 'in-next-top'); top.appendChild(el('span', 'in-next-k' + (mins <= 5 ? ' now' : ''), k)); if (inTeams(e.unirse)) top.appendChild(el('span', 'in-next-m', 'Teams'));
+      nx.appendChild(top);
+      nx.appendChild(el('div', 'in-next-t', inClean(e.titulo)));
+      const org = e.organiza || ((String(e.titulo || '').match(/\(([^)]+)\)\s*$/) || [])[1] || '');
+      const more = evs.filter((x) => toMin(x.inicio) > a).length;
+      nx.appendChild(el('div', 'in-next-s', [org && !isMe(org) ? 'Convoca ' + org : '', e.lugar || '', more ? 'después, ' + inPlural(more, 'reunión más', 'reuniones más') : 'es la última de hoy'].filter(Boolean).join(' · ')));
+      const acts = el('div', 'in-acts');
+      const tu = inTeams(e.unirse);
+      if (tu) { const j = el('a', 'in-b pri', 'Unirse'); j.href = tu; j.target = '_blank'; j.rel = 'noopener'; acts.appendChild(j); }
+      acts.appendChild(inBtn('Abrir notas', tu ? '' : 'pri', () => window.__sqOpenMeet(Object.assign({}, e, {fecha: todayISO}))));
+      nx.appendChild(acts);
+    }
+    // esperando a otros
+    const w = inWaiting(); $('#in-wait-card').hidden = !w.length; const wb = $('#in-wait'); wb.replaceChildren();
+    w.slice(0, 4).forEach((x) => { const r = el('button', 'in-w'); r.type = 'button'; r.appendChild(el('span', 'in-w-t', firstName(x.quien) + ' · ' + x.t.titulo)); r.appendChild(el('span', 'in-w-d' + (x.dias >= 5 ? ' late' : ''), x.dias === 0 ? 'hoy' : x.dias === 1 ? '1 día' : x.dias + ' días')); r.addEventListener('click', () => openTaskEdit(x.t)); wb.appendChild(r); });
+    inAskChips();
+  }
+  setInterval(() => { if (state.view === 'hoy' && !document.hidden) renderInicio(); }, 60000);
+  document.addEventListener('sq-notas', () => renderInicio());
+  addEventListener('resize', () => { if (state.view === 'hoy') renderInicio(); });
+  $('#in-imp-more').addEventListener('click', () => { IN.more = !IN.more; renderInicio(); });
+  $('#in-wait-all').addEventListener('click', () => { show('tareas'); state.taskW = 'tercero'; const s = $('#tk-who'); if (s) s.value = 'tercero'; renderTasks(); });
+  $('#in-first').addEventListener('click', () => { const c = $('#in-imp .in-it'); if (!c) return; c.scrollIntoView({behavior: 'smooth', block: 'center'}); c.classList.remove('sq-flash'); void c.offsetWidth; c.classList.add('sq-flash'); });
+
+  // «Escuchar»: te lee el resumen del día con la voz del navegador
+  $('#in-listen').addEventListener('click', () => {
+    const b = $('#in-listen'), ss = window.speechSynthesis; if (!ss) { b.disabled = true; return; }
+    if (ss.speaking) { ss.cancel(); b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Escuchar'; return; }
+    const txt = $('#in-hello').textContent + '. ' + [...$$('#in-lines li')].map((li) => li.textContent).join(' ');
+    const u = new SpeechSynthesisUtterance(txt); u.lang = 'es-ES'; u.rate = 1.05;
+    const v = ss.getVoices().find((x) => /^es(-ES)?/i.test(x.lang)); if (v) u.voice = v;
+    u.onend = u.onerror = () => { b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Escuchar'; };
+    b.setAttribute('aria-pressed', 'true'); b.querySelector('span').textContent = 'Parar'; ss.speak(u);
+  });
+  if (!window.speechSynthesis) $('#in-listen').hidden = true;
+
+  /* ---------- Inicio · apuntar algo (dictado o escrito) ---------- */
+  const capTxt = $('#in-cap-txt'), capSt = $('#in-cap-st');
+  const capGrow = () => { capTxt.style.height = 'auto'; capTxt.style.height = Math.min(capTxt.scrollHeight, 180) + 'px'; };
+  capTxt.addEventListener('input', capGrow);
+  capTxt.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) { e.preventDefault(); capProcess(); } if (e.key === 'Escape') { capMicStop(true); } });
+  $$('#in-cap .in-seg button').forEach((b) => b.addEventListener('click', () => { IN.kind = b.dataset.k; $$('#in-cap .in-seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }));
+  $('#in-mega').addEventListener('click', () => { IN.mega = !IN.mega; $('#in-mega').setAttribute('aria-pressed', String(IN.mega)); if (IN.items) capReview(); });
+  $('#in-cap-go').addEventListener('click', () => capProcess());
+  const capMic = {rec: null, want: false, base: '', fin: ''};
+  function capMicStop(cancel) {
+    if (!capMic.rec) return;
+    capMic.want = false; window.__sqRecording = false;
+    const r = capMic.rec; capMic.rec = null; r.onend = null; try { r.stop(); } catch (e) { /* ya parado */ }
+    $('#in-mic').classList.remove('on'); $('#in-cap').classList.remove('listening');
+    if (cancel) { capTxt.value = capMic.base.trim(); capSt.textContent = ''; capGrow(); return; }
+    capTxt.value = (capMic.base + capMic.fin).replace(/\s+/g, ' ').trim(); capGrow();
+    if (capTxt.value) capProcess(); else capSt.textContent = 'No te he oído nada. Vuelve a pulsar el micro.';
+  }
+  $('#in-mic').addEventListener('click', () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { capTxt.focus(); capSt.textContent = 'En este navegador no puedo dictar: usa el micro del teclado.'; return; }
+    if (capMic.rec) { capMicStop(false); return; }
+    if (window.__sqRecording) { capSt.textContent = 'Hay una grabación o un dictado en marcha: páralo antes.'; return; }
+    capMic.base = capTxt.value.trim() ? capTxt.value.trim() + ' ' : ''; capMic.fin = ''; capMic.want = true; window.__sqRecording = true;
+    const r = new SR(); r.lang = 'es-ES'; r.continuous = true; r.interimResults = true; capMic.rec = r;
+    r.onresult = (ev) => { let inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) capMic.fin += t.trim() + ' '; else inter += t; } capTxt.value = capMic.base + capMic.fin + inter; capGrow(); };
+    r.onerror = (e) => { if (['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].includes(e.error)) { capMicStop(true); capSt.textContent = e.error === 'network' ? 'El dictado necesita conexión a internet.' : 'No puedo usar el micrófono: revisa el permiso del navegador.'; } };
+    r.onend = () => { if (capMic.want && capMic.rec === r) { try { r.start(); } catch (e) { capMicStop(false); } } };
+    try { r.start(); } catch (e) { capMic.rec = null; capMic.want = false; window.__sqRecording = false; return; }
+    $('#in-mic').classList.add('on'); $('#in-cap').classList.add('listening');
+    capSt.textContent = 'Te escucho… di todo lo que tengas, de corrido. Pulsa el micro otra vez y lo ordeno.';
+  });
+  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) $('#in-mic').title = 'Dictar (usa el micro del teclado)';
+
+  async function capProcess() {
+    const raw = capTxt.value.trim(); if (!raw || IN.busy) return;
+    if (capMic.rec) { capMicStop(false); return; }
+    IN.raw = raw;
+    if (IN.kind === 'nota') { IN.items = [{tipo: 'nota', titulo: raw.split(/[.\n]/)[0].slice(0, 90), texto: raw}]; return capSave(); }
+    IN.busy = true; $('#in-cap-go').disabled = true; capSt.textContent = 'Ordenando lo que me has dicho…';
+    let items = null;
+    if (sample) {
+      try {
+        const people = knownPeople();
+        const out = await sample.json('Eres el secretario de ' + (inMyName() || 'la persona usuaria') + ' en Synqalia. Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Separa lo que ha dictado o escrito en piezas. ' +
+          (IN.kind === 'tarea' ? 'TODO son tareas (tipo "tarea"). ' : 'Cada pieza es una "tarea" (algo que hacer o que encarga a otra persona, una llamada, un recordatorio con fecha) o una "nota" (idea, pensamiento o algo que quiere guardar sin acción). ') +
+          'Devuelve SOLO JSON {"items":[{"tipo":"tarea"|"nota","titulo":"verbo en infinitivo + objeto para tareas (máx. 90 caracteres, primera letra en mayúscula); para notas, un título corto","texto":"para notas: el texto completo y bien escrito; para tareas: \\"\\"","persona":"nombre de la otra persona (nunca la persona usuaria) o null","asignar":true si pide asignar o encargar la tarea a esa persona («asigna a», «que X haga», «encárgale», «que X me mande»…), si no false,"empresa":"Provalliance","NEUPAREDIS","MSH","MIG" o "Personal","prioridad":"Mega" si dice mega o muy importante, "Alta" si urgente/hoy, "Baja" si cuando pueda, si no "Media","vence":"YYYY-MM-DD" si da o implica fecha (mañana, el viernes…) o null}]}. ' +
+          'Si la tarea se asigna, el título es lo que tiene que hacer esa persona. Si una persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nTEXTO: ' + raw);
+        if (out && Array.isArray(out.items) && out.items.length) items = out.items.filter((x) => x && x.titulo).slice(0, 8);
+      } catch (e) { /* sin IA: se guarda tal cual */ }
+    }
+    if (!items || !items.length) items = [{tipo: IN.kind === 'nota' ? 'nota' : 'tarea', titulo: raw.slice(0, 90), texto: raw}];
+    if (IN.kind === 'tarea') items.forEach((x) => { x.tipo = 'tarea'; });
+    IN.items = items; IN.busy = false; $('#in-cap-go').disabled = false; capSt.textContent = '';
+    capReview();
+  }
+
+  function capReview() {
+    const box = $('#in-review'); box.replaceChildren(); const items = IN.items || [];
+    box.hidden = !items.length; if (!items.length) return;
+    box.appendChild(el('div', 'in-rv-h', items.length === 1 ? 'Lo he entendido así' : 'Lo he entendido así: ' + items.length + ' cosas'));
+    items.forEach((x, i) => {
+      const c = el('div', 'in-rv' + ((IN.mega || x.prioridad === 'Mega') ? ' mega' : ''));
+      const seg = el('div', 'in-seg sm'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Qué es');
+      [['tarea', 'Tarea'], ['nota', 'Nota']].forEach(([k, t]) => { const b = el('button', null, t); b.type = 'button'; b.setAttribute('aria-pressed', String(x.tipo === k)); b.addEventListener('click', () => { x.tipo = k; capReview(); }); seg.appendChild(b); });
+      const top = el('div', 'in-rv-top'); top.appendChild(seg);
+      if (IN.mega || x.prioridad === 'Mega') top.appendChild(el('span', 'in-tag mega-t', 'Mega'));
+      const del = el('button', 'in-rv-x', '✕'); del.type = 'button'; del.setAttribute('aria-label', 'Quitar'); del.addEventListener('click', () => { IN.items.splice(i, 1); if (!IN.items.length) capCancel(); else capReview(); }); top.appendChild(del);
+      c.appendChild(top);
+      const ti = el('input', 'in-rv-t'); ti.value = x.titulo; ti.setAttribute('aria-label', 'Título'); ti.addEventListener('input', () => { x.titulo = ti.value; }); c.appendChild(ti);
+      const bits = [];
+      if (x.tipo === 'tarea') {
+        const to = x.persona && !isMe(x.persona) ? memberFor(x.persona) : null;
+        if (x.asignar && x.persona) bits.push(to ? 'Asignada a ' + to.name + ' · quedará en «Esperando a otros»' : 'Con ' + x.persona + ' (aún no tiene Synqalia: queda en tu lista)');
+        else if (x.persona) bits.push('Con ' + x.persona);
+        bits.push(x.vence ? dueLabel(x.vence) || x.vence : 'sin fecha');
+        if (x.prioridad && x.prioridad !== 'Media' && x.prioridad !== 'Mega' && !IN.mega) bits.push('prioridad ' + x.prioridad.toLowerCase());
+      } else bits.push('Nota en ' + (window.__sqNotas ? (window.__sqNotas.bookName('lb-ideas') || 'Notas') : 'Notas'));
+      c.appendChild(el('div', 'in-rv-m', bits.join(' · ')));
+      box.appendChild(c);
+    });
+    const acts = el('div', 'in-rv-acts');
+    acts.appendChild(inBtn('Cancelar', '', capCancel));
+    acts.appendChild(inBtn(items.length === 1 ? 'Guardar' : 'Guardar las ' + items.length, 'go', capSave));
+    box.appendChild(acts);
+  }
+  function capCancel() { IN.items = null; $('#in-review').hidden = true; $('#in-review').replaceChildren(); capSt.textContent = ''; capTxt.focus(); }
+
+  async function capSave() {
+    const items = (IN.items || []).filter((x) => String(x.titulo || '').trim()); if (!items.length || IN.busy) return;
+    IN.busy = true; capSt.textContent = 'Guardando…'; const done = []; const avisos = [];
+    for (const x of items) {
+      const mega = IN.mega || x.prioridad === 'Mega';
+      if (x.tipo === 'nota') {
+        if (!window.__sqNotas) { avisos.push('Las notas aún se están cargando: prueba en un momento.'); continue; }
+        await window.__sqNotas.add({titulo: x.titulo.trim(), cuerpo: x.texto || (items.length === 1 ? IN.raw : x.titulo), mega});
+        done.push('nota «' + x.titulo.trim() + '»'); continue;
+      }
+      let persona = x.persona && !isMe(x.persona) ? x.persona : null;
+      const to = x.asignar && persona ? memberFor(persona) : null;
+      if (to) persona = to.name;
+      const data = {titulo: x.titulo.trim(), persona, empresa: x.empresa || 'Provalliance', prioridad: mega ? 'Mega' : (x.prioridad || 'Media'), vence: x.vence || null, origen: 'inicio', detalle: items.length === 1 && x.titulo.trim() !== IN.raw ? 'Lo que apuntaste: ' + IN.raw : ''};
+      if (to) { data.espera = 'tercero'; data.extra = {esperaA: to.name, asignadaA: {email: to.email, nombre: to.name, fecha: new Date().toISOString()}}; }
+      const id = await addTask(data);
+      if (!id) { avisos.push('No se ha podido guardar «' + data.titulo + '».'); continue; }
+      if (to) { const res = await sendAssigned(id, to, data); if (!res.ok) avisos.push('No se ha podido enviar a ' + firstName(to.name) + ' (' + res.error + '); queda en tu lista.'); }
+      done.push((to ? 'tarea para ' + firstName(to.name) : 'tarea') + ' «' + data.titulo + '»');
+    }
+    IN.busy = false; IN.items = null; $('#in-review').hidden = true; $('#in-review').replaceChildren();
+    if (done.length) { capTxt.value = ''; capGrow(); IN.mega = false; $('#in-mega').setAttribute('aria-pressed', 'false'); }
+    capSt.textContent = (done.length ? '✓ Guardado: ' + done.join(' · ') + '.' : '') + (avisos.length ? ' ' + avisos.join(' ') : '');
+    renderInicio();
+  }
+
+  /* ---------- Inicio · Pregúntame (el Asistente en la portada) ---------- */
+  function inAskChips() {
+    const box = $('#in-ask-chips'); if (!box || box.dataset.done === todayISO + (IN.ask.chat ? 'c' : '')) return;
+    box.dataset.done = todayISO + (IN.ask.chat ? 'c' : ''); box.replaceChildren();
+    const qs = IN.ask.chat ? ['Prepárame un correo con esto', '¿Algo más que deba saber?'] : ['¿Qué es lo más importante hoy?', '¿Qué me falta por responder?', 'Prepárame la próxima reunión', '¿Qué he dejado a medias esta semana?'];
+    qs.forEach((q) => box.appendChild(inBtn(q, 'chip', () => inAsk(q))));
+  }
+  const askPhone = () => $('#view-hoy').offsetWidth < 560;
+  async function inAsk(q) {
+    q = String(q || '').trim(); if (!q || IN.ask.busy) return;
+    const api = window.__sqAsistenteApi;
+    if (!api) { location.hash = '#asistente'; return; }
+    if (askPhone()) { $('#in-ask-q').value = ''; api.go(q); return; } // en el móvil, a pantalla completa
+    IN.ask.busy = true; $('#in-ask-q').value = '';
+    const th = $('#in-ask-thread'); th.classList.add('on');
+    th.appendChild(el('div', 'in-q', q));
+    const wait = el('div', 'in-a wait'); wait.innerHTML = '<i></i><i></i><i></i><span>Mirando tu correo, agenda, tareas y notas…</span>'; th.appendChild(wait);
+    th.scrollTop = th.scrollHeight;
+    const r = await api.ask(IN.ask.chat, q);
+    wait.remove(); IN.ask.busy = false;
+    const a = el('div', 'in-a');
+    if (!r || r.msg.error) { a.classList.add('err'); a.textContent = r ? r.msg.texto : 'No he podido responder.'; th.appendChild(a); return; }
+    IN.ask.chat = r.chatId; $('#in-ask-full').hidden = false;
+    const out = api.html(r.msg); a.innerHTML = out.html;
+    if (out.list.length) { const s = el('div', 'in-srcs'); s.appendChild(el('span', 'in-srcs-l', 'Fuentes')); out.list.forEach((f) => { const b = el('button', 'in-src'); b.type = 'button'; b.appendChild(el('em', null, String(f.n))); b.appendChild(el('span', null, api.label(f.col) + ' · ' + (f.titulo || f.id))); b.addEventListener('click', () => api.openSource(f.col, f.id)); s.appendChild(b); }); a.appendChild(s); }
+    a.querySelectorAll('.sqa-cite').forEach((b) => b.addEventListener('click', () => api.openSource(b.dataset.col, b.dataset.id)));
+    th.appendChild(a); a.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    inAskChips();
+  }
+  $('#in-ask-form').addEventListener('submit', (e) => { e.preventDefault(); inAsk($('#in-ask-q').value); });
+  $('#in-ask-full').addEventListener('click', () => { if (IN.ask.chat && window.__sqAsistenteApi) window.__sqAsistenteApi.open(IN.ask.chat); });
+  {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition, mb = $('#in-ask-mic');
+    if (!SR) mb.hidden = true;
+    else {
+      let rec = null;
+      mb.addEventListener('click', () => {
+        if (rec) { try { rec.stop(); } catch (e) { /* ya parado */ } return; }
+        if (window.__sqRecording) return;
+        const inp = $('#in-ask-q'); let fin = '';
+        rec = new SR(); rec.lang = 'es-ES'; rec.continuous = false; rec.interimResults = true; window.__sqRecording = true; mb.classList.add('on');
+        rec.onresult = (ev) => { let inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t + ' '; else inter += t; } inp.value = (fin + inter).trim(); };
+        rec.onend = () => { rec = null; window.__sqRecording = false; mb.classList.remove('on'); if (inp.value.trim()) inAsk(inp.value); };
+        try { rec.start(); } catch (e) { rec = null; window.__sqRecording = false; mb.classList.remove('on'); }
+      });
+    }
   }
 
   // ---------- catch-ups ----------
@@ -5703,15 +6044,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   setInterval(refresh, 120000);
 })();
 </script>
-<script src="notas.js" defer></script>
+<script src="notas.js?v=20261125a" defer></script>
 <script src="lista.js?v=20261119f" defer></script>
-<script src="graph-live.js?v=20261124a" defer></script>
+<script src="graph-live.js?v=20261125a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
 <script src="nueva-reunion.js?v=20261124a" defer></script>
 <script src="plaud.js?v=20261125d" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261124j" defer></script>
-<script src="asistente.js?v=20261119a" defer></script>
+<script src="asistente.js?v=20261125a" defer></script>
 </body>
 </html>

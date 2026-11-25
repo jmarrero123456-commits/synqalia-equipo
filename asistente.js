@@ -254,6 +254,33 @@
     render();
   };
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-view="asistente"], [data-go="asistente"]'); if (t) window.__sqAsistenteGo(); });
+  // Inicio: preguntar desde la portada. En el PC y la tablet la respuesta sale allí mismo; la consulta queda guardada en «Consultas».
+  window.__sqAsistenteApi = {
+    async ask(chatId, q) {
+      q = String(q || '').trim(); if (!q) return null;
+      let c = chatId ? S.chats.find((h) => h.id === chatId) : null;
+      if (!c) { c = { id: newId(), titulo: q.slice(0, 80), creada: nowIso(), mensajes: [] }; S.chats.unshift(c); }
+      c.mensajes.push({ rol: 'user', texto: q, en: nowIso() });
+      let msg;
+      try {
+        const messages = c.mensajes.filter((m) => !m.error).slice(-12).map((m) => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.texto }));
+        const { data, error } = await sb.functions.invoke('asistente', { body: { messages } });
+        if (error) { let t = error.message; try { const b = await error.context.json(); t = b.error || t; } catch (e) {} throw new Error(t); }
+        msg = { rol: 'ia', texto: data.answer, fuentes: data.fuentes || [], pasos: data.pasos || [], en: nowIso() };
+      } catch (e) {
+        msg = { rol: 'ia', error: true, texto: 'No he podido responder: ' + (e.message || e) + '. Vuelve a intentarlo.', en: nowIso() };
+      }
+      c.mensajes.push(msg);
+      if (!msg.error) saveChat(c); else { c.mensajes.splice(-2, 2); if (!c.mensajes.length) S.chats = S.chats.filter((h) => h !== c); }
+      if (S.cur && S.cur.id === c.id && location.hash === '#asistente') render();
+      return { chatId: c.id, msg };
+    },
+    html: (msg) => md(msg.texto, msg.fuentes),
+    label: (col) => COL_LABEL[col] || col,
+    openSource,
+    open(chatId) { S.cur = S.chats.find((h) => h.id === chatId) || null; S.showList = false; location.hash = '#asistente'; render(); scrollEnd(); },
+    go(q) { location.hash = '#asistente'; window.__sqAsistenteGo(); if (q) ask(q); },
+  };
   // si se sale del Asistente con el micrófono abierto, se para sin enviar
   addEventListener('hashchange', () => { if (location.hash !== '#asistente' && S.rec) toggleMic({ noSend: true }); });
   if (location.hash === '#asistente') { /* entrada directa por enlace: sin micrófono automático (el navegador pide un toque) */ }
