@@ -882,6 +882,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-now { position: absolute; left: calc(var(--cal-g) - 6px); right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
   .cal-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
   /* Agenda: vista semana, minicalendario, convocatorias en el calendario, mover arrastrando (24/11/2026) */
+  .ag-date { position: relative; cursor: pointer; }
+  .ag-date-in { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: 0; padding: 0; pointer-events: none; }
   .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
   .ag-bar > .chips { margin: 0; }
   @media (max-width: 700px) {
@@ -3221,6 +3223,13 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       seg.appendChild(b);
     });
     tb.appendChild(seg);
+    // elegir cualquier fecha con el calendario del sistema
+    const pick = el('label', 'btn ghost ag-ico ag-date'); pick.title = 'Elegir fecha'; pick.setAttribute('aria-label', 'Elegir fecha');
+    pick.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>';
+    const di = document.createElement('input'); di.type = 'date'; di.className = 'ag-date-in'; di.value = state.agendaView === 'semana' ? state.agendaWeek : (state.agendaDay || todayISO);
+    di.addEventListener('change', () => { const f = di.value; if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return; state.calPop = null; state.mcalMonth = null; if (state.agendaView === 'semana') state.agendaWeek = mondayOf(f); else { state.agendaDay = f; state.agendaFree = true; state.mtOpen = null; renderMeetRoom(true); } renderMeetings(); });
+    pick.addEventListener('click', (k) => { if (k.target === di) return; k.preventDefault(); try { di.showPicker(); } catch (x) { di.focus(); di.click(); } });
+    pick.appendChild(di); tb.appendChild(pick);
   }
   function placeNow(nl) {
     const h0 = Number(nl.dataset.h0); const m = nowMin();
@@ -4485,7 +4494,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         });
       });
     }
-    state.mails.filter((m) => isMeeting(m) && !isCancelMail(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO).forEach((m) => {
+    // Con la lista de convocatorias de Outlook (Microsoft 365) no se añaden las sacadas de correos: esa lista ya es la buena
+    // (un correo de convocatoria ya respondida, rechazada o cancelada en Outlook volvía a salir como «por responder»)
+    if (!inv) state.mails.filter((m) => isMeeting(m) && !isCancelMail(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO && !(m.reunion.fecha === todayISO && (m.reunion.fin || '23:59') <= nowHM)).forEach((m) => {
       const r = m.reunion; const ag = state.agenda[r.fecha];
       if (ag && (ag.eventos || []).some((e) => sameSlot(e, r))) return; // ya está en el calendario
       if (raw.some((x) => x.fecha === r.fecha && x.inicio === r.inicio)) return;
