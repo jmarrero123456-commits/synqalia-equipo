@@ -1233,7 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
 <link rel="stylesheet" href="buzon.css?v=20261124j">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
-<link rel="stylesheet" href="inicio.css?v=20261125b">
+<link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -4772,6 +4772,56 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
   $('#in-ask-form').addEventListener('submit', (e) => { e.preventDefault(); inAsk($('#in-ask-q').value); });
   $('#in-ask-full').addEventListener('click', () => { if (IN.ask.chat && window.__sqAsistenteApi) window.__sqAsistenteApi.open(IN.ask.chat); });
+  // Acciones que puede hacer el asistente por voz (voz.js). Las «directas» (notas y tareas propias) se hacen al momento;
+  // las que ven otras personas (asignar, responder correo o convocatoria, mensaje) solo después de su «sí» (lo decide voz.js).
+  window.__sqActs = {
+    contexto() {
+      const ms = state.mails.filter((m) => isPending(m) && !isMeeting(m) && (isUrgent(m) || isDecision(m))).slice(0, 15)
+        .map((m) => ({id: m.id, de: personaDe(m.de), asunto: m.asunto, urgente: isUrgent(m), pide: String(m.peticion || m.resumen || '').slice(0, 160), fecha: fechaDe(m)}));
+      const ts = state.tasks.filter((t) => t.estado !== 'hecha').slice(0, 60)
+        .map((t) => ({id: t.id, titulo: t.titulo, vence: t.vence || null, prioridad: t.prioridad, espera: espOf(t), persona: waitWho(t) || t.persona || null}));
+      const cs = openInvites().slice(0, 15).map((p) => ({fecha: p.fecha, inicio: p.inicio, fin: p.fin, titulo: p.titulo, organiza: p.organiza || '', serie: p.mas ? p.mas.length + 1 : 0}));
+      return {correos: ms, tareas: ts, convocatorias: cs};
+    },
+    async nota(a) { if (!window.__sqNotas) throw new Error('las notas aún se están cargando'); await window.__sqNotas.add({titulo: a.titulo, cuerpo: a.texto || a.titulo, mega: !!a.mega, origen: 'voz'}); },
+    async tarea(a) {
+      const id = await addTask({titulo: a.titulo, persona: a.persona || null, empresa: 'Provalliance', prioridad: a.prioridad || 'Media', vence: a.vence || null, origen: 'voz'});
+      if (!id) throw new Error('no se ha podido guardar');
+    },
+    async tareaCambio(a) {
+      const t = state.tasks.find((x) => x.id === a.id); if (!t) throw new Error('no encuentro esa tarea');
+      const patch = a.hecha ? {estado: 'hecha', hecha: new Date().toISOString()} : {vence: a.vence};
+      if (!(await write(() => db.collection('tareas').doc(t.id).update(patch), a.hecha ? 'Hecha ✓' : 'Fecha cambiada'))) throw new Error('no se ha podido guardar');
+    },
+    async asignar(a) {
+      const to = state.members.find((m) => String(m.email || '').toLowerCase() === String(a.para.email || '').toLowerCase());
+      if (!to) throw new Error((a.para.nombre || 'esa persona') + ' no usa Synqalia');
+      const data = {titulo: a.titulo, persona: to.name, empresa: 'Provalliance', prioridad: a.prioridad || 'Media', vence: a.vence || null, origen: 'voz', espera: 'tercero',
+        extra: {esperaA: to.name, asignadaA: {email: to.email, nombre: to.name, fecha: new Date().toISOString()}}};
+      const id = await addTask(data); if (!id) throw new Error('no se ha podido guardar');
+      const r = await sendAssigned(id, to, data); if (!r.ok) throw new Error('queda en tu lista, no se ha podido enviar (' + r.error + ')');
+    },
+    async correo(a) {
+      const m = state.mails.find((x) => x.id === a.id); if (!m) throw new Error('no encuentro ese correo');
+      if (!graphOn()) { if (!(await saveReply(m, {texto: a.texto, estado: 'cola_borrador'}))) throw new Error('no se ha podido guardar'); return 'cola'; }
+      if (!(await saveReply(m, {texto: a.texto, estado: 'enviando'}))) throw new Error('no se ha podido guardar');
+      try { await graphCall({action: 'send', mail: m.id}); } catch (e) { await saveReply(m, {texto: a.texto, estado: 'borrador'}); throw e; }
+      await write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Enviado ✓ · correo gestionado');
+      return 'enviado';
+    },
+    async convocatoria(a) {
+      const p = openInvites().find((x) => x.fecha === a.fecha && x.inicio === a.inicio && invId(x.fecha, x.inicio, x.titulo) === invId(a.fecha, a.inicio, a.titulo)) || openInvites().find((x) => x.fecha === a.fecha && x.inicio === a.inicio);
+      if (!p) throw new Error('esa convocatoria ya no está por responder');
+      state.rsvpForm = {texto: a.comentario || '', avisar: true};
+      await sendRsvp(p, a.respuesta);
+    },
+    async mensaje(a) {
+      const sbx = window.__sb; if (!sbx) throw new Error('sin conexión');
+      const { data: cid, error } = await sbx.rpc('chat_open_direct', {p_email: a.para.email}); if (error) throw new Error(error.message);
+      const { error: e2 } = await sbx.from('chat_messages').insert({chat_id: cid, body: a.texto}); if (e2) throw new Error(e2.message);
+    },
+  };
+
   // El micro de «Pregúntame» abre la conversación por voz (voz.js): escucha, contesta hablando, busca huecos y convoca reuniones.
   $('#in-ask-mic').addEventListener('click', () => { if (window.__sqVoz) window.__sqVoz.open(); });
   $('#in-ask-mic').setAttribute('aria-label', 'Hablar con el asistente'); $('#in-ask-mic').title = 'Hablar con el asistente';
@@ -6042,6 +6092,6 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261124j" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
-<script src="voz.js?v=20261125a" defer></script>
+<script src="voz.js?v=20261125b" defer></script>
 </body>
 </html>

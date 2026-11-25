@@ -212,3 +212,5 @@
   :root:not([data-theme="light"]) .vz-card-k { color: #5fe0cf; } :root:not([data-theme="light"]) .vz-card-m { color: #b8d6d0; }
   :root:not([data-theme="light"]) .vz-b.ia.ok { background: #10302b; color: #8ff0e2; }
 }
+.vz-card-txt { margin-top: 4px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; max-height: 9em; overflow-y: auto; color: #12202a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vz-card-txt { color: #e6f4f1; } }

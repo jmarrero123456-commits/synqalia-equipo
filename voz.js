@@ -1,8 +1,11 @@
 /* Synqalia · Asistente por voz (25/11/2026)
    Conversación hablada con el asistente desde el Inicio: escucha → piensa → contesta en voz alta → vuelve a escuchar.
-   Sabe buscar huecos en tu agenda y en la de otras personas de Microsoft 365 y preparar convocatorias.
-   La convocatoria solo se envía cuando dices un «sí» claro (sí, envíala, adelante…); si dices otra cosa, la IA la cambia
-   o te vuelve a preguntar. Después puedes decir «cancélala» y se anula (Microsoft avisa a los asistentes).
+   Sabe buscar huecos en tu agenda y en la de otras personas de Microsoft 365 y preparar convocatorias, apuntar notas y tareas,
+   marcar tareas hechas o cambiarles la fecha, asignar tareas, contestar correos, responder convocatorias y mandar mensajes de Synqalia.
+   Notas y tareas tuyas se guardan al momento («Apuntado»). Lo que ven otras personas (convocar, asignar, contestar un correo,
+   responder una convocatoria, mandar un mensaje) solo se hace cuando dices un «sí» claro (sí, envíala, adelante…); si dices
+   otra cosa, la IA lo cambia o te vuelve a preguntar. Después de convocar puedes decir «cancélala» y se anula.
+   Las acciones las hace mi.html (window.__sqActs) con las mismas piezas que el resto de la app.
    Servidor: función «asistente» con modo: 'voz' (propuestas) y función «reuniones» (crearReunion, moverReunion, cancelarReunion). */
 (() => {
   const sb = window.__sb;
@@ -29,7 +32,7 @@
     <div class="vz-foot">
       <div class="vz-state"><span class="vz-orb" aria-hidden="true"></span><span class="vz-st">Pulsa el micro y habla</span></div>
       <button type="button" class="vz-mic" aria-label="Hablar">${mic}</button>
-      <p class="vz-hint">Ej.: «¿Cuándo puedo verme una hora con Belén?» · «¿Qué tengo el jueves?» · Para acabar: «gracias».</p>
+      <p class="vz-hint">Ej.: «¿Cuándo puedo verme con Belén?» · «Apúntame una nota…» · «¿Qué tengo urgente?» · Para acabar: «gracias».</p>
     </div></div>`;
   document.body.appendChild(box);
   const $l = box.querySelector('.vz-log'), $st = box.querySelector('.vz-st'), $mic = box.querySelector('.vz-mic'), $card = box.querySelector('.vz-card');
@@ -55,13 +58,23 @@
   const fmtDia = (f) => new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(f + 'T12:00:00')).replace(',', '');
   const hora = (h) => { const [a, b] = h.split(':').map(Number); return b ? `${a}:${String(b).padStart(2, '0')}` : String(a); };
   const quien = (p) => p.personas.map((x) => x.nombre || x.email).join(', ').replace(/, ([^,]*)$/, ' y $1');
+  const RESP = { aceptar: 'Acepto', provisional: 'Dejo como provisional', rechazar: 'Rechazo' };
+  const corto = (n) => String(n || '').split(/\s+/)[0] || n;
   function leer(p) {
+    if (p.tipo === 'asignar') return `Le asigno a ${p.para.nombre} «${p.titulo}»${p.vence ? ' para el ' + fmtDia(p.vence) : ''}. ¿Se la envío?`;
+    if (p.tipo === 'correo') return `Respondo a ${String(p.para).replace(/<[^>]*>/g, '').trim()} sobre «${String(p.asunto).replace(/^(re|rv|fw|fwd)\s*:\s*/i, '')}»: ${p.texto} ¿Lo envío?`;
+    if (p.tipo === 'convocatoria') return `${RESP[p.respuesta]} «${p.titulo}», el ${fmtDia(p.fecha)} a las ${hora(p.inicio)}${p.serie > 1 ? ', toda la serie' : ''}${p.comentario ? ', con el mensaje: ' + p.comentario : ''}. ¿La envío?`;
+    if (p.tipo === 'mensaje') return `Le mando a ${corto(p.para.nombre)} por Synqalia: ${p.texto} ¿Lo envío?`;
     return `${p.cambia ? 'La cambio a' : 'Convoco'} «${p.titulo}», el ${fmtDia(p.fecha)} de ${hora(p.inicio)} a ${hora(p.fin)}, ${p.teams ? 'por Teams' : (p.lugar ? 'en ' + p.lugar : 'presencial')}, con ${quien(p)}. ¿La envío?`;
   }
   function showCard() {
     const p = S.pend; $card.hidden = !p; if (!p) return;
-    $card.innerHTML = `<div class="vz-card-k">${p.cambia ? 'Cambio de la reunión' : 'Convocatoria preparada'} · di «sí» para enviarla</div>
-      <div class="vz-card-t">${esc(p.titulo)}</div>
+    const k = (t) => `<div class="vz-card-k">${t} · di «sí» para enviarlo</div>`;
+    if (p.tipo === 'asignar') $card.innerHTML = k('Tarea para ' + esc(corto(p.para.nombre))) + `<div class="vz-card-t">${esc(p.titulo)}</div><div class="vz-card-m">${p.vence ? esc(fmtDia(p.vence)) : 'Sin fecha'} · prioridad ${esc((p.prioridad || 'Media').toLowerCase())}</div>`;
+    else if (p.tipo === 'correo') $card.innerHTML = k('Respuesta de correo') + `<div class="vz-card-t">RE: ${esc(p.asunto)}</div><div class="vz-card-m">Para ${esc(p.para)}</div><div class="vz-card-txt">${esc(p.texto)}</div>`;
+    else if (p.tipo === 'convocatoria') $card.innerHTML = k('Respuesta a convocatoria') + `<div class="vz-card-t">${esc(RESP[p.respuesta])} · ${esc(p.titulo)}</div><div class="vz-card-m">${esc(fmtDia(p.fecha))} · ${esc(p.inicio)}–${esc(p.fin || '')}${p.serie > 1 ? ' · toda la serie' : ''}${p.organiza ? ' · convoca ' + esc(p.organiza) : ''}</div>${p.comentario ? `<div class="vz-card-txt">${esc(p.comentario)}</div>` : ''}`;
+    else if (p.tipo === 'mensaje') $card.innerHTML = k('Mensaje de Synqalia') + `<div class="vz-card-t">Para ${esc(p.para.nombre)}</div><div class="vz-card-txt">${esc(p.texto)}</div>`;
+    else $card.innerHTML = k(p.cambia ? 'Cambio de la reunión' : 'Convocatoria preparada') + `<div class="vz-card-t">${esc(p.titulo)}</div>
       <div class="vz-card-m">${esc(fmtDia(p.fecha))} · ${esc(p.inicio)}–${esc(p.fin)} · ${p.teams ? 'Teams' : esc(p.lugar || 'Presencial')}</div>
       <div class="vz-card-m">Con ${esc(quien(p))}</div>`;
   }
@@ -110,7 +123,7 @@
     if (RE_FIN.test(t) && !S.pend) { say('De nada. Aquí estoy cuando me necesites.', () => close()); return; }
     if (S.pend) {
       if (RE_SI.test(t) && !RE_DUDA.test(t)) { await enviar(); return; }
-      if (RE_NO.test(t) && !/\b(a las|el (lunes|martes|miercoles|jueves|viernes)|manana|hora)\b/.test(t)) { S.pend = null; showCard(); say('Vale, no la envío.', listen); S.msgs.push({ role: 'user', content: text }, { role: 'assistant', content: 'Vale, no la envío.' }); return; }
+      if (RE_NO.test(t) && !/\b(a las|el (lunes|martes|miercoles|jueves|viernes)|manana|hora|dile|pon)\b/.test(t)) { S.pend = null; showCard(); say('Vale, no lo envío.', listen); S.msgs.push({ role: 'user', content: text }, { role: 'assistant', content: 'Vale, no lo envío.' }); return; }
     } else if (S.ultima && RE_CANCELA.test(t)) { await cancelar(); return; }
     await preguntar(text);
   }
@@ -123,16 +136,29 @@
     const filler = setTimeout(() => { if (S.phase === 'thinking' && S.open && TTS) { const u = new SpeechSynthesisUtterance('Un momento.'); u.lang = 'es-ES'; TTS.speak(u); } }, 2500);
     let res = null, err = null;
     try {
-      const { data, error } = await sb.functions.invoke('asistente', { body: { modo: 'voz', messages: S.msgs.slice(-16), estado: { pendiente: S.pend, ultima: S.ultima && { titulo: S.ultima.titulo, fecha: S.ultima.fecha, inicio: S.ultima.inicio, fin: S.ultima.fin, personas: S.ultima.personas } } } });
+      let contexto = null; try { contexto = window.__sqActs ? window.__sqActs.contexto() : null; } catch (e) { /* sin contexto */ }
+      const { data, error } = await sb.functions.invoke('asistente', { body: { modo: 'voz', messages: S.msgs.slice(-16), estado: { pendiente: S.pend, contexto, ultima: S.ultima && { titulo: S.ultima.titulo, fecha: S.ultima.fecha, inicio: S.ultima.inicio, fin: S.ultima.fin, personas: S.ultima.personas } } } });
       if (error) { let m = error.message; try { const b = await error.context.json(); m = b.error || m; } catch (e) { /* sin detalle */ } throw new Error(m); }
       res = data;
     } catch (e) { err = e; }
     clearTimeout(filler); wait.remove();
     if (!S.open) return;
     if (err || !res) { S.msgs.pop(); say('Perdona, no he podido contestar: ' + ((err && err.message) || 'error') + '. ¿Lo intentamos otra vez?', listen, 'err'); return; }
+    // primero lo que se hace al momento (notas, tareas propias, hecha / cambio de fecha)
+    const fallos = [];
+    for (const a of (Array.isArray(res.directas) ? res.directas : [])) {
+      try {
+        if (!window.__sqActs) throw new Error('la app aún está cargando');
+        if (a.tipo === 'nota') await window.__sqActs.nota(a);
+        else if (a.tipo === 'tarea') await window.__sqActs.tarea(a);
+        else if (a.tipo === 'tarea_cambio') await window.__sqActs.tareaCambio(a);
+      } catch (e) { fallos.push('«' + (a.titulo || 'eso') + '»: ' + e.message); }
+    }
+    if (fallos.length) { const t2 = 'No he podido guardar ' + fallos.join('; ') + '.'; S.msgs.push({ role: 'assistant', content: t2 }); say(t2, listen, 'err'); return; }
     if (res.propuesta) {
+      if (!res.propuesta.tipo) res.propuesta.tipo = 'reunion';
       S.pend = res.propuesta; showCard();
-      const txt = leer(S.pend);
+      const txt = ((res.directas || []).length ? 'Apuntado. ' : '') + leer(S.pend);
       S.msgs.push({ role: 'assistant', content: txt });
       say(txt, listen);
       return;
@@ -151,6 +177,7 @@
   };
   async function enviar() {
     const p = S.pend; if (!p || S.busy) return;
+    if (p.tipo && p.tipo !== 'reunion') return enviarOtro(p);
     S.busy = true; setPhase('thinking', p.cambia ? 'Cambiando la reunión…' : 'Enviando la convocatoria…');
     try {
       if (p.cambia && S.ultima && S.ultima.id) {
@@ -168,6 +195,22 @@
       const m = /NO_ORGANIZADOR/.test(e.message) ? 'esa reunión la convoca otra persona y no puedo cambiarla' : e.message;
       say('No he podido enviarla: ' + m + '.', listen, 'err');
     } finally { S.busy = false; }
+  }
+  // asignar una tarea, contestar un correo, responder una convocatoria o mandar un mensaje (ya con su «sí»)
+  async function enviarOtro(p) {
+    S.busy = true; setPhase('thinking', 'Enviando…');
+    try {
+      const A = window.__sqActs; if (!A) throw new Error('la app aún está cargando');
+      let txt;
+      if (p.tipo === 'asignar') { await A.asignar(p); txt = 'Hecho. ' + corto(p.para.nombre) + ' ya la tiene en su lista y tú la ves en «Esperando a otros».'; }
+      else if (p.tipo === 'correo') { const r = await A.correo(p); txt = r === 'cola' ? 'La he dejado en la cola de Outlook: saldrá en la próxima actualización.' : 'Enviado. He dado el correo por gestionado.'; }
+      else if (p.tipo === 'convocatoria') { await A.convocatoria(p); txt = 'Hecho, respuesta enviada a ' + (p.organiza ? corto(p.organiza) : 'quien convoca') + '.'; }
+      else if (p.tipo === 'mensaje') { await A.mensaje(p); txt = 'Mensaje enviado a ' + corto(p.para.nombre) + '.'; }
+      else throw new Error('no sé hacer eso todavía');
+      S.pend = null; showCard();
+      S.msgs.push({ role: 'user', content: 'Sí' }, { role: 'assistant', content: txt });
+      say(txt, listen, 'ok');
+    } catch (e) { say('No he podido hacerlo: ' + e.message + '.', listen, 'err'); } finally { S.busy = false; }
   }
   async function cancelar() {
     const u = S.ultima; if (!u || !u.id || S.busy) return;
