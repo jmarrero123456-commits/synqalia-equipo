@@ -175,6 +175,30 @@
     <article class="bz-pane" aria-live="polite"></article>
   </div>`;
   const $ = (s) => root.querySelector(s);
+  /* ---------- ancho de la lista: se arrastra el borde, como en Outlook (se recuerda; doble clic, ancho normal) ---------- */
+  {
+    const body = $('.bz-body'), col = $('.bz-col');
+    const grip = document.createElement('div');
+    grip.className = 'bz-grip'; grip.setAttribute('role', 'separator'); grip.setAttribute('aria-orientation', 'vertical');
+    grip.setAttribute('aria-label', 'Ancho de la lista de correos'); grip.tabIndex = 0; grip.title = 'Arrastra para estrechar o ensanchar la lista · doble clic: ancho normal';
+    body.insertBefore(grip, $('.bz-pane'));
+    const MIN = 220;
+    const maxW = () => Math.max(MIN, Math.round(body.clientWidth * 0.62));
+    const setW = (w, save) => {
+      if (w == null) { body.style.removeProperty('--bz-lw'); root.classList.remove('bz-lnarrow'); if (save) { try { localStorage.removeItem('sq-bz-lw'); } catch {} } return; }
+      w = Math.max(MIN, Math.min(maxW(), Math.round(w)));
+      body.style.setProperty('--bz-lw', w + 'px');
+      root.classList.toggle('bz-lnarrow', w < 300);
+      if (save) { try { localStorage.setItem('sq-bz-lw', String(w)); } catch {} }
+    };
+    try { const v = +localStorage.getItem('sq-bz-lw'); if (v) setW(v); } catch {}
+    let x0 = 0, w0 = 0;
+    const move = (e) => setW(w0 + (e.clientX - x0));
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); root.classList.remove('bz-dragw'); setW(col.getBoundingClientRect().width, true); };
+    grip.addEventListener('pointerdown', (e) => { e.preventDefault(); x0 = e.clientX; w0 = col.getBoundingClientRect().width; root.classList.add('bz-dragw'); document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); });
+    grip.addEventListener('dblclick', () => setW(null, true));
+    grip.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); setW(col.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? -24 : 24), true); } });
+  }
   const list = $('.bz-list'), pane = $('.bz-pane'), statusEl = $('.bz-status'), foot = $('.bz-foot'), folders = $('.bz-folders'), fsel = $('#bz-fsel');
 
   /* ---------- filtros ---------- */
@@ -227,9 +251,10 @@
     const li = (f) => `<button type="button" data-f="${esc(f.wk || f.id)}" aria-current="${cur && cur(f) ? 'true' : 'false'}" class="${f.dentro ? 'in' : ''}"><span>${esc(fname(f))}</span>${f.noLeidos ? `<b>${f.noLeidos}</b>` : (f.wk === 'drafts' && f.total ? `<i>${f.total}</i>` : '')}</button>`;
     const fcol = root.classList.contains('bz-fcol');
     const curF = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
-    folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) + (curF.noLeidos ? ' · ' + curF.noLeidos : '') : '')}</span>`
+    folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) : '')}</span>`
       + main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
-    fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}${f.noLeidos ? ' · ' + f.noLeidos : ''}</option>`).join('');
+    fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
+    if (st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.value = st.carpeta;
     paintCounts();
   }
   folders.addEventListener('click', (e) => {
