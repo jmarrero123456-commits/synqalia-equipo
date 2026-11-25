@@ -13,6 +13,7 @@
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
 // hilo (25/11): html (como en Outlook, sin scripts, imágenes internas incrustadas) y ligero:true para desplegar la lista.
 // lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
+// conciliar (25/11, tarde): además deja leídos en Outlook los gestionados en Synqalia (leidoOutlook); leidoPend busca la conversación si falta.
 // leerHasta (25/11): marcar como leído todo lo anterior a un día (por tandas).
 // carpetaNueva (25/11): crea una carpeta en Outlook (nombre; dentro = carpeta madre opcional).
 // adjuntar / trozo / enviarBorrador (24/11): adjuntos al redactar (hasta 25 MB; los grandes en trozos por sesión de subida).
@@ -512,9 +513,10 @@ async function gBatch(ctx: Ctx, urls: string[]) {
   return out;
 }
 async function boxConciliar(ctx: Ctx, acc: any) {
+  const leidos = await gestionadosALeido(ctx).catch(() => 0);
   const { data: rows } = await db.from("personal_docs").select("id,data").eq("owner", ctx.owner).eq("col", "correos").eq("data->>estado", "pendiente");
   const docs = (rows || []).filter((r: any) => r.data?.conv && !r.data?.reunion).sort((a: any, b: any) => String(b.data.fecha || "").localeCompare(String(a.data.fecha || ""))).slice(0, 80);
-  if (!docs.length) return { cerrados: [] };
+  if (!docs.length) return { cerrados: [], leidos };
   const inbox = await g(ctx, `/me/mailFolders/inbox?$select=id`);
   const yo = String(acc.upn || "").toLowerCase();
   const urls = docs.map((d: any) => `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${String(d.data.conv).replace(/'/g, "''")}'`)}&$top=50&$select=id,isRead,isDraft,from,parentFolderId,receivedDateTime,sentDateTime&$expand=${encodeURIComponent(`singleValueExtendedProperties($filter=id eq '${VERB}')`)}`);
@@ -544,17 +546,56 @@ async function boxConciliar(ctx: Ctx, acc: any) {
     await mergeDoc(ctx.owner, "correos", d.id, { estado: "gestionado", cierre: { motivo, fecha: now } });
     cerrados.push({ id: d.id, motivo });
   }
-  return { cerrados, revisados: docs.length };
+  return { cerrados, revisados: docs.length, leidos };
+}
+async function convDe(ctx: Ctx, id: string, data: any): Promise<string | null> {
+  if (data?.conv) return data.conv;
+  const gid = data?.gid || gidFromLink(data?.enlace);
+  if (!gid) return null;
+  const m = await g(ctx, `/me/messages/${encodeURIComponent(gid)}?$select=conversationId`).catch(() => null);
+  if (!m?.conversationId) return null;
+  await mergeDoc(ctx.owner, "correos", id, { conv: m.conversationId });
+  return m.conversationId;
+}
+async function marcarLeidos(ctx: Ctx, ids: string[]) {
+  let ok = 0;
+  for (let i = 0; i < ids.length; i += 20) {
+    const part = ids.slice(i, i + 20);
+    const r = await g(ctx, `/$batch`, { method: "POST", body: JSON.stringify({ requests: part.map((id, k) => ({ id: String(k), method: "PATCH", url: `/me/messages/${encodeURIComponent(id)}`, headers: { "Content-Type": "application/json" }, body: { isRead: true } })) }) });
+    ok += (r?.responses || []).filter((x: any) => x.status >= 200 && x.status < 300).length;
+  }
+  return ok;
+}
+// gestionados en Synqalia que en Outlook siguen sin leer → leídos (por tandas de 100; se apunta leidoOutlook para no repetir)
+async function gestionadosALeido(ctx: Ctx) {
+  const { data: rows } = await db.from("personal_docs").select("id,data").eq("owner", ctx.owner).eq("col", "correos").eq("data->>estado", "gestionado").is("data->>leidoOutlook", null).limit(500);
+  const docs = (rows || []).filter((r: any) => !r.data?.reunion).sort((a: any, b: any) => String(b.data.fecha || "").localeCompare(String(a.data.fecha || ""))).slice(0, 100);
+  if (!docs.length) return 0;
+  const now = iso();
+  const conv: (string | null)[] = [];
+  for (const d of docs) conv.push(await convDe(ctx, d.id, d.data).catch(() => null));
+  const conCv = docs.map((d: any, i: number) => ({ d, c: conv[i] })).filter((x: any) => x.c);
+  const res = await gBatch(ctx, conCv.map((x: any) => `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${String(x.c).replace(/'/g, "''")}' and isRead eq false`)}&$top=50&$select=id`));
+  const ids: string[] = [];
+  conCv.forEach((x: any, i: number) => { for (const m of res[i]?.value || []) ids.push(m.id); });
+  const hechos = ids.length ? await marcarLeidos(ctx, ids) : 0;
+  for (let i = 0; i < docs.length; i++) {
+    const d = docs[i], k = conCv.findIndex((x: any) => x.d === d);
+    if (k >= 0 && !res[k]) continue; // no se pudo mirar: otra vez será
+    await mergeDoc(ctx.owner, "correos", d.id, { leidoOutlook: conv[i] ? now : "sin-conversacion" });
+  }
+  return hechos;
 }
 async function boxLeidoPend(ctx: Ctx, b: any) {
   const mailId = String(b.mail || "");
   if (!/^[A-Za-z0-9_\-:.]{1,200}$/.test(mailId)) throw new Error("Correo no válido");
   const { data: cd } = await db.from("personal_docs").select("data").eq("owner", ctx.owner).eq("col", "correos").eq("id", mailId).maybeSingle();
-  const conv = cd?.data?.conv;
-  if (!conv) return { ok: false };
+  const conv = await convDe(ctx, mailId, cd?.data);
+  if (!conv) return { ok: false, motivo: "No encuentro este correo en Outlook" };
   const j = await g(ctx, `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${String(conv).replace(/'/g, "''")}' and isRead eq false`)}&$top=50&$select=id`);
-  await Promise.all((j?.value || []).map((m: any) => g(ctx, `/me/messages/${encodeURIComponent(m.id)}`, { method: "PATCH", body: JSON.stringify({ isRead: true }) }).catch(() => null)));
-  return { ok: true, marcados: (j?.value || []).length };
+  const n = await marcarLeidos(ctx, (j?.value || []).map((m: any) => m.id));
+  await mergeDoc(ctx.owner, "correos", mailId, { leidoOutlook: iso() });
+  return { ok: true, marcados: n };
 }
 async function boxAction(ctx: Ctx, b: any, acc: any) {
   switch (b.op) {
