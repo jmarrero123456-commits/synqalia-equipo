@@ -258,7 +258,7 @@
     const fcol = root.classList.contains('bz-fcol');
     const curF = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
     folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) : '')}</span>`
-      + main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
+      + main.map(li).join('') + `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') + `<button type="button" class="bz-fnew" data-fnew>+ Nueva carpeta</button>`;
     fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
     if (!st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.insertAdjacentHTML('afterbegin', `<option value="${esc(st.carpeta)}">${esc(WKN[st.carpeta] || 'Carpeta')}</option>`);
     fsel.value = st.carpeta;
@@ -266,6 +266,7 @@
   }
   folders.addEventListener('click', (e) => {
     if (e.target.closest('[data-fold]')) { setFcol(!root.classList.contains('bz-fcol')); return; }
+    if (e.target.closest('[data-fnew]')) { askFolder(); return; }
     const b = e.target.closest('[data-f]'); if (b) openFolder(b.dataset.f);
   });
   function setFcol(on) { root.classList.toggle('bz-fcol', on); try { localStorage.setItem('sq-bz-fcol', on ? '1' : ''); } catch {} paintFolders(); }
@@ -276,7 +277,49 @@
     paintFolders(); reload();
   }
   const refreshFolders = () => call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
-  const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && f.wk !== 'outbox' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${esc(fname(f))}</option>`).join('');
+  const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && f.wk !== 'outbox' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${f.dentro ? '  ' : ''}${esc(fname(f))}</option>`).join('') + '<option value="__nueva">+ Nueva carpeta…</option>';
+
+  /* ---------- carpeta nueva (25/11): se crea en Outlook; desde «Mover a…» se crea y se mueve ahí ---------- */
+  function askFolder(onDone) {
+    document.querySelector('.bz-fdlg')?.remove();
+    const d = document.createElement('div');
+    d.className = 'bz-viewer bz-fdlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'Nueva carpeta');
+    d.innerHTML = `<form class="bz-fbox" novalidate>
+      <div class="bz-poph">${svg('move', 18)}<b>Nueva carpeta</b><button type="button" class="bz-ibtn" data-x aria-label="Cerrar">✕</button></div>
+      <label class="bz-tkf"><span>Nombre</span><input name="nombre" type="text" maxlength="120" autocomplete="off" placeholder="Por ejemplo: Obras 2027" required></label>
+      <label class="bz-fchk"><input type="checkbox" name="dentro"> Dentro de la Bandeja de entrada</label>
+      <p class="bz-msgst" aria-live="polite"></p>
+      <div class="bz-tkacts"><button type="submit" class="bz-btn gest">${svg('check', 15)}<span>${onDone ? 'Crear y mover aquí' : 'Crear carpeta'}</span></button><button type="button" class="bz-link" data-x>Cancelar</button></div>
+      <p class="bz-popnote">Se crea también en Outlook.</p>
+    </form>`;
+    document.body.appendChild(d);
+    const f = d.querySelector('form'), inp = f.querySelector('input[name="nombre"]'), say = (t, bad) => { const p = f.querySelector('.bz-msgst'); p.textContent = t; p.classList.toggle('bad', !!bad); };
+    const close = () => d.remove();
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-x]')) close(); });
+    d.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = inp.value.trim();
+      if (!nombre) { say('Pon un nombre a la carpeta.', true); inp.focus(); return; }
+      f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+      say('Creando en Outlook…');
+      try {
+        const r = await call('carpetaNueva', { nombre, dentro: f.dentro.checked ? 'inbox' : null });
+        close();
+        st.carpetas.push({ id: r.id, nombre: r.nombre, noLeidos: 0, total: 0, ...(f.dentro.checked ? { dentro: 'inbox' } : {}) });
+        paintFolders(); refreshFolders();
+        toast(`Carpeta «${r.nombre}» creada`);
+        onDone?.(r);
+      } catch (err) { say(err.message, true); f.querySelectorAll('button').forEach((x) => { x.disabled = false; }); inp.focus(); }
+    });
+    inp.focus();
+  }
+  // «Mover a…»: carpeta existente, o crear una y mover ahí
+  function moverA(sel) {
+    if (sel.value === '__nueva') { sel.value = ''; askFolder((r) => quitar(r.id, 'Movido a ' + r.nombre)); return; }
+    const f = st.carpetas.find((x) => (x.wk || x.id) === sel.value);
+    quitar(sel.value, 'Movido a ' + (f ? fname(f) : 'otra carpeta'));
+  }
 
   /* ---------- conversaciones ---------- */
   function threads() {
@@ -860,7 +903,7 @@
       if (tk) { const anchor = pane.querySelector('[data-a="mas"]'); closeMenu(); openTaskPop(anchor); return; }
       if (e.target.closest('a')) closeMenu();
     });
-    menuEl.addEventListener('change', (e) => { const s = e.target.closest('select[data-a="mover"]'); if (s?.value) { const f = st.carpetas.find((x) => (x.wk || x.id) === s.value); closeMenu(); quitar(s.value, 'Movido a ' + (f ? fname(f) : 'otra carpeta')); } });
+    menuEl.addEventListener('change', (e) => { const s = e.target.closest('select[data-a="mover"]'); if (s?.value) { closeMenu(); moverA(s); } });
     menuEl.querySelector('button, a, select')?.focus();
   }
 
@@ -1067,8 +1110,7 @@
   pane.addEventListener('change', (e) => {
     const sel = e.target.closest('select[data-a="mover"]');
     if (!sel || !sel.value) return;
-    const f = st.carpetas.find((x) => (x.wk || x.id) === sel.value);
-    quitar(sel.value, 'Movido a ' + (f ? fname(f) : 'otra carpeta'));
+    moverA(sel);
   });
   // archivar, eliminar o mover: la conversación entera de esta carpeta (como Outlook)
   async function quitar(destino, txt) {
