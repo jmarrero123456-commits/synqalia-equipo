@@ -689,7 +689,7 @@
     if (hasClassic && slot.dataset.pid === pm.id && !done) return; // no tocar la caja de respuesta abierta
     slot.dataset.pid = pm.id;
     slot.innerHTML = `<div class="bz-syn${done ? ' done' : ''}">
-      <div class="bz-synh">${svg('spark', 14)}<span>Synqalia</span>${done ? `<em>${svg('check', 13)} Gestionado${pm.cierre?.motivo ? ' · ' + esc(pm.cierre.motivo) : ''}</em>` : pos ? `<em>${svg('clock', 13)} Para otro día</em>` : ''}</div>
+      <div class="bz-synh"><svg class="bz-logo" width="16" height="16" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#121821"/><g transform="translate(7 7)"><circle cx="21" cy="20" r="9.5" fill="none" stroke="#fff" stroke-width="6"/><path d="M30.5 20v16" stroke="#fff" stroke-width="6" stroke-linecap="round"/><circle cx="30.5" cy="44" r="3.6" fill="#5fe0cf"/></g></svg><span>Synqalia</span>${done ? `<em>${svg('check', 13)} Gestionado${pm.cierre?.motivo ? ' · ' + esc(pm.cierre.motivo) : ''}</em>` : pos ? `<em>${svg('clock', 13)} Para otro día</em>` : ''}</div>
       ${pm.resumen ? `<p><b>Resumen:</b> ${esc(pm.resumen)}</p>` : ''}
       ${pm.peticion ? `<p class="pide"><b>Te piden:</b> ${esc(pm.peticion)}</p>` : ''}
       ${motivo && nivelOf(pm) === 'bloquea' ? `<p class="mot"><b>Por qué es urgente:</b> ${esc(motivo)}</p>` : ''}
@@ -713,11 +713,9 @@
     if (slot.firstChild) { scrollPane(slot); return true; }
     const box = P().composer(pm.id, auto || (!pm.sugerida));
     if (!box) return false;
-    // fuera lo que ya se ve en el correo (cabecera, texto y resumen): empieza en «¿Qué quieres contestar?»
-    while (box.firstChild && !box.firstChild.classList?.contains('ask')) box.firstChild.remove();
     const w = document.createElement('div');
     w.className = 'bz-classic';
-    w.innerHTML = `<div class="bz-classic-h"><b>Respuesta sugerida</b><button type="button" class="bz-link" data-a="cerrar-sug">Cerrar</button></div>`;
+    w.innerHTML = `<div class="bz-classic-h"><b>Tu respuesta</b><button type="button" class="bz-link" data-a="cerrar-sug">Cerrar</button></div>`;
     w.appendChild(box);
     slot.appendChild(w);
     pane.querySelector('.bz-sbtn.sug')?.setAttribute('aria-pressed', 'true');
