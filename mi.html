@@ -1233,7 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261125v4c">
+<link rel="stylesheet" href="buzon.css?v=20261125v4d">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1854,6 +1854,21 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
 
   window.__sqAddTask = addTask;
+  // Correo único (25/11): «Pasar a tarea» en una ventanita; las tareas ya creadas de un correo no se duplican
+  window.__sqTasks = {
+    forMail: (conv, pid) => state.tasks.filter((t) => t.origen === 'correo' && ((conv && t.conv === conv) || (pid && t.ref === pid))),
+    // personas o grupos de catch-up que salen en el correo, con su próxima reunión
+    catchups: (names) => {
+      const fake = {de: (names || []).join(';'), para: ''};
+      try { return cuCandidates(fake).map((p) => { const nx = nextMeetingFor(p); return {nombre: p.nombre, corto: isGroup(p) ? p.nombre : firstName(p.nombre), fecha: nx ? nx.fecha : null}; }); } catch (e) { return []; }
+    },
+    hoy: () => todayISO, manana: () => tomorrowISO,
+    add: (t) => addTask(t),
+    update: (id, patch) => write(() => db.collection('tareas').doc(id).update(patch), 'Tarea actualizada'),
+    done: (id) => write(() => db.collection('tareas').doc(id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Tarea hecha'),
+    open: (id) => { const t = state.tasks.find((x) => x.id === id); if (!t) return; show('tareas'); try { applyQuick(null); } catch (e) {} openTaskEdit(t); },
+    esMio: (n) => isMe(n),
+  };
 
   // ---------- render tareas ----------
   function taskItem(t, compact) {
@@ -6203,7 +6218,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261125f" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261125v4c" defer></script>
+<script src="buzon.js?v=20261125v4d" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 </body>

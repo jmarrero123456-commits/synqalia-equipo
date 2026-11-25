@@ -239,7 +239,7 @@
     if (st.sel && PEND_F.includes(st.filtro) && st.adv !== st.sel && P() && !pendThreads(st.filtro).some((x) => x.conv === st.sel)) { afterHandled('Gestionado ✓'); return; }
     paintCounts();
     if (isPF()) paintList(); else paintListSoft();
-    if (st.hilo?.length) paintSyn();
+    if (st.hilo?.length) { paintSyn(); if (!pane.querySelector('[data-a="tarea"]:focus')) paintTools(); }
   });
 
   /* ---------- carpetas ---------- */
@@ -350,7 +350,7 @@
         <button type="button" class="bz-rowbtn" aria-expanded="${st.sel === t.conv}">
           ${avatar(quien.replace(/^Para: /, '').split(';')[0])}
           <span class="bz-rc">
-            <span class="r1"><b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.adj ? svg('clip', 13) : ''}${verb}${t.bandera ? `<span class="fl">${svg('flag', 13)}</span>` : ''}${pinned ? `<span class="pn">${svg('pin', 13)}</span>` : ''}</span></span>
+            <span class="r1"><b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.adj ? svg('clip', 13) : ''}${verb}${t.bandera ? `<span class="fl">${svg('flag', 13)}</span>` : ''}${pinned ? `<span class="pn">${svg('pin', 13)}</span>` : ''}${!String(t.conv).startsWith('p:') && mailTasks(t.conv).length ? `<span class="tk" title="Ya está en Tareas">${svg('task', 13)}</span>` : ''}</span></span>
             <span class="r2">${tagOf(t)}<span class="subj">${esc(m.asunto)}</span><span class="when">${esc(corto(m.fecha))}</span></span>
             <span class="r3">${esc(m.prev)}</span>
           </span>
@@ -632,7 +632,7 @@
     <button type="button" class="bz-ibtn" data-a="archivar" title="Archivar" aria-label="Archivar">${svg('arch', 17)}</button>
     <button type="button" class="bz-ibtn" data-a="eliminar" title="Eliminar" aria-label="Eliminar">${svg('del', 17)}</button>
     ${mobile ? '' : `<label class="bz-ibtn bz-movew" title="Mover a carpeta">${svg('move', 17)}<span class="bz-sr">Mover a carpeta</span><select data-a="mover"><option value="">Mover a…</option>${moveOptions()}</select></label>
-    <button type="button" class="bz-ibtn" data-a="tarea" title="Pasar a tarea" aria-label="Pasar a tarea">${svg('task', 17)}</button>`}
+    ${taskBtn()}`}
     <button type="button" class="bz-ibtn" data-a="mas" title="Más" aria-label="Más acciones" aria-haspopup="menu" aria-expanded="false">${svg('more', 17)}</button>`;
   function paintThread() {
     const h = st.hilo; if (!h?.length) return;
@@ -668,6 +668,12 @@
         <button type="button" class="bz-btn" data-a="reenviar">${svg('fwd', 15)}<span>Reenviar</span></button>
       </div>`;
     paintTools(); paintSyn();
+  }
+  // icono de tarea: turquesa y con número cuando ese correo ya está en Tareas (25/11)
+  function taskBtn() {
+    const n = mailTasks().length;
+    return n ? `<button type="button" class="bz-ibtn bz-tk-on" data-a="tarea" title="Ya está en Tareas" aria-label="Ya está en Tareas (${n})">${svg('task', 17)}<b>${n}</b></button>`
+      : `<button type="button" class="bz-ibtn" data-a="tarea" title="Pasar a tarea" aria-label="Pasar a tarea">${svg('task', 17)}</button>`;
   }
   function paintTools() {
     const h = st.hilo; if (!h?.length) return;
@@ -736,7 +742,7 @@
     menuEl = document.createElement('div');
     menuEl.className = 'bz-menu'; menuEl.setAttribute('role', 'menu');
     menuEl.innerHTML = `
-      <button type="button" role="menuitem" data-a="tarea">${svg('task', 16)}Pasar a tarea</button>
+      <button type="button" role="menuitem" data-a="tarea">${svg('task', 16)}${mailTasks().length ? 'Ya está en Tareas' : 'Pasar a tarea'}</button>
       <label class="bz-mi">${svg('move', 16)}<span>Mover a…</span><select data-a="mover"><option value="">Elegir carpeta</option>${moveOptions()}</select></label>
       <div class="bz-msep"></div>
       ${pm ? `<div class="bz-mlbl">Clasificación</div>
@@ -758,7 +764,7 @@
       const k = e.target.closest('[data-classic]');
       if (k) { closeMenu(); P()?.clasico(k.dataset.classic); return; }
       const tk = e.target.closest('[data-a="tarea"]');
-      if (tk) { closeMenu(); makeTask(); return; }
+      if (tk) { const anchor = pane.querySelector('[data-a="mas"]'); closeMenu(); openTaskPop(anchor); return; }
       if (e.target.closest('a')) closeMenu();
     });
     menuEl.addEventListener('change', (e) => { const s = e.target.closest('select[data-a="mover"]'); if (s?.value) { const f = st.carpetas.find((x) => (x.wk || x.id) === s.value); closeMenu(); quitar(s.value, 'Movido a ' + (f ? fname(f) : 'otra carpeta')); } });
@@ -822,13 +828,132 @@
       return;
     }
     if (a === 'archivar' || a === 'eliminar') return quitar(a === 'archivar' ? 'archive' : 'deleteditems', a === 'archivar' ? 'Archivado' : 'Enviado a Elementos eliminados');
-    if (a === 'tarea') { b.disabled = true; await makeTask(); b.disabled = false; }
+    if (a === 'tarea') return openTaskPop(b);
   });
-  async function makeTask() {
-    if (typeof window.__sqAddTask !== 'function') return msgStatus('No se pudo crear la tarea desde aquí.', true);
-    const conv = st.sel, last = lastIn(), s = pendOf(conv);
-    const id = await window.__sqAddTask({ titulo: (s?.peticion || last.asunto).slice(0, 300), detalle: `Correo de ${last.de?.nombre || last.de?.mail || ''} · ${last.asunto}`, prioridad: s && nivelOf(s) === 'bloquea' ? 'Alta' : 'Media', origen: 'correo', ref: s?.id || null, persona: last.mio ? null : (last.de?.nombre || null), extra: { enlace: last.enlace || null } });
-    msgStatus(id ? 'Tarea creada: la tienes en Tareas.' : 'No se pudo crear la tarea.', !id);
+  /* ---------- Pasar a tarea: ventanita (PC) u hoja desde abajo (móvil), sin duplicados (25/11) ---------- */
+  const T = () => window.__sqTasks || null;
+  function mailTasks(conv = st.sel) {
+    if (!conv || !T()) return [];
+    const pm = pendOf(conv);
+    return T().forMail(conv, pm?.id).sort((a, b) => (a.estado === 'hecha') - (b.estado === 'hecha'));
+  }
+  const PRI = [['Mega', '⚡ Mega urgente'], ['Alta', 'Urgente'], ['Media', 'Normal'], ['Baja', 'Baja']];
+  const priTxt = (p) => (PRI.find((x) => x[0] === p) || PRI[2])[1];
+  const isoD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const viernes = () => { const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return isoD(d); };
+  const venceTxt = (v) => {
+    if (!v) return 'Sin fecha';
+    if (v === T()?.hoy()) return 'Hoy';
+    if (v === T()?.manana()) return 'Mañana';
+    const d = new Date(v + 'T12:00:00');
+    return DOW[d.getDay()].toLowerCase() + ' ' + d.getDate() + (d.getMonth() !== new Date().getMonth() ? ' ' + MES[d.getMonth()] : '');
+  };
+  let popEl = null, popBack = null;
+  function closeTaskPop() { popEl?.remove(); popBack?.remove(); popEl = popBack = null; }
+  document.addEventListener('mousedown', (e) => { if (popEl && !popEl.contains(e.target) && !e.target.closest('[data-a="tarea"], [data-a="mas"]') && !mqNarrow.matches) closeTaskPop(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popEl) { e.stopPropagation(); closeTaskPop(); } }, true);
+  function openTaskPop(btn, mode) {
+    if (popEl && !mode) { closeTaskPop(); return; }
+    closeTaskPop();
+    if (!st.hilo?.length || !T()) { msgStatus('No se pudo abrir Tareas desde aquí.', true); return; }
+    const list = mailTasks();
+    if (!mode) mode = list.length ? { view: 'lista' } : { view: 'nueva' };
+    popEl = document.createElement('div');
+    popEl.className = 'bz-pop' + (mqNarrow.matches ? ' sheet' : '');
+    popEl.setAttribute('role', 'dialog'); popEl.setAttribute('aria-label', 'Pasar a tarea');
+    if (mqNarrow.matches) { popBack = document.createElement('div'); popBack.className = 'bz-popback'; popBack.addEventListener('click', closeTaskPop); document.body.appendChild(popBack); }
+    document.body.appendChild(popEl);
+    if (mode.view === 'lista') paintTaskList(list); else paintTaskForm(mode.edit || null);
+    if (!mqNarrow.matches && btn) {
+      const r = btn.getBoundingClientRect(), w = Math.min(400, innerWidth - 16);
+      popEl.style.width = w + 'px';
+      popEl.style.left = Math.max(8, Math.min(r.right + 30 - w, innerWidth - w - 8)) + 'px';
+      popEl.style.top = Math.min(r.bottom + 8, innerHeight - popEl.offsetHeight - 8) + 'px';
+      popEl.style.setProperty('--ax', Math.max(16, Math.min(w - 24, r.left + r.width / 2 - parseFloat(popEl.style.left) - 6)) + 'px');
+    }
+  }
+  const popHead = (t) => `<div class="bz-poph">${svg('task', 18)}<b>${esc(t)}</b><button type="button" class="bz-ibtn" data-x aria-label="Cerrar">✕</button></div>`;
+  function paintTaskList(list) {
+    popEl.innerHTML = popHead('Ya está en Tareas') + list.map((t) => `<div class="bz-tkcard${t.estado === 'hecha' ? ' done' : ''}" data-id="${esc(t.id)}">
+        <b>${esc(t.titulo)}</b>
+        <div class="tags"><span class="p ${esc(t.prioridad || 'Media')}">${esc(priTxt(t.prioridad))}</span><span>${esc(t.estado === 'hecha' ? 'Hecha ✓' : venceTxt(t.vence))}</span>${t.verCon ? `<span>Ver con ${esc(t.verCon)}</span>` : ''}</div>
+        <div class="acts"><button type="button" class="bz-link go" data-open>Abrir en Tareas ›</button>${t.estado === 'hecha' ? '' : '<button type="button" class="bz-link" data-edit>Cambiar</button><button type="button" class="bz-link" data-done>✓ Hecha</button>'}</div>
+      </div>`).join('') + `<p class="bz-popnote">No se vuelve a crear al pulsar otra vez el icono. <button type="button" class="bz-link" data-new>Crear otra tarea de este correo</button></p>`;
+    popEl.onclick = (e) => {
+      if (e.target.closest('[data-x]')) return closeTaskPop();
+      if (e.target.closest('[data-new]')) return paintTaskForm(null);
+      const card = e.target.closest('[data-id]'); if (!card) return;
+      const t = list.find((x) => x.id === card.dataset.id);
+      if (e.target.closest('[data-open]')) { closeTaskPop(); T().open(t.id); }
+      else if (e.target.closest('[data-edit]')) paintTaskForm(t);
+      else if (e.target.closest('[data-done]')) { T().done(t.id); closeTaskPop(); toast('Tarea hecha ✓'); }
+    };
+  }
+  function paintTaskForm(edit) {
+    const h = st.hilo, last = lastIn(), pm = pendOf(st.sel);
+    const yo = String(st.outlook || '').toLowerCase();
+    // personas del hilo (sin ti), las más recientes primero
+    const gente = [];
+    for (const x of h) for (const p of [x.de, ...(x.para || []), ...(x.cc || [])]) {
+      if (!p?.nombre || String(p.mail || '').toLowerCase() === yo || T().esMio(p.nombre) || gente.includes(p.nombre) || /@/.test(p.nombre)) continue;
+      gente.push(p.nombre);
+    }
+    const f = {
+      titulo: edit ? edit.titulo : String(pm?.peticion || last.asunto || '').replace(/\.$/, '').replace(/^./, (c) => c.toUpperCase()).slice(0, 300),
+      prioridad: edit ? (edit.prioridad || 'Media') : pm && nivelOf(pm) === 'bloquea' ? 'Alta' : 'Media',
+      vence: edit ? (edit.vence || T().hoy()) : T().hoy(),
+      verCon: edit ? (edit.verCon || '') : '',
+    };
+    if (f.verCon && !gente.includes(f.verCon)) gente.unshift(f.verCon);
+    const fechas = [['Hoy', T().hoy()], ['Mañana', T().manana()], ['Viernes', viernes()]];
+    popEl.innerHTML = popHead(edit ? 'Cambiar la tarea' : 'Pasar a tarea') + `
+      <form class="bz-tkform" novalidate>
+        <label class="bz-tkf"><span>Tarea</span><textarea name="titulo" rows="2" required>${esc(f.titulo)}</textarea></label>
+        <div class="bz-tkf"><span>Prioridad</span><div class="bz-tkchips" data-g="prioridad">${PRI.map(([k, t]) => `<button type="button" class="bz-chip${k === 'Mega' ? ' bz-mega' : ''}" data-v="${k}" aria-pressed="${f.prioridad === k}">${t}</button>`).join('')}</div></div>
+        <div class="bz-tkf"><span>Para cuándo</span><div class="bz-tkchips" data-g="vence">${fechas.map(([t, v]) => `<button type="button" class="bz-chip" data-v="${v}" aria-pressed="${f.vence === v}">${t}</button>`).join('')}<label class="bz-chip bz-tkdate" aria-pressed="${!fechas.some((x) => x[1] === f.vence)}">📅 <span>${fechas.some((x) => x[1] === f.vence) ? 'Otra fecha' : esc(venceTxt(f.vence))}</span><input type="date" value="${esc(f.vence)}" aria-label="Otra fecha"></label></div></div>
+        <div class="bz-tkf"><span>Ver con</span><div class="bz-tkchips" data-g="verCon">${gente.slice(0, 4).map((n) => `<button type="button" class="bz-chip" data-v="${esc(n)}" aria-pressed="${f.verCon === n}">${esc(n)}</button>`).join('')}<input class="bz-tkother" type="text" list="tf-personas" placeholder="+ Otra persona" aria-label="Otra persona" value="${f.verCon && !gente.slice(0, 4).includes(f.verCon) ? esc(f.verCon) : ''}"></div><div class="bz-tkcu" aria-live="polite"></div></div>
+        <p class="bz-msgst" aria-live="polite"></p>
+        <div class="bz-tkacts"><button type="submit" class="bz-btn gest">${svg('check', 15)}<span>${edit ? 'Guardar cambios' : 'Crear tarea'}</span></button><button type="button" class="bz-link" data-x>Cancelar</button>${mqNarrow.matches ? '' : '<span class="kb">Intro = crear</span>'}</div>
+      </form>`;
+    const form = popEl.querySelector('form'), cu = popEl.querySelector('.bz-tkcu'), other = popEl.querySelector('.bz-tkother'), dateIn = popEl.querySelector('.bz-tkdate input');
+    const mark = (g) => popEl.querySelectorAll(`[data-g="${g}"] [data-v]`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === f[g])));
+    const paintCu = () => {
+      if (!f.verCon) { cu.innerHTML = ''; return; }
+      const c = T().catchups([f.verCon])[0];
+      cu.innerHTML = c ? `<div class="bz-tknote">${c.fecha ? `Lo tienes en el catch-up con <b>${esc(c.corto)}</b> del <b>${esc(venceTxt(c.fecha))}</b>: se añade a sus temas.` : `Se añade a los temas de tu catch-up con <b>${esc(c.corto)}</b>.`}</div>` : `<div class="bz-tknote off">Quedará como «Ver con ${esc(f.verCon)}» en Tareas.</div>`;
+    };
+    popEl.querySelectorAll('.bz-tkchips').forEach((g) => g.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-v]'); if (!b) return;
+      const k = g.dataset.g;
+      f[k] = k === 'verCon' && f.verCon === b.dataset.v ? '' : b.dataset.v;
+      if (k === 'verCon') { other.value = ''; paintCu(); }
+      if (k === 'vence') { popEl.querySelector('.bz-tkdate').setAttribute('aria-pressed', 'false'); popEl.querySelector('.bz-tkdate span').textContent = 'Otra fecha'; }
+      mark(k);
+    }));
+    dateIn.addEventListener('change', () => { if (!dateIn.value) return; f.vence = dateIn.value; mark('vence'); const l = popEl.querySelector('.bz-tkdate'); l.setAttribute('aria-pressed', 'true'); l.querySelector('span').textContent = venceTxt(f.vence); });
+    popEl.querySelector('.bz-tkdate').addEventListener('click', (e) => { if (e.target === dateIn) return; try { dateIn.showPicker(); } catch { dateIn.focus(); } });
+    other.addEventListener('input', () => { f.verCon = other.value.trim(); mark('verCon'); paintCu(); });
+    paintCu();
+    const ta = form.querySelector('textarea');
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    popEl.onclick = (e) => { if (e.target.closest('[data-x]')) closeTaskPop(); };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titulo = ta.value.trim().replace(/\s+/g, ' ');
+      const say = (t, bad) => { const p = form.querySelector('.bz-msgst'); p.textContent = t; p.classList.toggle('bad', !!bad); };
+      if (!titulo) { say('Escribe qué tienes que hacer.', true); ta.focus(); return; }
+      const verCon = f.verCon && !T().esMio(f.verCon) ? f.verCon : '';
+      form.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+      say(edit ? 'Guardando…' : 'Creando la tarea…');
+      let ok;
+      if (edit) ok = await T().update(edit.id, { titulo, prioridad: f.prioridad, vence: f.vence, verCon: verCon || null, ...(verCon ? { espera: 'vercon' } : {}) });
+      else ok = await T().add({ titulo, detalle: `Correo de ${last.de?.nombre || last.de?.mail || ''} · ${last.asunto}`, prioridad: f.prioridad, vence: f.vence, origen: 'correo', ref: pm?.id || null, persona: last.mio ? null : (last.de?.nombre || null), ...(verCon ? { espera: 'vercon' } : {}), extra: { conv: st.sel, enlace: last.enlace || null, ...(verCon ? { verCon } : {}) } });
+      if (!ok) { say('No se pudo guardar la tarea. Inténtalo otra vez.', true); form.querySelectorAll('button').forEach((x) => { x.disabled = false; }); return; }
+      closeTaskPop();
+      toast(edit ? 'Tarea actualizada' : `Tarea creada · ${venceTxt(f.vence)}${verCon ? ' · ver con ' + verCon : ''}`);
+      setTimeout(() => { if (st.hilo?.length) paintTools(); }, 400);
+    });
+    if (!mqNarrow.matches) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
   }
   // tras Gestionado / Para mañana: en los filtros de Pendientes sale de la lista y se abre el siguiente
   function afterHandled(txt) {
