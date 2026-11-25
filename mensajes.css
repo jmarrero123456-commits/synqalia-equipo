@@ -207,3 +207,6 @@ body.sqm-lock { overflow: hidden; }
 .sqm-ask p { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sqm-ask:active p, .sqm-ask:hover p { -webkit-line-clamp: unset; }
 .sqm-tf > .sqm-tvc { font: inherit; text-transform: none; letter-spacing: 0; color: inherit; }
+.sqm-qtoast { padding: 6px 12px; gap: 6px; border-radius: 999px; font-size: 12.5px; animation: sqmQ .12s ease-out; transition: opacity .18s; }
+.sqm-qtoast svg { width: 14px; height: 14px; } .sqm-qtoast.out { opacity: 0; }
+@keyframes sqmQ { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }

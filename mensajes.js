@@ -583,8 +583,14 @@ ${hist}`;
       } catch (e) { nota += ' · no se ha podido avisar en el chat'; }
     }
     closeTask();
-    toast(`Tarea creada: «${data.titulo.slice(0, 60)}»${data.vence ? ' · ' + fechaTxt(data.vence) : ''}${vc ? ' · ver con ' + vc : ''}${nota}`);
+    // 25/11: aviso mínimo y rápido («Tarea creada», medio segundo); solo si algo falla se queda el aviso largo
+    if (nota) toast(`Tarea creada: «${data.titulo.slice(0, 60)}»${nota}`); else quickToast('Tarea creada');
     if (st.open === info.id) paintConv();
+  }
+  function quickToast(msg) {
+    const t = document.createElement('div'); t.className = 'sqm sqm-toast sqm-qtoast'; t.setAttribute('role', 'status');
+    t.innerHTML = `${ICON.task}<span>${esc(msg)}</span>`; document.body.appendChild(t);
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 180); }, 500);
   }
   function toast(msg) {
     const t = document.createElement('div'); t.className = 'sqm sqm-toast'; t.setAttribute('role', 'status');
