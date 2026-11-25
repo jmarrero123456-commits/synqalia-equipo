@@ -233,6 +233,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     .prog-add label { white-space: normal; }
   }
   .te-mail { margin: 0 0 4px; height: 44px; font-size: 14px; }
+  .tf-when { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tf-when .chip[aria-pressed="true"] { background: color-mix(in srgb, #5fe0cf 26%, transparent); border-color: #2bb3a3; color: #0b5f55; font-weight: 700; }
   .task-edit .bar .te-del { color: #c0392b; }
   .prog .te-mail { margin-bottom: 10px; }
   #task-list .item .detail, #task-list .item .last-prog, .prog, .task-edit { overflow-wrap: anywhere; }
@@ -1233,7 +1235,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261125gm1">
+<link rel="stylesheet" href="buzon.css?v=20261125gm2">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1382,7 +1384,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         <div class="field"><label for="tf-persona">Persona</label><input id="tf-persona" list="tf-personas" placeholder="La detecto sola"><datalist id="tf-personas"></datalist></div>
         <div class="field"><label for="tf-empresa">Empresa</label><select id="tf-empresa"><option value="">La detecto sola</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></div>
         <div class="field"><label for="tf-prio">Prioridad</label><select id="tf-prio"><option value="">La detecto sola</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
-        <div class="field"><label for="tf-vence">Fecha límite</label><input id="tf-vence" type="date"></div>
+        <div class="field"><label for="tf-vence">Para cuándo</label><input id="tf-vence" type="date"><div class="tf-when" role="group" aria-label="Para cuándo"><button type="button" class="chip" data-w="hoy">Hoy</button><button type="button" class="chip" data-w="man">Mañana</button><button type="button" class="chip" data-w="none" title="Sin fecha: la verás en Mis tareas y en el próximo catch-up">Sin fecha</button></div></div>
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
@@ -2498,6 +2500,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   function ntOpen(open, noFocus) { const f = $('#nt-panel'); f.hidden = !open; $('#nt-toggle').setAttribute('aria-expanded', String(open)); $('#nt-toggle').title = open ? 'Cerrar el formulario' : 'Nueva tarea'; if (open) { $('#nt-saved').textContent = ''; if (!noFocus) setTimeout(() => $('#tf-titulo').focus(), 20); } }
   // Nueva tarea desde Hoy o desde el micro de la franja: va a Tareas, abre el formulario y (micro) empieza a escuchar
   function ntQuick(mic) { if (state.view !== 'tareas') show('tareas'); ntOpen(true, !!mic); try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); } if (mic && !tfMic.want && (window.SpeechRecognition || window.webkitSpeechRecognition)) tfMicStart(); }
+  // «Para cuándo» en Nueva tarea: Hoy · Mañana · Sin fecha (Sin fecha manda aunque la nota hable de un día)
+  function tfWhenPaint() { const v = $('#tf-vence').value; $$('.tf-when .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.w === 'none' ? !!state.tfNoDate : (!state.tfNoDate && !!v && v === (c.dataset.w === 'hoy' ? todayISO : tomorrowISO))))); }
+  $$('.tf-when .chip').forEach((c) => c.addEventListener('click', () => {
+    if (c.dataset.w === 'none') { state.tfNoDate = !state.tfNoDate; if (state.tfNoDate) $('#tf-vence').value = ''; }
+    else { state.tfNoDate = false; $('#tf-vence').value = c.dataset.w === 'hoy' ? todayISO : tomorrowISO; }
+    tfWhenPaint();
+  }));
+  $('#tf-vence').addEventListener('change', () => { if ($('#tf-vence').value) state.tfNoDate = false; tfWhenPaint(); });
   $('#hoy-nt').addEventListener('click', () => ntQuick(false));
   const openFilters = () => { if (state.view !== 'tareas') show('tareas'); const adv = $('#tk-adv'); if (adv.hidden) $('#tk-more').click(); setTimeout(() => { adv.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }, 30); };
   $('#hoy-nt-flt').addEventListener('click', openFilters);
@@ -2604,7 +2614,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (!to) aviso = firstName(persona) + ' aún no tiene Synqalia: la guardo en tu lista con ' + firstName(persona) + ' (no se le ha enviado).';
     }
     if (to) persona = to.name;
-    const data = {titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: $('#tf-vence').value || p.vence || null, origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''};
+    const data = {titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: state.tfNoDate ? null : ($('#tf-vence').value || p.vence || null), origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''};
     if (to) { data.espera = 'tercero'; data.extra = {esperaA: to.name, asignadaA: {email: to.email, nombre: to.name, fecha: new Date().toISOString()}}; }
     const ok = await addTask(data);
     if (ok && to) {
@@ -2614,7 +2624,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       else aviso = res.pendiente ? firstName(to.name) + ' la verá en su Synqalia la primera vez que entre.' : '';
     }
     btn.disabled = false;
-    if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
+    if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); state.tfNoDate = false; tfWhenPaint(); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
   });
 
   // ---------- prioridad Mega: recuadro parpadeante arriba en Hoy y en Tareas (no existe si no hay ninguna) ----------
@@ -3495,8 +3505,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       const di = document.createElement('input'); di.type = 'date'; di.value = /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : todayISO; di.setAttribute('aria-label', 'Fecha límite');
       const quick = el('div', 'tsug-quick');
       // la fecha rápida elegida queda marcada (sombreada) igual que la prioridad; si se cambia el calendario, se marca la que coincida
-      const markQuick = () => quick.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.v === di.value)));
-      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.dataset.v = v; q.addEventListener('click', () => { di.value = v; t.vence = v; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); });
+      if (t.sinFecha) di.value = '';
+      const markQuick = () => quick.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.v === 'none' ? !!t.sinFecha : (!t.sinFecha && c.dataset.v === di.value))));
+      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.dataset.v = v; q.addEventListener('click', () => { di.value = v; t.vence = v; t.sinFecha = false; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); });
+      { const q = el('button', 'chip', 'Sin fecha'); q.type = 'button'; q.dataset.v = 'none'; q.title = 'Sin fecha: la verás en Mis tareas y en el próximo catch-up'; q.addEventListener('click', () => { di.value = ''; t.vence = null; t.sinFecha = true; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); }
       markQuick();
       // prioridad elegida por Jaime (por defecto, la del correo)
       if (!['Mega', 'Alta', 'Media', 'Baja'].includes(t.prioridad)) t.prioridad = ['Alta', 'Media', 'Baja'].includes(m.prioridad) ? m.prioridad : 'Media';
@@ -3523,16 +3535,16 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       ok.addEventListener('click', async () => {
         if (voice._stop && row.querySelector('.tf-voice.listening')) voice._stop(false);
         const titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
-        if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
+        if (!di.value && !t.sinFecha) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
         row.classList.remove('needdate');
-        ok.disabled = true; t.titulo = titulo; t.vence = di.value;
+        ok.disabled = true; t.titulo = titulo; t.vence = di.value || null;
         const vcn = vi.value.trim(); t.verCon = vcn && !isMe(vcn) ? vcn : '';
-        const id = await addTask(Object.assign({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id}, t.verCon ? {espera: 'vercon', extra: {verCon: t.verCon}} : {}));
+        const id = await addTask(Object.assign({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || null, origen: 'correo', ref: m.id}, t.verCon ? {espera: 'vercon', extra: {verCon: t.verCon}} : {}));
         if (id) { t.creada = true; doneRow(row, t); refreshAll(); }
         else ok.disabled = false;
       });
       no.addEventListener('click', () => { t.descartada = true; row.classList.add('done', 'gone'); row.replaceChildren(el('span', 'tsug-gone', 'Descartada: ' + (ti.value.trim() || 'tarea'))); refreshAll(); });
-      di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); markQuick(); });
+      di.addEventListener('change', () => { t.vence = di.value; if (di.value) { t.sinFecha = false; row.classList.remove('needdate'); } markQuick(); });
       ti.addEventListener('input', () => { t.titulo = ti.value; });
       ti.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !row.querySelector('.tf-voice.listening')) { e.preventDefault(); ok.click(); } });
       // tras dictar, la fecha queda a mano: se resalta para elegir Hoy / Mañana / Viernes y pulsar «Crear»
@@ -6218,7 +6230,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261125f" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261125gm1" defer></script>
+<script src="buzon.js?v=20261125gm2" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 </body>
