@@ -582,3 +582,58 @@ body:has(.login) .sq-bar { display: none; }
 @media (min-width: 700px) {
   .app > main, .app > main#view-lista { max-width: none !important; width: 100%; }
 }
+
+/* =====================================================================
+   MÓVIL v2 (Z Fold cerrado y cualquier móvil, ≤ 560 px) — 25/11
+   Barra de abajo clara y limpia, nombre de la sección arriba y «Más» claro
+   ===================================================================== */
+@media (max-width: 560px) {
+  /* Franja de arriba: solo la «q», el nombre de la sección y Mi trabajo | Equipo */
+  body:has(.app > .top .vt) .sq-logo span { display: none; }
+  .sq-logo svg.mark { width: 30px; height: 30px; }
+  .sq-switch-bar { flex: 0 0 auto; width: auto; }
+  .sq-switch-bar a { padding: 6px 10px; font-size: 12.5px; }
+  .sq-has-bar .app > .top { position: fixed !important; top: env(safe-area-inset-top, 0px); left: 52px; right: 190px; height: var(--sq-bar); z-index: 61;
+    margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
+    display: flex !important; align-items: center; min-width: 0; pointer-events: none; }
+  .sq-has-bar .app > .top::before, .sq-has-bar .app > .top::after { display: none !important; }
+  .sq-has-bar .app > .top > :not(.vt) { display: none !important; }
+  .sq-has-bar .top .vt { display: block !important; min-width: 0; }
+  .sq-has-bar .top .vt h2 { margin: 0; font: 700 17px/1 var(--font-display, "Manrope", system-ui); letter-spacing: -.01em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sq-has-bar .app { padding-top: 12px !important; }
+
+  /* Barra de abajo: blanca, iconos con «pastilla» en la sección activa */
+  :root { --sq-tabbar: 64px; }
+  .app .tabs { background: #fff !important; border-top: 1px solid #e6e9ef !important; box-shadow: 0 -6px 20px rgba(13,27,51,.06) !important;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
+  .app .tabs button { gap: 3px !important; padding: 2px 0 !important; color: #5b6473 !important; background: transparent !important; border-radius: 0 !important; }
+  .app .tabs button .ti { width: 58px; height: 30px; display: grid !important; place-items: center; border-radius: 999px; color: inherit !important; transition: background .15s; }
+  .app .tabs button .ti svg { width: 22px; height: 22px; }
+  .app .tabs .tlab { font-size: 11px !important; font-weight: 600 !important; color: inherit; }
+  .app .tabs button[aria-selected="true"], .app .tabs .tab-mas.on, .app .tabs .tab-mas[aria-expanded="true"] { color: #0b0e13 !important; background: transparent !important; }
+  .app .tabs button[aria-selected="true"] .ti, .app .tabs .tab-mas.on .ti, .app .tabs .tab-mas[aria-expanded="true"] .ti { background: #d3f6f0; color: #0a6b5f !important; }
+  .app .tabs button[aria-selected="true"] .tlab, .app .tabs .tab-mas.on .tlab { font-weight: 800 !important; }
+  .app .tabs .count { top: 0 !important; left: calc(50% + 6px) !important; min-width: 17px; height: 17px; line-height: 17px; font-size: 10px; padding: 0 5px;
+    background: #e5484d; color: #fff; box-shadow: 0 0 0 2px #fff !important; }
+  .app .tabs .odot { box-shadow: 0 0 0 2px #fff !important; }
+
+  /* «Más»: menú claro que sube desde su botón */
+  .sq-more { background: rgba(8,12,20,.18) !important; }
+  .sq-more-panel { background: #fff !important; border: 1px solid #e6e9ef !important; box-shadow: 0 -8px 32px rgba(13,27,51,.18) !important; width: 230px; }
+  .sq-more-panel::after { background: #fff !important; border-color: #e6e9ef !important; }
+  .sq-more-panel button { color: #0b0e13 !important; }
+  .sq-more-panel button:active, .sq-more-panel button:hover { background: #f1f4f8 !important; }
+  .sq-more-panel button .ti { color: #5b6473 !important; }
+  .sq-more-panel button[data-go="asistente"] .ti { color: #0a8a7a !important; }
+  .sq-more-panel .ms-trigger { color: #5b6473 !important; font-size: 13.5px !important; border-top: 1px solid #eef1f5 !important; border-radius: 0 0 10px 10px !important; margin-top: 2px; }
+}
+@media (max-width: 560px) {
+  /* Agenda: ‹ Ayer Hoy Mañana Viernes › en una línea y «Otro día…» debajo a todo lo ancho */
+  #agenda-day { flex-wrap: wrap; gap: 5px; }
+  #agenda-day > .chip { padding-left: 9px; padding-right: 9px; font-size: 13px; }
+  #agenda-day > .chip.day-nav { padding: 0; width: 32px; justify-content: center; }
+  #agenda-day > .chip:nth-last-child(2) { order: 1; } /* › junto a ‹ … */
+  #agenda-day > .day-pick { order: 2; flex: 1 1 100%; }
+  /* Tareas: el círculo de «hecho» algo más pequeño */
+  #view-tareas .check.tchk { width: 34px; height: 34px; }
+}
