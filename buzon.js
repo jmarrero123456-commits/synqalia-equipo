@@ -601,7 +601,7 @@
   };
   /* ---------- el correo tal cual se ve en Outlook (25/11): HTML en un marco aislado, sin scripts ---------- */
   const FRAME_CSS = `html,body{margin:0;padding:0;background:#fff}body{font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.45;color:#121821;overflow-wrap:anywhere;overflow-x:auto}img{max-width:100%;height:auto}table{max-width:100%}pre{white-space:pre-wrap}a{color:#0b6e63}blockquote{margin:0 0 0 8px;padding-left:10px;border-left:3px solid #e3e6ec}`;
-  const frameHtml = (html) => `<iframe class="bz-html" title="Texto del correo" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="${esc(`<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>${FRAME_CSS}</style></head><body>${html}</body></html>`)}"></iframe>`;
+  const frameHtml = (html) => `<iframe class="bz-html" title="Texto del correo" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="${esc(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; script-src 'none'"><base target="_blank"><style>${FRAME_CSS}</style></head><body>${html}</body></html>`)}"></iframe>`;
   // alto del marco = alto del correo (también cuando terminan de cargar las imágenes)
   function fitFrames(scope = pane) {
     scope.querySelectorAll('iframe.bz-html:not([data-fit])').forEach((f) => {
@@ -611,7 +611,7 @@
         fit();
         try {
           const d = f.contentDocument;
-          d.querySelectorAll('img').forEach((im) => im.addEventListener('load', fit));
+          d.querySelectorAll('img').forEach((im) => { im.addEventListener('load', fit); im.addEventListener('error', () => { im.style.display = 'none'; fit(); }); if (im.complete && !im.naturalWidth && im.getAttribute('src')) im.style.display = 'none'; });
           new ResizeObserver(fit).observe(d.body);
         } catch { /* */ }
       });
@@ -675,7 +675,7 @@
       const hadUnread = t?.unread;
       for (const x of st.items) if (x.conv === conv) x.leido = true;
       paintListSoft(); paintThread();
-      if (o.mid) focusMsg(o.mid);
+      pane.scrollTop = 0;
       if (o.sugerida) openSuggested(!!o.auto);
       if (hadUnread) refreshFolders();
     } catch (e) {
@@ -725,7 +725,8 @@
     <button type="button" class="bz-ibtn" data-a="mas" title="Más" aria-label="Más acciones" aria-haspopup="menu" aria-expanded="false">${svg('more', 17)}</button>`;
   function paintThread() {
     const h = st.hilo; if (!h?.length) return;
-    const top = h[0];
+    const top = (st.selMid && h.find((x) => x.id === st.selMid)) || h[0];
+    const otros = h.filter((x) => x !== top);
     const pm = pendOf(top.conv);
     const n = pm && isPend(pm) ? nivelOf(pm) : null;
     const badge = pm && P()?.pospuesto(pm) ? '<span class="bz-tag otro">Para otro día</span>' : n === 'bloquea' ? '<span class="bz-tag urg">Urgente</span>' : n === 'pide' ? '<span class="bz-tag pide">Te piden algo</span>' : '';
@@ -750,7 +751,7 @@
         <div class="bz-body1">${bodyOf(top)}</div>
         ${top.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false" data-full="${esc(top.id)}">Mostrar texto citado</button><div class="bz-quoted" hidden></div>` : ''}
       </div>
-      ${h.length > 1 ? `<div class="bz-prev"><div class="bz-plbl">Mensajes anteriores del hilo · ${h.length - 1}</div><div class="bz-thread">${h.slice(1).map(msgHtml).join('')}</div></div>` : ''}
+      ${otros.length ? `<div class="bz-prev"><div class="bz-plbl">${top === h[0] ? 'Mensajes anteriores del hilo' : 'Resto del hilo'} · ${otros.length}</div><div class="bz-thread">${otros.map(msgHtml).join('')}</div></div>` : ''}
       <div class="bz-mbot">
         <button type="button" class="bz-btn pri" data-a="responder">${svg('reply', 15)}<span>Responder</span></button>
         <button type="button" class="bz-btn" data-a="todos">${svg('replyall', 15)}<span>A todos</span></button>
@@ -1550,7 +1551,8 @@
     const hilo = ext ? ext.hilo : st.hilo;
     const say = ext ? ext.status : msgStatus;
     o.say = say;
-    const m = o.tipo === 'nuevo' ? null : o.tipo === 'reenviar' ? hilo?.[0] : lastIn(hilo);
+    const vis = !ext && st.selMid ? (hilo || []).find((x) => x.id === st.selMid) : null; // el mensaje que tienes abierto del hilo
+    const m = o.tipo === 'nuevo' ? null : vis && (o.tipo === 'reenviar' || !vis.mio) ? vis : o.tipo === 'reenviar' ? hilo?.[0] : lastIn(hilo);
     if (o.tipo !== 'nuevo' && !m) return;
     o.target = m?.id;
     if (!ext) st.compose = o;
