@@ -899,17 +899,30 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   #agenda-card .free-sum { font-size: 12px; padding: 4px 0 6px; border-bottom: 0; }
   #agenda-card .free-sum .fs-day { display: none; }
   #agenda-card .free-sum.empty { display: none; }
-  @media (max-width: 1100px) { #agenda-day .chip:not(.day-nav):not([aria-pressed="true"]) { display: none; } }
+  .ag-dlbl .l-short, .nm-open .nm-s { display: none; }
+  .ag-bar #ag-tools, .ag-bar #agenda-day { flex-wrap: nowrap; }
+  @media (max-width: 1100px) {
+    #agenda-day .chip:not(.day-nav):not([aria-pressed="true"]) { display: none; }
+    .ag-dlbl .l-long, .nm-open .nm-l { display: none; }
+    .ag-dlbl .l-short, .nm-open .nm-s { display: inline; }
+  }
+  @media (max-width: 760px) { .ag-dlbl { display: none; } }
   @media (max-width: 600px) {
-    .ag-dlbl, .ag-sp { display: none; }
+    .ag-sp { display: none; }
+    .ag-bar { gap: 6px 4px; }
+    .ag-bar .ag-tools, .ag-bar #agenda-day { gap: 4px; }
+    .ag-bar .seg button { padding: 0 9px; }
+    .ag-bar .ag-ico, .ag-bar .day-nav { width: 32px; min-width: 32px; }
     .ag-bar #agenda-day { margin-left: auto; }
     .ag-brk { display: block; flex-basis: 100%; height: 0; }
-    #ag-pend, #agenda-card .ag-bar .nm-open { flex: 1 1 0; min-width: 0; }
+    #ag-pend, #agenda-card .ag-bar .nm-open { flex: 1 1 0; min-width: 0; justify-content: center; }
     #ag-pend .ag-pend-btn { width: 100%; justify-content: center; }
-    #agenda-card .free-sum { display: flex; justify-content: space-between; gap: 8px; }
+    #agenda-card .ag-bar .nm-open .nm-l { display: inline; } #agenda-card .ag-bar .nm-open .nm-s { display: none; }
+    #agenda-card .free-sum, #agenda-card .free-sum.empty { display: block; }
     #agenda-card .free-sum .fs-day { display: inline; color: var(--muted); }
-    #agenda-card .free-sum.empty { display: flex; }
+    #agenda-card .free-sum:not(.empty) .fs-day::after { content: " · "; }
   }
+  @media (max-width: 400px) { .ag-bar .seg button { padding: 0 7px; font-size: 12.5px; } .ag-bar .ag-ico, .ag-bar .day-nav { width: 30px; min-width: 30px; } }
   .ag-bar > .chips { margin: 0; }
   @media (max-width: 700px) {
     .ag-tools .wk-lbl { font-size: 14px; flex-basis: 100%; order: 9; margin: 0; }
@@ -1281,7 +1294,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
-<link rel="stylesheet" href="synqalia.css?v=20261125m3">
+<link rel="stylesheet" href="synqalia.css?v=20261126a">
 <link rel="stylesheet" href="mensajes.css?v=20261125in">
 <link rel="stylesheet" href="buzon.css?v=20261125gm3">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
@@ -2829,7 +2842,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (gaps.length) { sum.appendChild(el('b', null, fecha === todayISO ? 'Hoy tienes libre: ' : 'Libre: ')); sum.appendChild(document.createTextNode(gaps.map(([a, b]) => hmOf(a) + '–' + hmOf(b)).join(' · '))); }
     else sum.textContent = fecha === todayISO ? 'No te quedan huecos libres hoy (9–19 h).' : 'Sin huecos libres entre 9 y 19 h.';
     if (fecha < todayISO) { sum.replaceChildren(); sum.classList.add('empty'); }
-    sum.prepend(el('b', 'fs-day', agDayLbl(fecha)));
+    sum.prepend(el('b', 'fs-day', agDayLbl(fecha, true)));
     wrap.appendChild(sum);
     if (blocks.length) { const bl = el('div', 'cal-allday'); blocks.forEach((e) => bl.appendChild(el('span', 'cal-chip', e.titulo + ' · ' + e.inicio + '–' + e.fin))); wrap.appendChild(bl); }
     // rango de horas
@@ -3182,7 +3195,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     cont.addEventListener('pointerup', finish);
     cont.addEventListener('pointercancel', () => { drag = null; ghost.hidden = true; });
   }
-  const agDayLbl = (f) => { if (!f) return ''; const t = new Intl.DateTimeFormat('es-ES', {weekday: 'long', day: 'numeric', month: 'short'}).format(new Date(f + 'T12:00:00')).replace(',', '').replace('.', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const agDayLbl = (f, corto) => { if (!f) return ''; const t = new Intl.DateTimeFormat('es-ES', {weekday: corto ? 'short' : 'long', day: 'numeric', month: 'short'}).format(new Date(f + 'T12:00:00')).replace(',', '').replace('.', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
   function setAgView(v) { state.agendaView = v; lsSet('sq-ag-view', v); }
   // Botón «Por responder» con su lista desplegable (junto a «Nueva reunión»)
   function renderPendMenu() {
@@ -4638,7 +4651,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     quick.forEach((d) => { const c = el('button', 'chip' + (d < todayISO ? ' past' : ''), lbl(d) + (noted.has(d) && d < todayISO ? ' 📝' : '')); c.type = 'button'; c.setAttribute('aria-pressed', String(d === state.agendaDay)); c.addEventListener('click', () => go(d)); sel.appendChild(c); });
     nav('›', cur >= 0 && cur < days.length - 1 ? days[cur + 1] : null, 'Día siguiente');
     // «Otro día…» ya no hace falta: el calendario del mes (botón del panel) lleva a cualquier día
-    const dl = $('#agenda-card .ag-dlbl'); if (dl) { dl.textContent = agDayLbl(state.agendaDay); dl.hidden = state.agendaView === 'semana'; }
+    const dl = $('#agenda-card .ag-dlbl'); if (dl) { dl.replaceChildren(el('span', 'l-long', agDayLbl(state.agendaDay)), el('span', 'l-short', agDayLbl(state.agendaDay, true))); dl.hidden = state.agendaView === 'semana'; }
     const h2 = $('#agenda-card h2'); if (h2) h2.textContent = state.agendaDay < todayISO ? 'Agenda · ' + lbl(state.agendaDay) : 'Agenda y reuniones';
     const ag = $('#agenda-box');
     const oldSc = ag.querySelector('.cal-scroll'); const keepTop = oldSc && state.agKeep === state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay) ? oldSc.scrollTop : null;
@@ -6314,7 +6327,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="lista.js?v=20261119f" defer></script>
 <script src="graph-live.js?v=20261125a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
-<script src="nueva-reunion.js?v=20261126a" defer></script>
+<script src="nueva-reunion.js?v=20261126b" defer></script>
 <script src="plaud.js?v=20261125f" defer></script>
 <script src="mensajes.js?v=20261125in" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
