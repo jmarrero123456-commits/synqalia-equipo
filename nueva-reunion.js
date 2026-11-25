@@ -239,7 +239,16 @@
   function close() { card.hidden = true; openBtn.hidden = false; }
   openBtn.addEventListener('click', open);
   $('#nm-cancel').addEventListener('click', close);
-  window.__sqNewMeeting = (pre = {}) => { open(); if (pre.titulo) $('#nm-tit').value = pre.titulo; (pre.personas || []).forEach((p) => addPerson(p)); };
+  // abrir precargado (desde el calendario: tocar un hueco → fecha, hora y duración)
+  window.__sqNewMeeting = (pre = {}) => {
+    open();
+    if (pre.titulo) $('#nm-tit').value = pre.titulo;
+    if (pre.fecha && /^\d{4}-\d{2}-\d{2}$/.test(pre.fecha)) $('#nm-fecha').value = pre.fecha;
+    if (pre.hora && /^\d{2}:\d{2}$/.test(pre.hora)) $('#nm-hora').value = pre.hora;
+    if (pre.duracion) { const d = String(Math.max(15, Math.min(480, Math.round(pre.duracion / 15) * 15))); const sel = $('#nm-dur'); if (![...sel.options].some((o) => o.value === d)) { const o = document.createElement('option'); o.value = d; o.textContent = Number(d) % 60 ? Math.floor(d / 60) + ' h ' + (d % 60) : (d / 60) + ' h'; sel.appendChild(o); } sel.value = d; }
+    (pre.personas || []).forEach((p) => addPerson(p));
+    availSoon();
+  };
 
   $('#nm-go').addEventListener('click', async () => {
     const titulo = $('#nm-tit').value.trim(), fecha = $('#nm-fecha').value, hora = $('#nm-hora').value, dur = Number($('#nm-dur').value);
