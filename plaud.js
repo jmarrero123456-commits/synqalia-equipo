@@ -195,6 +195,7 @@
 
   /* ---------- pintar la tarjeta ---------- */
   function paint() {
+    llenarSlots();
     card.replaceChildren();
     const h = document.createElement('div'); h.className = 'pl-h';
     h.innerHTML = '<h2>🎙️ Grabaciones del Plaud</h2><span class="pl-sp"></span>';
@@ -261,6 +262,138 @@
     try { const r = await call('sync'); if (r && r.error) estado.error = r.error; } catch (e) { estado.error = e.message; }
     await leerEstado(); await loadRecs(); paint(); auto();
   }
+
+  /* ---------- «🎙️ Plaud» dentro de cada reunión: lo que da Plaud, tal cual ---------- */
+  const css2 = document.createElement('style');
+  css2.textContent = `
+  .pl-slot:empty{display:none}
+  .pl-pan{margin-top:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;overflow:hidden;background:var(--panel,#fff)}
+  .pl-pan>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;background:color-mix(in srgb,var(--accent,#0f766e) 7%,transparent)}
+  .pl-pan>summary::-webkit-details-marker{display:none}
+  .pl-pan>summary b{font-size:14.5px}
+  .pl-pan>summary .s{font-size:12.5px;color:var(--muted,#6b7280)}
+  .pl-pan>summary .ch{margin-left:auto;font-size:12px;color:var(--muted,#6b7280)}
+  .pl-pan[open]>summary .ch{transform:rotate(180deg)}
+  .pl-tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line,#e5e7eb);flex-wrap:wrap}
+  .pl-tabs button{font:inherit;font-size:13px;font-weight:650;border:0;background:transparent;padding:8px 12px;border-bottom:2px solid transparent;cursor:pointer;color:var(--muted,#6b7280)}
+  .pl-tabs button.on{color:inherit;border-bottom-color:var(--accent,#0f766e)}
+  .pl-tabs .sp{flex:1}
+  .pl-body{padding:12px 16px 16px;max-height:70vh;overflow:auto;font-size:14px;line-height:1.55}
+  .pl-md h3{font-size:15.5px;margin:16px 0 6px}.pl-md h4{font-size:14.5px;margin:12px 0 4px}.pl-md h3:first-child{margin-top:2px}
+  .pl-md ul{margin:4px 0 8px;padding-left:20px}.pl-md li{margin:3px 0}
+  .pl-md li.todo{list-style:none;margin-left:-18px}.pl-md li.todo::before{content:"☐ ";color:var(--accent,#0f766e)}
+  .pl-md p{margin:6px 0}
+  .pl-ix{display:grid;gap:2px}
+  .pl-ix button{all:unset;cursor:pointer;display:flex;gap:12px;padding:7px 8px;border-radius:8px}
+  .pl-ix button:hover{background:color-mix(in srgb,var(--accent,#0f766e) 8%,transparent)}
+  .pl-t{font-variant-numeric:tabular-nums;color:var(--muted,#6b7280);font-size:12.5px;min-width:44px}
+  .pl-tx{display:grid;gap:10px}
+  .pl-turn{display:grid;grid-template-columns:52px 1fr;gap:8px}
+  .pl-turn .w{font-weight:700;font-size:13px;cursor:pointer;border-bottom:1px dashed transparent}
+  .pl-turn .w:hover{border-bottom-color:currentColor}
+  .pl-turn.hl{background:color-mix(in srgb,#f5c542 22%,transparent);border-radius:8px}
+  .pl-turn mark{background:#f5c542;color:inherit;border-radius:3px}
+  .pl-find{width:100%;font:inherit;font-size:13.5px;padding:7px 10px;border-radius:9px;border:1px solid var(--line,#e5e7eb);margin-bottom:10px;background:transparent;color:inherit}
+  .pl-sp0{color:#0f766e}.pl-sp1{color:#7c3aed}.pl-sp2{color:#c2410c}.pl-sp3{color:#2563eb}.pl-sp4{color:#be185d}`;
+  document.head.appendChild(css2);
+  const mmss = (ms) => { const s = Math.floor((Number(ms) || 0) / 1000); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(x); };
+  const inl = (t) => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>');
+  function mdHtml(md) {
+    const out = []; let list = false;
+    const close = () => { if (list) { out.push('</ul>'); list = false; } };
+    String(md || '').split('\n').forEach((raw) => {
+      const l = raw.replace(/\s+$/, '');
+      let m;
+      if (!l.trim()) { close(); return; }
+      if ((m = /^#{1,2}\s+(.*)$/.exec(l))) { close(); out.push('<h3>' + inl(m[1]) + '</h3>'); return; }
+      if ((m = /^#{3,6}\s+(.*)$/.exec(l))) { close(); out.push('<h4>' + inl(m[1]) + '</h4>'); return; }
+      if ((m = /^\s*[-*•]\s+\[[ xX]?\]\s+(.*)$/.exec(l))) { if (!list) { out.push('<ul>'); list = true; } out.push('<li class="todo">' + inl(m[1]) + '</li>'); return; }
+      if ((m = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(l))) { if (!list) { out.push('<ul>'); list = true; } out.push('<li>' + inl(m[1]) + '</li>'); return; }
+      close(); out.push('<p>' + inl(l) + '</p>');
+    });
+    close(); return out.join('');
+  }
+  const nombreDe = (g, w) => (g.nombres && g.nombres[w]) || w || 'Sin nombre';
+  const recsDe = (cu) => [...recs.values()].filter((g) => g.asignado && g.asignado.cu === cu).sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+  // texto para la IA (🔎 y «Terminar reunión»): resumen, índice y transcripción de Plaud
+  window.__sqPlaudTexto = (cu, max) => {
+    const gs = recsDe(cu); if (!gs.length) return '';
+    const t = gs.map((g) => '\n\nGRABACIÓN DEL PLAUD ' + g.hIni + '–' + g.hFin + ':\n'
+      + (g.resumenPlaud ? 'RESUMEN DE PLAUD:\n' + g.resumenPlaud + '\n\n' : '')
+      + (Array.isArray(g.turnos) && g.turnos.length ? 'TRANSCRIPCIÓN:\n' + g.turnos.map((x) => nombreDe(g, x[1]) + ': ' + x[2]).join('\n') : (g.transcripcion ? 'TRANSCRIPCIÓN:\n' + g.transcripcion : ''))).join('');
+    return t.slice(0, max || 60000);
+  };
+  const panelState = {}; // por reunión: pestaña y búsqueda
+  function panel(g) {
+    const ps = panelState[g.id] || (panelState[g.id] = { tab: g.resumenPlaud ? 'res' : 'tx', q: '', open: true });
+    const d = document.createElement('details'); d.className = 'pl-pan'; d.open = ps.open;
+    d.addEventListener('toggle', () => { ps.open = d.open; });
+    const sm = document.createElement('summary');
+    sm.innerHTML = `<b>🎙️ Plaud</b><span class="s">${esc(g.nombre || 'Grabación')} · ${esc(g.hIni)}–${esc(g.hFin)} · ${g.minutos || 0} min</span><span class="ch">▾</span>`;
+    d.appendChild(sm);
+    const tabs = document.createElement('div'); tabs.className = 'pl-tabs';
+    const body = document.createElement('div'); body.className = 'pl-body';
+    const turns = Array.isArray(g.turnos) ? g.turnos : [];
+    const T = [['res', 'Resumen'], ['ix', 'Índice'], ['tx', 'Transcripción']].filter(([k]) => k !== 'res' || g.resumenPlaud).filter(([k]) => k !== 'ix' || (g.indice && g.indice.length));
+    const spk = [...new Set(turns.map((x) => x[1]))];
+    const draw = (jump) => {
+      tabs.replaceChildren();
+      T.forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; if (ps.tab === k) b.className = 'on'; b.onclick = () => { ps.tab = k; draw(); }; tabs.appendChild(b); });
+      const sp = document.createElement('span'); sp.className = 'sp'; tabs.appendChild(sp);
+      const cp = document.createElement('button'); cp.type = 'button'; cp.textContent = 'Copiar';
+      cp.title = ps.tab === 'res' ? 'Copiar el resumen' : 'Copiar la transcripción';
+      cp.onclick = async () => { const txt = ps.tab === 'res' ? g.resumenPlaud : turns.length ? turns.map((x) => '[' + mmss(x[0]) + '] ' + nombreDe(g, x[1]) + ': ' + x[2]).join('\n') : g.transcripcion; try { await navigator.clipboard.writeText(txt || ''); cp.textContent = 'Copiado ✓'; } catch (_) { cp.textContent = 'No se pudo copiar'; } setTimeout(() => { cp.textContent = 'Copiar'; }, 1800); };
+      tabs.appendChild(cp);
+      body.replaceChildren();
+      if (ps.tab === 'res') { const m = document.createElement('div'); m.className = 'pl-md'; m.innerHTML = mdHtml(g.resumenPlaud); body.appendChild(m); }
+      else if (ps.tab === 'ix') {
+        const ix = document.createElement('div'); ix.className = 'pl-ix';
+        g.indice.forEach((o) => { const b = document.createElement('button'); b.innerHTML = `<span class="pl-t">${mmss(o.t)}</span><span>${esc(o.tema)}</span>`; b.onclick = () => { ps.tab = 'tx'; ps.q = ''; draw(o.t); }; ix.appendChild(b); });
+        body.appendChild(ix);
+      } else {
+        const f = document.createElement('input'); f.type = 'search'; f.className = 'pl-find'; f.placeholder = 'Buscar en la transcripción…'; f.value = ps.q;
+        f.oninput = () => { ps.q = f.value; paintTx(); };
+        body.appendChild(f);
+        const tx = document.createElement('div'); tx.className = 'pl-tx'; body.appendChild(tx);
+        const paintTx = () => {
+          tx.replaceChildren();
+          if (!turns.length) { const p = document.createElement('div'); p.className = 'pl-md'; p.innerHTML = '<p>' + esc(g.transcripcion || 'Plaud aún no ha transcrito esta grabación.').replace(/\n/g, '<br>') + '</p>'; tx.appendChild(p); return; }
+          const q = ps.q.trim().toLowerCase(); let n = 0;
+          turns.forEach((x, i) => {
+            if (q && !String(x[2]).toLowerCase().includes(q)) return; n++;
+            const r = document.createElement('div'); r.className = 'pl-turn'; r.dataset.t = x[0];
+            const txt = q ? esc(x[2]).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (z) => '<mark>' + z + '</mark>') : esc(x[2]);
+            r.innerHTML = `<span class="pl-t">${mmss(x[0])}</span><div><span class="w pl-sp${spk.indexOf(x[1]) % 5}" title="Toca para poner el nombre">${esc(nombreDe(g, x[1]))}</span><div>${txt}</div></div>`;
+            r.querySelector('.w').onclick = async () => {
+              const nv = prompt('¿Quién es «' + nombreDe(g, x[1]) + '»? (se cambia en toda la transcripción)', nombreDe(g, x[1]) === x[1] ? '' : nombreDe(g, x[1]));
+              if (nv == null) return;
+              const nombres = Object.assign({}, g.nombres || {}); if (nv.trim()) nombres[x[1]] = nv.trim(); else delete nombres[x[1]];
+              await saveRec(g.id, { nombres }).catch(() => {}); g.nombres = nombres; paintTx();
+            };
+            tx.appendChild(r);
+          });
+          if (q && !n) { const e = document.createElement('div'); e.className = 'pl-st'; e.textContent = 'Nada coincide con «' + ps.q + '».'; tx.appendChild(e); }
+        };
+        paintTx();
+        if (jump != null) setTimeout(() => {
+          const rows = [...tx.querySelectorAll('.pl-turn')]; const r = rows.find((z, i) => Number(z.dataset.t) >= jump - 1500) || rows[rows.length - 1];
+          if (r) { r.classList.add('hl'); body.scrollTop = r.offsetTop - body.offsetTop - 8; setTimeout(() => r.classList.remove('hl'), 2500); }
+        }, 30);
+      }
+    };
+    draw();
+    d.append(tabs, body);
+    return d;
+  }
+  function llenarSlots() {
+    document.querySelectorAll('.pl-slot').forEach((s) => {
+      const gs = recsDe(s.dataset.cu);
+      const firma = gs.map((g) => g.id + ':' + (g.actualizado || '') + ':' + JSON.stringify(g.nombres || {})).join('|');
+      if (s.dataset.firma === firma) return;
+      s.dataset.firma = firma; s.replaceChildren(...gs.map(panel));
+    });
+  }
+  new MutationObserver(() => { if (document.querySelector('.pl-slot:not([data-firma])')) llenarSlots(); }).observe(document.body, { childList: true, subtree: true });
 
   /* ---------- arranque ---------- */
   const q = new URLSearchParams(location.search);

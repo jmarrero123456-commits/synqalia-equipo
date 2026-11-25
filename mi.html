@@ -4924,6 +4924,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       lr.appendChild(tg); apply();
     }
     card.appendChild(nf);
+    // grabaciones del Plaud de esta reunión: resumen, índice y transcripción tal cual las da Plaud (las pinta plaud.js)
+    { const ps = el('div', 'pl-slot'); ps.dataset.cu = id; card.appendChild(ps); }
     // Adjuntos: pegar imagen, arrastrar o elegir archivo
     const attBox = el('div', 'att-box'); card.appendChild(attBox);
     const baseRec = () => ({persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas});
@@ -5074,7 +5076,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       ai.disabled = true; st.classList.remove('err'); st.textContent = 'Claude está leyendo las notas…';
       clearTimeout(tmr); await saveCu(id, {persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas});
       const already = state.tasks.filter((t) => t.ref === id).map((t) => t.titulo);
-      const prompt = 'Eres el asistente de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España. Estas son las notas (o la transcripción) de ' + (isMt ? 'su reunión «' + p.nombre + '»' + (membersOf(p).length ? ' (convoca ' + membersOf(p).join(', ') + ')' : '') : 'su catch-up semanal ' + (isGroup(p) ? 'de grupo «' + p.nombre + '» con ' + membersOf(p).join(', ') : 'con ' + p.nombre)) + ' del ' + d.fecha + '. Hoy es ' + todayISO + '. Devuelve SOLO JSON: {"resumen": los TEMAS TRATADOS en 3-6 viñetas cortas y claras, cada una empezando por "- ", con lo importante que se habló y, dentro de cada tema, lo que se decidió (no hagas una sección aparte de acuerdos); "acuerdos": [] (déjalo siempre vacío); "tareas": los PRÓXIMOS PASOS,  [{"titulo": verbo en infinitivo + objeto, máx. 90 caracteres; "espera": "mia" si la tiene que hacer Jaime o "tercero" si la tiene que hacer otra persona; "responsable": nombre de quien la tiene que hacer (' + (membersOf(p).length ? 'uno de: ' + membersOf(p).join(', ') + ', u ' : '') + 'otro nombre si se dice) o "Jaime"; "vence": "YYYY-MM-DD" si se dice o implica una fecha, si no null; "prioridad": "Alta","Media" o "Baja"}]}. No repitas estas tareas ya creadas: ' + (already.join(' | ') || '(ninguna)') + '. No inventes nada que no esté en las notas.\n\nCONTEXTO PREVIO (por si ayuda a entender):\n' + cuContext(p, id).slice(0, 6000) + '\n\nNOTAS:\n' + d.notas.slice(0, 20000);
+      const prompt = 'Eres el asistente de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España. Estas son las notas (o la transcripción) de ' + (isMt ? 'su reunión «' + p.nombre + '»' + (membersOf(p).length ? ' (convoca ' + membersOf(p).join(', ') + ')' : '') : 'su catch-up semanal ' + (isGroup(p) ? 'de grupo «' + p.nombre + '» con ' + membersOf(p).join(', ') : 'con ' + p.nombre)) + ' del ' + d.fecha + '. Hoy es ' + todayISO + '. Devuelve SOLO JSON: {"resumen": los TEMAS TRATADOS en 3-6 viñetas cortas y claras, cada una empezando por "- ", con lo importante que se habló y, dentro de cada tema, lo que se decidió (no hagas una sección aparte de acuerdos); "acuerdos": [] (déjalo siempre vacío); "tareas": los PRÓXIMOS PASOS,  [{"titulo": verbo en infinitivo + objeto, máx. 90 caracteres; "espera": "mia" si la tiene que hacer Jaime o "tercero" si la tiene que hacer otra persona; "responsable": nombre de quien la tiene que hacer (' + (membersOf(p).length ? 'uno de: ' + membersOf(p).join(', ') + ', u ' : '') + 'otro nombre si se dice) o "Jaime"; "vence": "YYYY-MM-DD" si se dice o implica una fecha, si no null; "prioridad": "Alta","Media" o "Baja"}]}. No repitas estas tareas ya creadas: ' + (already.join(' | ') || '(ninguna)') + '. No inventes nada que no esté en las notas.\n\nCONTEXTO PREVIO (por si ayuda a entender):\n' + cuContext(p, id).slice(0, 6000) + '\n\nNOTAS:\n' + d.notas.slice(0, 20000) + (window.__sqPlaudTexto ? window.__sqPlaudTexto(id, 30000) : '');
       try {
         let imgs = [];
         try {
@@ -5136,7 +5138,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: ev.inicio, fin: ev.fin || null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: (ex && ex.miembros) || p.miembros});
       const {ta, txt} = notesOf(id);
       if (txt.includes(plaudHead(g))) return id; // ya estaba
-      const body = (g.resumenPlaud ? '## Resumen de Plaud\n' + String(g.resumenPlaud).trim() + '\n\n## Transcripción\n' : '') + String(g.transcripcion || '').trim();
+      const body = 'El resumen, el índice y la transcripción de Plaud están en «🎙️ Plaud», en esta reunión.';
       const block = plaudHead(g) + '\n' + body + '\n' + PLAUD_FIN;
       const cur = txt.replace(/\s+$/, '');
       const ok = await putNotes(id, p, ev.fecha, ta, (cur ? cur + '\n\n' : '') + block);
@@ -5260,6 +5262,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         + (Array.isArray(rec.acuerdos) && rec.acuerdos.length ? '\nACUERDOS:\n' + rec.acuerdos.map((a) => '- ' + (a.texto || a)).join('\n') + '\n' : '')
         + (tareas.length ? '\nTAREAS CREADAS:\n' + tareas.join('\n') + '\n' : '')
         + '\nNOTAS Y TRANSCRIPCIÓN:\n' + String(rec.notas || '').slice(0, 60000)
+        + (window.__sqPlaudTexto ? window.__sqPlaudTexto(rec.id, 80000) : '')
         + (prev ? '\n\nPREGUNTAS ANTERIORES EN ESTA CONSULTA:\n' + prev : '')
         + '\n\nPREGUNTA DE JAIME: ' + q;
       try { const out = await sample(prompt, {onText: ({text}) => { item.a = text; }}); item.a = out.text || 'Sin respuesta.'; }
@@ -5701,7 +5704,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="graph-live.js?v=20261124a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
 <script src="nueva-reunion.js?v=20261124a" defer></script>
-<script src="plaud.js?v=20261125a" defer></script>
+<script src="plaud.js?v=20261125b" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261124j" defer></script>
