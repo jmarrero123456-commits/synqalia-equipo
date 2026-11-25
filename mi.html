@@ -922,6 +922,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-ev.mv { cursor: grab; user-select: none; -webkit-user-select: none; }
   .cal-ev.drag { cursor: grabbing; box-shadow: 0 10px 24px rgba(15,27,45,.28); z-index: 15; opacity: .96; }
   .cal-ev.drag::after { content: attr(data-drag); position: absolute; right: 4px; top: 2px; background: var(--ink); color: var(--panel); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
+  .slot-ghost { position: absolute; z-index: 4; pointer-events: none; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1.5px dashed var(--accent); color: var(--accent); font-size: 11.5px; font-weight: 800; padding: 2px 6px; box-sizing: border-box; overflow: hidden; white-space: nowrap; }
+  .cal.slots, .wk-col.slots { cursor: copy; }
   .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; z-index: 2; }
   .ev-rs.top { top: 0; bottom: auto; }
   .cal-ev.mv:hover .ev-rs { background: color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -2741,6 +2743,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (h < h1) { const hl = el('div', 'cal-half'); hl.style.top = y(h * 60 + 30) + 'px'; cal.appendChild(hl); }
     }
     gaps.forEach(([a, b]) => { const g = el('div', 'cal-free'); g.style.top = y(a) + 'px'; g.style.height = Math.max(0, y(b) - y(a) - 2) + 'px'; if (b - a >= 30) g.appendChild(el('span', null, 'Libre · ' + durOf(b - a))); cal.appendChild(g); });
+    enableSlotCreate(cal, fecha, h0, h1, CAL_PX / 60, 'var(--cal-g)');
     // columnas para solapes
     const clusters = []; let cl = null, clEnd = -1;
     evs.forEach((e) => { const a = toMin(e.inicio), b = toMin(e.fin); if (!cl || a >= clEnd) { cl = []; clusters.push(cl); clEnd = b; } else clEnd = Math.max(clEnd, b); cl.push(e); });
@@ -3002,6 +3005,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (h < h1) { const hl = el('div', 'wk-line half'); hl.style.top = y(h * 60 + 30) + 'px'; body.appendChild(hl); }
     }
     const cols = per.map((p) => { const c = el('div', 'wk-col' + (p.f === todayISO ? ' today' : p.f < todayISO ? ' past' : '')); body.appendChild(c); return c; });
+    cols.forEach((c, i) => enableSlotCreate(c, per[i].f, h0, h1, PX / 60, '2px'));
     let popAt = null;
     per.forEach((p, i) => {
       const col = cols[i];
@@ -3031,7 +3035,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (p.f === todayISO) { const nl = el('div', 'wk-now'); nl.style.top = y(nowMin()) + 'px'; if (nowMin() >= h0 * 60 && nowMin() <= h1 * 60) col.appendChild(nl); }
     });
     scroller.appendChild(body); wrap.appendChild(scroller);
-    wrap.appendChild(el('p', 'note', 'Toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día); tirando del borde de arriba o de abajo cambias la hora de inicio o de fin.'));
+    wrap.appendChild(el('p', 'note', 'Toca un hueco (o arrastra en él) para crear una reunión; toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día); tirando del borde de arriba o de abajo cambias la hora de inicio o de fin.'));
     const focus = per.some((p) => p.f === todayISO) ? nowMin() - 90 : 8 * 60 + 30;
     requestAnimationFrame(() => {
       scroller.scrollTop = Math.max(0, y(focus));
@@ -3046,6 +3050,38 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       }
     });
     return {wrap};
+  }
+  // Crear una reunión tocando un hueco del calendario (como en Outlook/Teams): clic = 30 min; con el ratón, arrastrar elige la duración
+  function enableSlotCreate(cont, fecha, h0, h1, pxMin, ghostLeft) {
+    if (fecha < todayISO || typeof window.__sqNewMeeting !== 'function') return;
+    cont.classList.add('slots');
+    const isBg = (t) => t === cont || (t && t.closest && !t.closest('.cal-ev, .cal-pop, .slot-ghost') && cont.contains(t) && (t.classList.contains('cal-hour') || t.classList.contains('cal-half') || t.classList.contains('cal-free') || t.classList.contains('wk-line') || t.parentElement && (t.parentElement.classList.contains('cal-hour') || t.parentElement.classList.contains('cal-free'))));
+    const minAt = (cy) => { const r = cont.getBoundingClientRect(); return h0 * 60 + Math.floor((cy - r.top) / pxMin / 30) * 30; };
+    const clampA = (m) => Math.max(h0 * 60, Math.min(h1 * 60 - 30, m));
+    const minNow = fecha === todayISO ? Math.floor(nowMin() / 30) * 30 : -1;
+    const ghost = el('div', 'slot-ghost'); ghost.hidden = true; ghost.style.left = ghostLeft; ghost.style.right = '2px'; cont.appendChild(ghost);
+    const show = (a, b) => { ghost.hidden = false; ghost.style.top = ((a - h0 * 60) * pxMin + 1) + 'px'; ghost.style.height = Math.max(14, (b - a) * pxMin - 2) + 'px'; ghost.textContent = '+ ' + hmOf(a) + '–' + hmOf(b); };
+    let drag = null;
+    cont.addEventListener('pointermove', (k) => {
+      if (drag) { const m = clampA(minAt(k.clientY)); const a = Math.min(drag.a, m), b = Math.max(drag.a, m) + 30; drag.b = b; drag.a2 = a; drag.moved = drag.moved || Math.abs(k.clientY - drag.y) > 6; show(a, b); return; }
+      if (k.pointerType !== 'mouse' || !isBg(k.target)) { ghost.hidden = true; return; }
+      const a = clampA(minAt(k.clientY)); if (a < minNow) { ghost.hidden = true; return; } show(a, a + 30);
+    });
+    cont.addEventListener('pointerleave', () => { if (!drag) ghost.hidden = true; });
+    cont.addEventListener('pointerdown', (k) => {
+      if (k.button !== 0 || !isBg(k.target)) return;
+      const a = clampA(minAt(k.clientY)); if (a < minNow) return;
+      drag = {a, a2: a, b: a + 30, y: k.clientY, moved: false, touch: k.pointerType !== 'mouse'};
+      if (!drag.touch) { try { cont.setPointerCapture(k.pointerId); } catch (x) { /* sin captura */ } k.preventDefault(); show(a, a + 30); }
+    });
+    const finish = (k) => {
+      if (!drag) return; const d = drag; drag = null; ghost.hidden = true;
+      if (d.touch && Math.abs(k.clientY - d.y) > 8) return; // en el móvil, si se desplazaba no se crea nada
+      const a = d.touch ? d.a : d.a2, b = d.touch ? d.a + 30 : d.b;
+      window.__sqNewMeeting({fecha, hora: hmOf(a), duracion: b - a});
+    };
+    cont.addEventListener('pointerup', finish);
+    cont.addEventListener('pointercancel', () => { drag = null; ghost.hidden = true; });
   }
   function setAgView(v) { state.agendaView = v; lsSet('sq-ag-view', v); }
   // Botón «Por responder» con su lista desplegable (junto a «Nueva reunión»)
@@ -6110,7 +6146,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="lista.js?v=20261119f" defer></script>
 <script src="graph-live.js?v=20261125a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
-<script src="nueva-reunion.js?v=20261125b" defer></script>
+<script src="nueva-reunion.js?v=20261125c" defer></script>
 <script src="plaud.js?v=20261125d" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
