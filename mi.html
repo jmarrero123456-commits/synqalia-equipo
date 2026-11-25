@@ -1233,7 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261125b">
+<link rel="stylesheet" href="buzon.css?v=20261125v4">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1755,6 +1755,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (bk && view === bk.view) { state.backTo = null; restoreBack(bk); }
     else if (bk && view !== 'correo' && view !== 'reuniones') state.backTo = null;
     paintBack();
+    // Correo único (v4): lo que se abre desde Inicio, Tareas o Agenda se ve aquí; la vista clásica solo si se pide desde «más»
+    if (view === 'correo' && typeof window.__sqBuzonOpenMail === 'function') {
+      const unified = !!document.querySelector('#view-correo .card.bz-on');
+      if (state.openReply && unified) {
+        const om = state.mails.find((x) => x.id === state.openReply);
+        if (om && window.__sqBuzonOpenMail(om, !!state.autoDraft[om.id])) state.openReply = null;
+      } else if (!state.openReply && !unified && prevView !== 'correo' && window.__sqBzModo) window.__sqBzModo('bandeja');
+    }
   }
   const VIEW_NAME = {hoy: 'Inicio', tareas: 'Tareas', catchups: 'Reuniones', reuniones: 'Agenda', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'};
   function paintBack() {
@@ -3599,7 +3607,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const setStatus = (t, err) => { status.textContent = t; status.classList.toggle('err', !!err); };
     if (preSug && !locked) setStatus('Respuesta preparada al leer el correo. Revísala, pide un cambio o llévala a Borradores.');
     // en el panel, si te piden algo y no hay respuesta preparada, la redacto sola al abrir (una vez)
-    if (inPane && !locked && !ta.value.trim() && isDecision(m) && m.cuerpo && sample) { state.autoTried = state.autoTried || {}; if (!state.autoTried[m.id]) { state.autoTried[m.id] = true; state.autoDraft[m.id] = true; } }
+    if (inPane && !window.__sqUnified && !locked && !ta.value.trim() && isDecision(m) && m.cuerpo && sample) { state.autoTried = state.autoTried || {}; if (!state.autoTried[m.id]) { state.autoTried[m.id] = true; state.autoDraft[m.id] = true; } }
 
     if (!locked) {
       const change = el('div', 'change');
@@ -3633,7 +3641,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       ask.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); askBtn.click(); } });
       askRow.appendChild(askBtn);
       askBox.appendChild(ask); askBox.appendChild(askRow);
-      if (state.autoDraft[m.id] && !ta.value.trim()) { delete state.autoDraft[m.id]; setTimeout(() => run(ask.value.trim(), askBtn), 80); }
+      if (state.autoDraft[m.id] && !ta.value.trim() && (o && o.bz || !window.__sqUnified)) { delete state.autoDraft[m.id]; setTimeout(() => run(ask.value.trim(), askBtn), 80); }
       askBox.appendChild(slotFinder((s, label) => {
         ask.value = (ask.value.trim() ? ask.value.trim() + '. ' : '') + 'Propón una reunión el ' + label.replace(' · ', ' de ') + ' (' + (s.fin - s.inicio) + ' min) por Teams';
         state.asks[m.id] = ask.value; ask.focus(); setStatus('Hueco añadido. Pulsa «Sugerir correo».');
@@ -3893,12 +3901,31 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   const handled = (m) => { const r = state.replies[m.id]; return !!(r && OUT.includes(r.estado)); };
   const snoozed = (m) => !!(m.posponer && m.posponer > todayISO);
   const isPending = (m) => m.estado !== 'gestionado' && !handled(m) && !snoozed(m);
+  // El Correo único (v4, 25/11) usa Pendientes como filtros (Urgente, Te piden algo, Para otro día) sin cambiar de pantalla
+  window.__sqPend = {
+    list: (k) => state.mails.filter((m) => !isMeeting(m) && m.estado !== 'gestionado' && (k === 'otro' ? (snoozed(m) && !handled(m)) : isPending(m) && (k === 'urgente' ? isUrgent(m) : k === 'pide' ? isDecision(m) : true))),
+    get: (id) => state.mails.find((x) => x.id === id) || null,
+    byConv: (conv) => state.mails.find((x) => x.conv === conv && !isMeeting(x)) || null,
+    pendiente: (m) => !!m && !isMeeting(m) && isPending(m),
+    pospuesto: (m) => !!m && snoozed(m),
+    nivel: (m) => nivelDe(m),
+    fecha: (m) => fechaDe(m),
+    persona: (de) => personaDe(de),
+    motivo: (m) => { try { return motivoDe(m); } catch (e) { return ''; } },
+    gestionado: (id) => { write(() => db.collection('correos').doc(id).update({estado: 'gestionado'}), 'Correo gestionado'); leidoEnOutlook(id); },
+    posponer: (id) => write(() => db.collection('correos').doc(id).update({posponer: tomorrowISO}), 'Lo verás mañana'),
+    reactivar: (id) => write(() => db.collection('correos').doc(id).update({posponer: null}), 'De vuelta a pendientes'),
+    clasificar: (id, v) => write(() => db.collection('correos').doc(id).update({nivelManual: v}), v === 'no' ? 'No te piden nada' : v === 'bloquea' ? 'Marcado como urgente' : v ? 'Te piden algo' : 'Clasificación de la IA'),
+    // la caja de respuesta de siempre (propuesta con IA, pulir, CC, programar, adjuntos, tareas…) dentro del correo abierto
+    composer: (id, auto) => { const m = state.mails.find((x) => x.id === id); if (!m) return null; if (auto) state.autoDraft[id] = true; return composer(m, {pane: true, bz: true}); },
+    clasico: (id) => { if (window.__sqBzModo) window.__sqBzModo('pend'); if (id) window.__sqOpenMail(id); },
+  };
   const meetingPast = (m) => (m.reunion && m.reunion.fecha) ? m.reunion.fecha < todayISO : (/reenv[ií]o|cancelad|actualiz/i.test(m.asunto || '') || daysSince(fechaDe(m)) > 3);
   const agendaAccepted = (m) => { const r = m.reunion; if (!r || !r.fecha || !state.agenda[r.fecha]) return false; const tk = normTxt(r.titulo || m.asunto).slice(0, 12); return (state.agenda[r.fecha].eventos || []).some((e) => sameSlot(e, r) && (!tk || normTxt(e.titulo).includes(tk) || tk.includes(normTxt(e.titulo).slice(0, 12))) && !/sin confirmar|tentative|provisional/i.test(e.estado || '')); };
   const meetingDone = (m) => meetingPast(m) || agendaAccepted(m) || m.estado === 'gestionado' || (state.decisions[m.id] && state.decisions[m.id].estado === 'hecha');
   const meetingDecided = () => false;
 
-  function renderAll() { renderMail(); renderMeetings(); renderHoy(); }
+  function renderAll() { renderMail(); renderMeetings(); renderHoy(); try { window.dispatchEvent(new Event('sq-mails')); } catch (e) {} }
 
   // Saca fecha y hora de la reunión del texto de la invitación cuando no vienen guardadas
   const MES_L = {enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12};
@@ -6167,7 +6194,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261125d" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261125b" defer></script>
+<script src="buzon.js?v=20261125v4" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 </body>

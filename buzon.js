@@ -1,19 +1,22 @@
-/* Synqalia · Correo · Bandeja completa (24/11/2026)
-   Todo el buzón de Outlook sin entrar en Outlook, en directo contra Microsoft Graph (función «buzon» de Supabase):
-   carpetas, últimos 90 días (la búsqueda va a todo el buzón), leído / no leído, bandera, mover, archivar, eliminar,
-   adjuntos, Responder · Responder a todos · Reenviar y Correo nuevo.
-   Arriba: Todas · Outlook · Gmail (Gmail se conecta más adelante) y el cambio Bandeja ↔ Pendientes (la vista de siempre).
-   Si el correo está en Pendientes, se ve su resumen, lo que te piden y la respuesta sugerida.
-   Como en Mensajes (24/11): una fila por conversación; tocar abre y tocar otra vez (✕, Esc o Volver) cierra; abrir no
-   la quita de la lista (solo deja de estar en negrita); con «No leídos» se queda mientras está abierta y sale al cerrarla.
-   Se ve el hilo completo (todas las carpetas, también tus respuestas), el más reciente arriba y abierto, los anteriores
-   plegados y el texto citado oculto en «Mostrar texto citado».
-   Diseño: PC = carpetas · lista · correo; Z Fold abierto = lo mismo más estrecho (opción A);
-   Z Fold cerrado = lista y el correo a pantalla completa con «‹ Volver». */
+/* Synqalia · Correo (v4, 25/11/2026): una sola pantalla, como Outlook
+   Todo el buzón de Outlook en directo contra Microsoft Graph (función «buzon» de Supabase) y, encima, la capa de Synqalia.
+   Ya no hay cambio Bandeja ↔ Pendientes: «Urgente», «Te piden algo» y «Para otro día» son filtros de la misma lista.
+   - Barra de arriba en una línea: buscador · Todos · No leídos · Urgente · Te piden algo · Para otro día · bandera · anclados ·
+     Todas/Outlook/Gmail · Nuevo correo.
+   - Carpetas a la izquierda (se recogen con «, y se recuerda).
+   - Lista como Outlook: «Anclado» arriba, luego por días (Hoy, Ayer…). Cada conversación con iniciales, remitente, asunto,
+     resumen e iconos (adjunto, respondido, reenviado, bandera, anclado). La flecha despliega el hilo: un mensaje por fila.
+     Al pasar el ratón: marcar como no leído, bandera, anclar y eliminar.
+   - Correo abierto: Responder · Responder a todos · Reenviar + iconos (no leído, bandera, anclar, archivar, eliminar, mover,
+     tarea, más). Si está en Pendientes, recuadro Synqalia: resumen, lo que te piden, «Responder con» (respuesta sugerida con la
+     caja de siempre: IA, pulir, CC, programar, adjuntos…) y Gestionado / Para mañana. Debajo, los mensajes anteriores.
+   - Anclar se guarda en Synqalia (Outlook no deja anclar desde fuera); la bandera va y vuelve con Outlook.
+   - Z Fold cerrado: lista a todo el ancho y el correo a pantalla completa con «‹ Volver» y Responder abajo. */
 (async () => {
   const view = document.getElementById('view-correo');
   if (!view || window.__sqBuzon) return;
   window.__sqBuzon = true;
+  window.__sqUnified = true;
   await window.__sqReady;
   const sb = window.__sb;
   if (!sb) return;
@@ -32,16 +35,22 @@
     fwd: '<path d="M14 9V5l7 7-7 7v-4c-5 0-8.5 1.5-11 5 1-5 4-10 11-11z"/>',
     arch: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/>',
     del: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
-    unread: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/><circle cx="19" cy="5" r="3" fill="currentColor"/>',
+    unread: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    read: '<path d="M3 10l9-6 9 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 10l9 6 9-6"/>',
     flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+    pin: '<path d="M9 4h6l-1 5 3 3H7l3-3z"/><path d="M12 12v8"/>',
     move: '<path d="M3 7h6l2 2h10v10H3z"/><path d="M12 13h5M15 11l2 2-2 2"/>',
     task: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11"/>',
     clip: '<path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
-    filter: '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
     back: '<path d="M15 5l-7 7 7 7"/>',
     pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    chev: '<path d="M9 6l6 6-6 6"/>',
+    more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+    check: '<path d="M5 12l5 5L20 7"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    spark: '<path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/>',
   };
   const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[k]}</svg>`;
   const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -54,13 +63,17 @@
     const k = dayKey(d), today = dayKey(now), ayer = dayKey(new Date(now.getTime() - 864e5));
     if (k === today) return hhmm(d);
     if (k === ayer) return 'Ayer';
-    if (now - d < 6 * 864e5) return DOW[d.getDay()];
+    if (now - d < 6 * 864e5) return DOW[d.getDay()].toLowerCase() + ' ' + d.getDate();
     return `${d.getDate()} ${MES[d.getMonth()]}${d.getFullYear() !== now.getFullYear() ? ' ' + d.getFullYear() : ''}`;
   }
-  const largo = (iso) => { if (!iso) return ''; const d = new Date(iso); return `${DOW[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()} · ${hhmm(d)}`; };
-  const nombres = (l) => (l || []).map((p) => p.nombre || p.mail).filter(Boolean).join(', ');
-  const mails = (l) => (l || []).map((p) => p.mail).filter(Boolean).join('; ');
+  const largo = (iso) => { if (!iso) return ''; const d = new Date(iso); return `${DOW[d.getDay()].toLowerCase()} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()} · ${hhmm(d)}`; };
+  const nombres = (l) => (l || []).map((p) => p.nombre || p.mail).filter(Boolean).join('; ');
   const mqNarrow = window.matchMedia('(max-width: 599px)');
+  // iniciales y color estable por persona (como Outlook)
+  const PAL = ['#f2c1d6', '#d0e4f5', '#e6dccb', '#cfe3f7', '#f3e3b5', '#d7ecd3', '#e5cdf0', '#f6d6c9', '#d9ccf0'];
+  const ini = (n) => { const w = String(n || '?').replace(/[<(].*$/, '').replace(/[^\p{L}\s.'-]/gu, ' ').trim().split(/[\s.]+/).filter(Boolean); return ((w[0]?.[0] || '?') + (w.length > 1 ? w[w.length - 1][0] : (w[0]?.[1] || ''))).toUpperCase(); };
+  const colorOf = (n) => { let h = 0; for (const c of String(n || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; };
+  const avatar = (n) => `<span class="bz-av" style="background:${colorOf(n)}" aria-hidden="true">${esc(ini(n))}</span>`;
 
   async function call(op, extra = {}) {
     const { data, error } = await sb.functions.invoke('buzon', { body: { op, ...extra } });
@@ -69,78 +82,91 @@
     return data;
   }
 
-  /* ---------- Pendientes de Synqalia (para el resumen y la respuesta sugerida) ---------- */
-  const smart = new Map(); // conversationId → correo de Pendientes
-  async function loadSmart() {
-    const { data: rows } = await sb.from('personal_docs').select('id,data').eq('owner', uid).eq('col', 'correos');
-    smart.clear();
-    for (const r of rows || []) if (r.data?.conv && r.data.estado !== 'gestionado') smart.set(r.data.conv, { id: r.id, ...r.data });
+  /* ---------- capa de Synqalia (Pendientes de mi.html) ---------- */
+  const P = () => window.__sqPend || null;
+  const pendOf = (conv) => (conv && P() ? P().byConv(conv) : null);
+  const isPend = (m) => !!(m && P()?.pendiente(m));
+  const nivelOf = (m) => (isPend(m) ? P().nivel(m) : null);
+
+  /* ---------- anclados (se guardan en Synqalia: Outlook no deja anclar desde fuera) ---------- */
+  const pins = new Map(); // conv → {conv, asunto, de, prev, fecha, at}
+  async function loadPins() {
+    const { data: rows } = await sb.from('personal_docs').select('id,data').eq('owner', uid).eq('col', 'fijados');
+    pins.clear();
+    for (const r of rows || []) if (r.data?.conv) pins.set(r.data.conv, r.data);
+  }
+  async function togglePin(conv, base) {
+    if (!conv) return;
+    const on = !pins.has(conv);
+    const prev = pins.get(conv);
+    if (on) {
+      const m = base || {};
+      pins.set(conv, { conv, asunto: m.asunto || '', de: m.de || null, prev: m.prev || '', fecha: m.fecha || null, at: new Date().toISOString() });
+    } else pins.delete(conv);
+    repaint();
+    try {
+      const q = on
+        ? sb.from('personal_docs').upsert({ owner: uid, col: 'fijados', id: conv, data: pins.get(conv) })
+        : sb.from('personal_docs').delete().eq('owner', uid).eq('col', 'fijados').eq('id', conv);
+      const { error } = await q;
+      if (error) throw error;
+      toast(on ? 'Anclado arriba' : 'Ya no está anclado');
+    } catch (e) {
+      if (on) pins.delete(conv); else pins.set(conv, prev);
+      repaint(); toast('No se pudo ' + (on ? 'anclar' : 'desanclar'));
+    }
   }
 
   /* ---------- estado ---------- */
+  const FILTROS = [
+    { k: 'todos', t: 'Todos' },
+    { k: 'noleidos', t: 'No leídos', s: 'No leídos' },
+    { k: 'urgente', t: 'Urgente', urg: true },
+    { k: 'pide', t: 'Te piden algo', s: 'Te piden' },
+    { k: 'otro', t: 'Para otro día', s: 'Otro día' },
+    { k: 'bandera', icon: 'flag', t: 'Con bandera' },
+    { k: 'anclados', icon: 'pin', t: 'Anclados' },
+  ];
+  const PEND_F = ['urgente', 'pide', 'otro'];
   const st = {
-    modo: (() => { try { return localStorage.getItem('sq-correo-modo') || 'bandeja'; } catch { return 'bandeja'; } })(),
-    cuenta: 'todas', ver: 'todos', bandera: false, adjuntos: false, q: '', carpeta: 'inbox',
-    carpetas: [], items: [], next: null, sel: null, hilo: null, cargando: false, fopen: false, err: '', compose: null,
+    modo: 'bandeja', cuenta: 'todas', filtro: 'todos', q: '', carpeta: 'inbox',
+    carpetas: [], items: [], next: null, sel: null, selMid: null, hilo: null, cargando: false, err: '', compose: null,
+    exp: new Set(), hcache: new Map(), outlook: '',
   };
+  const isPF = () => PEND_F.includes(st.filtro) || st.filtro === 'anclados';
 
-  /* ---------- Bandeja ↔ Pendientes ---------- */
-  const head = card.querySelector('.row-between');
-  const modes = document.createElement('div');
-  modes.className = 'bz-modes'; modes.setAttribute('role', 'tablist'); modes.setAttribute('aria-label', 'Vista del correo');
-  modes.innerHTML = `<button type="button" role="tab" data-m="bandeja">Bandeja</button><button type="button" role="tab" data-m="pend">Pendientes <span class="bz-cnt" id="bz-cnt-pend"></span></button>`;
-  // barra propia arriba de la tarjeta (en el móvil la cabecera del Correo está oculta)
-  const modebar = document.createElement('div');
-  modebar.className = 'bz-modebar';
-  modebar.appendChild(modes);
-  card.insertBefore(modebar, card.firstChild);
+  /* ---------- esqueleto ---------- */
   const root = document.createElement('div');
   root.className = 'bz';
   card.appendChild(root);
+  card.classList.add('bz-on');
+  // vista clásica de Pendientes solo como último recurso (menú «más» → «Ver en Pendientes»), con vuelta al correo
+  const classicBar = document.createElement('div');
+  classicBar.className = 'bz-classicbar';
+  classicBar.innerHTML = `<button type="button" class="bz-btn">${svg('back', 16)}<span>Volver al correo</span></button><span>Vista clásica de Pendientes</span>`;
+  card.insertBefore(classicBar, card.firstChild);
+  classicBar.querySelector('button').addEventListener('click', () => setModo('bandeja'));
   function setModo(m) {
-    st.modo = m;
-    try { localStorage.setItem('sq-correo-modo', m); } catch {}
-    card.classList.toggle('bz-on', m === 'bandeja');
-    modes.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.m === m)));
-    if (m === 'bandeja' && !st.carpetas.length && !st.cargando) start();
+    st.modo = m === 'pend' ? 'pend' : 'bandeja';
+    card.classList.toggle('bz-on', st.modo === 'bandeja');
+    if (st.modo === 'bandeja' && !st.carpetas.length && !st.cargando) start();
   }
-  modes.addEventListener('click', (e) => { const b = e.target.closest('button[data-m]'); if (b) setModo(b.dataset.m); });
+  window.__sqBzModo = setModo;
 
-  // contadores de Pendientes (los pinta la vista de siempre)
-  const cnt = (id) => (document.getElementById(id)?.textContent || '').trim();
-  function syncCounts() {
-    const p = cnt('count-mias');
-    const a = document.getElementById('bz-cnt-pend'); if (a) a.textContent = p;
-    root.querySelectorAll('[data-cnt]').forEach((x) => { x.textContent = cnt(x.dataset.cnt); });
-  }
-  ['count-mias', 'count-urg'].forEach((id) => { const n = document.getElementById(id); if (n) new MutationObserver(syncCounts).observe(n, { childList: true, characterData: true, subtree: true }); });
-  const goPend = (c) => { setModo('pend'); document.querySelector(`#mail-filter [data-c="${c}"]`)?.click(); };
-
-  /* ---------- esqueleto ---------- */
   root.innerHTML = `
   <div class="bz-top">
-    <div class="bz-seg bz-acc" role="tablist" aria-label="Cuenta">
-      <button type="button" role="tab" data-acc="todas" aria-selected="true">Todas</button>
-      <button type="button" role="tab" data-acc="outlook" aria-selected="false">Outlook</button>
-      <button type="button" role="tab" data-acc="gmail" aria-selected="false">Gmail</button>
+    <label class="bz-search">${svg('search', 15)}<span class="bz-sr">Buscar en todo el buzón</span><input type="search" id="bz-q" placeholder="Buscar en todo el buzón" enterkeyhint="search"></label>
+    <label class="bz-fsel"><span class="bz-sr">Carpeta</span><select id="bz-fsel"><option value="inbox">Bandeja</option></select></label>
+    <div class="bz-filters" role="tablist" aria-label="Filtros">
+      ${FILTROS.map((f) => `<button type="button" role="tab" class="bz-chip${f.urg ? ' bz-urg' : ''}${f.icon ? ' bz-ichip' : ''}" data-fil="${f.k}" aria-selected="${f.k === 'todos'}" title="${esc(f.t)}">${f.icon ? svg(f.icon, 14) + `<span class="bz-sr">${esc(f.t)}</span>` : `<span class="l">${esc(f.t)}</span>${f.s ? `<span class="s">${esc(f.s)}</span>` : ''}`}<i data-n="${f.k}"></i></button>`).join('')}
     </div>
-    <div class="bz-row">
-      <label class="bz-fsel"><span class="bz-sr">Carpeta</span><select id="bz-fsel"><option value="inbox">Bandeja</option></select></label>
-      <button type="button" class="bz-chip bz-only-s" data-quick="noleidos" aria-pressed="false">No leídos</button>
-      <button type="button" class="bz-chip bz-only-s" data-goto="mias">Te piden <span data-cnt="count-mias"></span></button>
-      <button type="button" class="bz-ibtn bz-only-s" id="bz-fbtn" aria-label="Más filtros" aria-expanded="false">${svg('filter', 16)}</button>
-      <div class="bz-more">
-        <div class="bz-seg bz-ver" role="tablist" aria-label="Leídos">
-          <button type="button" role="tab" data-ver="todos" aria-selected="true">Todos</button>
-          <button type="button" role="tab" data-ver="noleidos" aria-selected="false">No leídos</button>
-          <button type="button" role="tab" data-ver="leidos" aria-selected="false">Leídos</button>
-        </div>
-        <button type="button" class="bz-chip bz-urg" data-goto="urgente" title="Abre Pendientes · Urgente">Urgente <span data-cnt="count-urg"></span></button>
-        <button type="button" class="bz-chip bz-only-l" data-goto="mias" title="Abre Pendientes · Te piden algo">Te piden algo <span data-cnt="count-mias"></span></button>
-        <button type="button" class="bz-chip" data-tg="bandera" aria-pressed="false">Con bandera</button>
-        <button type="button" class="bz-chip" data-tg="adjuntos" aria-pressed="false">Con adjuntos</button>
+    <div class="bz-right">
+      <div class="bz-seg bz-acc" role="tablist" aria-label="Cuenta">
+        <button type="button" role="tab" data-acc="todas" aria-selected="true">Todas</button>
+        <button type="button" role="tab" data-acc="outlook" aria-selected="false">Outlook</button>
+        <button type="button" role="tab" data-acc="gmail" aria-selected="false">Gmail</button>
       </div>
-      <label class="bz-search">${svg('search', 16)}<span class="bz-sr">Buscar en todo el buzón</span><input type="search" id="bz-q" placeholder="Buscar en todo el buzón" enterkeyhint="search"></label>
+      <button type="button" class="bz-new" id="bz-new" aria-label="Nuevo correo">${svg('pen', 15)}<span>Nuevo correo</span></button>
     </div>
   </div>
   <div class="bz-body">
@@ -149,75 +175,78 @@
     <article class="bz-pane" aria-live="polite"></article>
   </div>`;
   const $ = (s) => root.querySelector(s);
-  modebar.appendChild(root.querySelector('.bz-acc'));
-  const newBtn = document.createElement('button');
-  newBtn.type = 'button'; newBtn.className = 'bz-new'; newBtn.id = 'bz-new';
-  newBtn.innerHTML = `${svg('pen', 15)}<span>Nuevo correo</span>`;
-  newBtn.setAttribute('aria-label', 'Nuevo correo');
-  modebar.appendChild(newBtn);
-  // PC ancho (≥1100 px): los filtros de Pendientes y el «Último barrido» suben a esta barra, sin dejar hueco (24/11)
-  const mfilt = document.getElementById('mail-filter'), mupd = document.getElementById('mail-updated');
-  if (mfilt && mupd) {
-    const ph1 = document.createComment('mail-filter'), ph2 = document.createComment('mail-updated');
-    mfilt.before(ph1); mupd.before(ph2);
-    const wideMQ = matchMedia('(min-width: 1100px)');
-    const placeTop = () => {
-      if (wideMQ.matches) { modes.after(mfilt); modebar.insertBefore(mupd, newBtn); modebar.classList.add('bz-wide'); }
-      else { ph1.after(mfilt); ph2.after(mupd); modebar.classList.remove('bz-wide'); }
-    };
-    placeTop(); wideMQ.addEventListener('change', placeTop);
-  }
   const list = $('.bz-list'), pane = $('.bz-pane'), statusEl = $('.bz-status'), foot = $('.bz-foot'), folders = $('.bz-folders'), fsel = $('#bz-fsel');
 
   /* ---------- filtros ---------- */
-  modebar.querySelector('.bz-acc').addEventListener('click', (e) => {
+  $('.bz-acc').addEventListener('click', (e) => {
     const b = e.target.closest('[data-acc]'); if (!b) return;
     st.cuenta = b.dataset.acc;
-    modebar.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    root.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
     reload();
   });
-  root.querySelector('.bz-ver').addEventListener('click', (e) => { const b = e.target.closest('[data-ver]'); if (b) { st.ver = b.dataset.ver; paintFilters(); reload(); } });
-  root.querySelectorAll('[data-quick]').forEach((b) => b.addEventListener('click', () => { st.ver = st.ver === 'noleidos' ? 'todos' : 'noleidos'; paintFilters(); reload(); }));
-  root.querySelectorAll('[data-tg]').forEach((b) => b.addEventListener('click', () => { st[b.dataset.tg] = !st[b.dataset.tg]; paintFilters(); reload(); }));
-  root.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => goPend(b.dataset.goto)));
-  $('#bz-fbtn').addEventListener('click', () => { st.fopen = !st.fopen; paintFilters(); });
+  $('.bz-filters').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fil]'); if (!b) return;
+    setFiltro(st.filtro === b.dataset.fil && b.dataset.fil !== 'todos' ? 'todos' : b.dataset.fil);
+  });
+  function setFiltro(f) {
+    st.filtro = f;
+    root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === f)));
+    root.classList.toggle('bz-pf', isPF());
+    if (isPF()) { if (st.sel) closeMsg(true); st.err = ''; paintList(); }
+    else reload();
+  }
   fsel.addEventListener('change', () => openFolder(fsel.value));
   let qT = null;
-  $('#bz-q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { st.q = e.target.value.trim(); reload(); }, 450); });
-  $('#bz-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qT); st.q = e.target.value.trim(); reload(); } });
-  newBtn.addEventListener('click', () => { if (st.modo !== 'bandeja') setModo('bandeja'); openCompose({ tipo: 'nuevo' }); });
-  function paintFilters() {
-    root.querySelectorAll('[data-ver]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.ver === st.ver)));
-    root.querySelectorAll('[data-quick]').forEach((x) => x.setAttribute('aria-pressed', String(st.ver === 'noleidos')));
-    root.querySelectorAll('[data-tg]').forEach((x) => x.setAttribute('aria-pressed', String(!!st[x.dataset.tg])));
-    root.classList.toggle('bz-fopen', st.fopen);
-    $('#bz-fbtn').setAttribute('aria-expanded', String(st.fopen));
-    $('#bz-fbtn').classList.toggle('on', st.ver !== 'todos' || st.bandera || st.adjuntos);
+  $('#bz-q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { st.q = e.target.value.trim(); afterSearch(); }, 450); });
+  $('#bz-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qT); st.q = e.target.value.trim(); afterSearch(); } });
+  // buscar siempre va al buzón entero (sale de los filtros de Pendientes)
+  function afterSearch() { if (st.q && isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); } reload(); }
+  $('#bz-new').addEventListener('click', () => { if (st.modo !== 'bandeja') setModo('bandeja'); openCompose({ tipo: 'nuevo' }); });
+
+  // contadores de los filtros (los de Pendientes salen de mi.html; los de Outlook, de las carpetas)
+  function paintCounts() {
+    const n = (k) => { try { return P() ? P().list(k).length : 0; } catch { return 0; } };
+    const inbox = st.carpetas.find((f) => f.wk === 'inbox');
+    const vals = { noleidos: inbox?.noLeidos || '', urgente: n('urgente') || '', pide: n('pide') || '', otro: n('otro') || '', anclados: pins.size || '' };
+    root.querySelectorAll('[data-n]').forEach((x) => { x.textContent = vals[x.dataset.n] ?? ''; });
   }
+  window.addEventListener('sq-mails', () => {
+    // contestado o gestionado desde la caja de respuesta: en los filtros de Pendientes se pasa al siguiente
+    if (st.sel && PEND_F.includes(st.filtro) && st.adv !== st.sel && P() && !pendThreads(st.filtro).some((x) => x.conv === st.sel)) { afterHandled('Gestionado ✓'); return; }
+    paintCounts();
+    if (isPF()) paintList(); else paintListSoft();
+    if (st.hilo?.length) paintSyn();
+  });
 
   /* ---------- carpetas ---------- */
   const WKN = { inbox: 'Bandeja', drafts: 'Borradores', sentitems: 'Enviados', archive: 'Archivo', deleteditems: 'Eliminados', junkemail: 'Correo no deseado', outbox: 'Programados y salida' };
   const fname = (f) => WKN[f.wk] || f.nombre;
   function paintFolders() {
     const main = st.carpetas.filter((f) => f.wk), mine = st.carpetas.filter((f) => !f.wk);
-    const li = (f) => `<button type="button" data-f="${esc(f.wk || f.id)}" aria-current="${(f.wk || f.id) === st.carpeta ? 'true' : 'false'}" class="${f.dentro ? 'in' : ''}"><span>${esc(fname(f))}</span>${f.noLeidos ? `<b>${f.noLeidos}</b>` : (f.wk === 'drafts' && f.total ? `<i>${f.total}</i>` : '')}</button>`;
+    const cur = isPF() ? null : (f) => (f.wk || f.id) === st.carpeta;
+    const li = (f) => `<button type="button" data-f="${esc(f.wk || f.id)}" aria-current="${cur && cur(f) ? 'true' : 'false'}" class="${f.dentro ? 'in' : ''}"><span>${esc(fname(f))}</span>${f.noLeidos ? `<b>${f.noLeidos}</b>` : (f.wk === 'drafts' && f.total ? `<i>${f.total}</i>` : '')}</button>`;
     const fcol = root.classList.contains('bz-fcol');
-    const cur = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
-    folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(cur ? fname(cur) : '')}</span>`
+    const curF = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
+    folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) + (curF.noLeidos ? ' · ' + curF.noLeidos : '') : '')}</span>`
       + main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
-    fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
+    fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}${f.noLeidos ? ' · ' + f.noLeidos : ''}</option>`).join('');
+    paintCounts();
   }
   folders.addEventListener('click', (e) => {
     if (e.target.closest('[data-fold]')) { setFcol(!root.classList.contains('bz-fcol')); return; }
     const b = e.target.closest('[data-f]'); if (b) openFolder(b.dataset.f);
   });
-  // carpetas recogidas o desplegadas (se recuerda); recogidas, la carpeta se elige en el desplegable de arriba
   function setFcol(on) { root.classList.toggle('bz-fcol', on); try { localStorage.setItem('sq-bz-fcol', on ? '1' : ''); } catch {} paintFolders(); }
   try { if (localStorage.getItem('sq-bz-fcol')) root.classList.add('bz-fcol'); } catch {}
-  function openFolder(f) { st.carpeta = f; st.q = ''; $('#bz-q').value = ''; paintFolders(); reload(); }
-  const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${esc(fname(f))}</option>`).join('');
+  function openFolder(f) {
+    st.carpeta = f; st.q = ''; $('#bz-q').value = '';
+    if (isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); }
+    paintFolders(); reload();
+  }
+  const refreshFolders = () => call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
+  const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && f.wk !== 'outbox' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${esc(fname(f))}</option>`).join('');
 
-  /* ---------- lista (una fila por conversación, como en Mensajes) ---------- */
+  /* ---------- conversaciones ---------- */
   function threads() {
     const map = new Map();
     for (const m of st.items) {
@@ -227,46 +256,209 @@
       t.msgs.push(m);
       if (String(m.fecha) > String(t.latest.fecha)) t.latest = m;
     }
-    return [...map.values()].map((t) => ({ ...t, ids: t.msgs.map((x) => x.id), unread: t.msgs.some((x) => !x.leido), adj: t.msgs.some((x) => x.adj), bandera: t.msgs.some((x) => x.bandera), n: t.msgs.length }))
-      .sort((a, b) => String(b.latest.fecha).localeCompare(String(a.latest.fecha)));
+    return [...map.values()].map((t) => {
+      const ms = t.msgs.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+      return { ...t, msgs: ms, ids: ms.map((x) => x.id), unread: ms.some((x) => !x.leido), adj: ms.some((x) => x.adj), bandera: ms.some((x) => x.bandera), verbo: Math.max(0, ...ms.map((x) => x.verbo || 0)), n: ms.length, pend: pendOf(t.conv) };
+    }).sort((a, b) => String(b.latest.fecha).localeCompare(String(a.latest.fecha)));
   }
   const threadOf = (conv) => threads().find((t) => t.conv === conv);
+  // filas de Pendientes (Urgente, Te piden algo, Para otro día) con el mismo aspecto
+  function pendThreads(k) {
+    const arr = (P()?.list(k) || []).map((m) => {
+      const f = (() => { try { const x = P().fecha(m); return x ? new Date(x.length > 16 ? x : x + ':00').toISOString() : null; } catch { return null; } })();
+      const live = m.conv ? st.items.filter((x) => x.conv === m.conv) : [];
+      return {
+        conv: m.conv || ('p:' + m.id), pid: m.id, pend: m, n: m.mensajes || live.length || 1,
+        latest: { asunto: m.asunto || '(sin asunto)', de: { nombre: P().persona(m.de) }, prev: m.peticion || m.resumen || '', fecha: f },
+        unread: live.some((x) => !x.leido), adj: !!(m.adjuntos?.length) || live.some((x) => x.adj), bandera: live.some((x) => x.bandera), verbo: 0,
+      };
+    });
+    return arr.sort((a, b) => String(b.latest.fecha).localeCompare(String(a.latest.fecha)));
+  }
+  function pinThreads() {
+    return [...pins.values()].map((p) => {
+      const live = threadOf(p.conv);
+      return live ? { ...live, pinned: true } : { conv: p.conv, n: 1, latest: { asunto: p.asunto, de: p.de, prev: p.prev, fecha: p.fecha }, pend: pendOf(p.conv), unread: false, adj: false, bandera: false, verbo: 0, pinned: true };
+    }).sort((a, b) => String(b.latest.fecha).localeCompare(String(a.latest.fecha)));
+  }
+
+  /* ---------- lista (como Outlook) ---------- */
+  function seccion(iso) {
+    if (!iso) return 'Sin fecha';
+    const d = new Date(iso), now = new Date();
+    const k = dayKey(d);
+    if (k === dayKey(now)) return 'Hoy';
+    if (k === dayKey(new Date(now - 864e5))) return 'Ayer';
+    const lunes = new Date(now); lunes.setHours(0, 0, 0, 0); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+    if (d >= lunes) return 'Esta semana';
+    if (d >= new Date(lunes - 7 * 864e5)) return 'La semana pasada';
+    const mm = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][d.getMonth()];
+    return mm + (d.getFullYear() !== now.getFullYear() ? ' ' + d.getFullYear() : '');
+  }
+  const TAGS = { bloquea: '<span class="bz-tag urg">Urgente</span>', pide: '<span class="bz-tag pide">Te piden</span>' };
+  function tagOf(t) {
+    const m = t.pend;
+    if (!m) return '';
+    if (st.filtro === 'otro' || P()?.pospuesto(m)) return '<span class="bz-tag otro">Otro día</span>';
+    return TAGS[nivelOf(m)] || '';
+  }
+  const hov = (kind, id, t) => `<span class="bz-hov" role="group" aria-label="Acciones">
+      <button type="button" class="bz-ibtn" data-h="leido" data-${kind}="${esc(id)}" title="${t.unread ? 'Marcar como leído' : 'Marcar como no leído'}" aria-label="${t.unread ? 'Marcar como leído' : 'Marcar como no leído'}">${svg(t.unread ? 'read' : 'unread', 15)}</button>
+      <button type="button" class="bz-ibtn${t.bandera ? ' on' : ''}" data-h="bandera" data-${kind}="${esc(id)}" title="${t.bandera ? 'Quitar bandera' : 'Marcar con bandera'}" aria-label="${t.bandera ? 'Quitar bandera' : 'Marcar con bandera'}" aria-pressed="${!!t.bandera}">${svg('flag', 15)}</button>
+      <button type="button" class="bz-ibtn${t.pinned ? ' pin' : ''}" data-h="anclar" data-${kind}="${esc(id)}" title="${t.pinned ? 'Desanclar' : 'Anclar arriba'}" aria-label="${t.pinned ? 'Desanclar' : 'Anclar arriba'}" aria-pressed="${!!t.pinned}">${svg('pin', 15)}</button>
+      <button type="button" class="bz-ibtn" data-h="eliminar" data-${kind}="${esc(id)}" title="Eliminar" aria-label="Eliminar">${svg('del', 15)}</button>
+    </span>`;
   function rowHtml(t) {
-    const m = t.latest, s = smart.get(t.conv);
-    const nivel = s?.nivel === 'bloquea' ? '<span class="bz-tag urg">Urgente</span>' : s?.nivel === 'pide' ? '<span class="bz-tag pide">Te piden</span>' : '';
+    const m = t.latest;
     const enviados = st.carpeta === 'sentitems' || st.carpeta === 'drafts';
-    const quien = enviados ? ('Para: ' + (nombres(m.para) || '—')) : [...new Set(t.msgs.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).map((x) => x.de?.nombre || x.de?.mail).filter(Boolean))].slice(0, 3).join(', ') || '—';
-    return `<li class="bz-item${t.unread ? ' unread' : ''}${st.sel === t.conv ? ' sel' : ''}" data-conv="${esc(t.conv)}"><button type="button" class="bz-rowbtn" aria-expanded="${st.sel === t.conv}">
-      <span class="r1"><span class="dot" aria-hidden="true"></span><span class="acc o" title="Outlook">O</span><b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.bandera ? svg('flag', 13) : ''}${t.adj ? svg('clip', 13) : ''}</span><span class="when">${esc(corto(m.fecha))}</span></span>
-      <span class="r2">${nivel}<span class="subj">${esc(m.asunto)}</span></span>
-      <span class="r3">${esc(m.prev)}</span>
-      ${t.unread ? '<span class="bz-sr">Sin leer</span>' : ''}
-    </button></li>`;
+    const quien = enviados && !isPF() ? ('Para: ' + (nombres(m.para) || '—'))
+      : (t.msgs ? [...new Set(t.msgs.map((x) => x.de?.nombre || x.de?.mail).filter(Boolean))].slice(0, 3).join('; ') : (m.de?.nombre || m.de?.mail || '')) || '—';
+    const pinned = t.pinned || pins.has(t.conv);
+    const open = st.exp.has(t.conv);
+    const canExp = !String(t.conv).startsWith('p:') && (t.n > 1 || t.verbo > 0 || (t.pend?.mensajes > 1));
+    const verb = t.verbo === 104 ? svg('fwd', 13) : t.verbo ? svg('reply', 13) : '';
+    const tt = { ...t, pinned };
+    const sub = open ? subRows(t) : '';
+    return `<li class="bz-item${t.unread ? ' unread' : ''}${st.sel === t.conv ? ' sel' : ''}${open ? ' exp' : ''}" data-conv="${esc(t.conv)}"${t.pid ? ` data-pid="${esc(t.pid)}"` : ''}>
+      <div class="bz-rowwrap">
+        ${canExp ? `<button type="button" class="bz-chev" data-chev aria-expanded="${open}" aria-label="${open ? 'Plegar' : 'Desplegar'} la conversación">${svg('chev', 13)}</button>` : '<span class="bz-chev" aria-hidden="true"></span>'}
+        <button type="button" class="bz-rowbtn" aria-expanded="${st.sel === t.conv}">
+          ${avatar(quien.replace(/^Para: /, '').split(';')[0])}
+          <span class="bz-rc">
+            <span class="r1"><b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.adj ? svg('clip', 13) : ''}${verb}${t.bandera ? `<span class="fl">${svg('flag', 13)}</span>` : ''}${pinned ? `<span class="pn">${svg('pin', 13)}</span>` : ''}</span></span>
+            <span class="r2">${tagOf(t)}<span class="subj">${esc(m.asunto)}</span><span class="when">${esc(corto(m.fecha))}</span></span>
+            <span class="r3">${esc(m.prev)}</span>
+          </span>
+          ${t.unread ? '<span class="bz-sr">Sin leer</span>' : ''}
+        </button>
+        ${String(t.conv).startsWith('p:') ? '' : hov('conv', t.conv, tt)}
+      </div>
+      ${sub}
+    </li>`;
+  }
+  function subRows(t) {
+    const h = st.hcache.get(t.conv);
+    if (!h) return `<ul class="bz-sub"><li class="bz-subload">Cargando la conversación…</li></ul>`;
+    return `<ul class="bz-sub">${h.map((x) => `<li class="bz-subi${!x.leido ? ' unread' : ''}${st.sel === t.conv && (st.selMid ? st.selMid === x.id : x === h[0]) ? ' sel' : ''}" data-mid="${esc(x.id)}" data-conv="${esc(t.conv)}">
+        <button type="button" class="bz-subbtn"><span class="w"><b>${esc(x.mio ? (x.de?.nombre || 'Tú') : (x.de?.nombre || x.de?.mail || ''))}</b>${x.mio ? ' <small>(tú)</small>' : ''}</span><span class="pv">${esc(x.prev)}</span><span class="when">${esc(corto(x.fecha))}</span></button>
+        ${hov('mid', x.id, { unread: !x.leido, bandera: x.bandera, pinned: pins.has(t.conv) })}
+      </li>`).join('')}</ul>`;
   }
   function paintList() {
-    if (st.cuenta === 'gmail') {
+    if (st.modo !== 'bandeja') return;
+    root.classList.toggle('bz-pf', isPF());
+    paintCounts();
+    if (st.cuenta === 'gmail' && !isPF()) {
       list.innerHTML = '';
       statusEl.innerHTML = `<div class="bz-empty"><b>Gmail todavía no está conectado.</b><br>Lo conectamos en el siguiente paso; de momento aquí ves Outlook.</div>`;
       foot.innerHTML = '';
       return;
     }
-    const ts = threads();
-    statusEl.innerHTML = st.err ? `<div class="bz-empty err">${esc(st.err)} <button type="button" class="bz-link" data-retry>Reintentar</button></div>`
-      : st.cargando && !ts.length ? '<div class="bz-empty">Cargando correos…</div>'
-      : !ts.length ? `<div class="bz-empty">${st.q ? 'No hay correos que coincidan con la búsqueda.' : st.ver === 'noleidos' ? 'No tienes correos sin leer aquí. 👌' : 'No hay correos con estos filtros en los últimos 90 días.'}</div>`
-      : st.q ? `<div class="bz-hint">Resultados en todo el buzón para «${esc(st.q)}»</div>` : '';
-    list.innerHTML = ts.map(rowHtml).join('');
-    foot.innerHTML = st.next ? `<button type="button" class="bz-more-btn" data-more>${st.cargando ? 'Cargando…' : 'Cargar más'}</button>`
-      : (ts.length && !st.q ? '<p class="bz-hint">Aquí se ven los últimos 90 días. Para algo más antiguo, usa el buscador.</p>' : '');
+    let html = '', ts = [];
+    if (PEND_F.includes(st.filtro)) {
+      ts = pendThreads(st.filtro);
+      const tit = { urgente: 'Urgente', pide: 'Te piden algo', otro: 'Para otro día' }[st.filtro];
+      statusEl.innerHTML = !P() ? '<div class="bz-empty">Cargando Pendientes…</div>' : !ts.length ? `<div class="bz-empty">${st.filtro === 'otro' ? 'No has dejado nada para otro día.' : 'Nada por aquí. 👌'}</div>` : '';
+      html = ts.length ? sec(`${tit} · ${ts.length}`) + ts.map(rowHtml).join('') : '';
+      foot.innerHTML = '';
+    } else if (st.filtro === 'anclados') {
+      ts = pinThreads();
+      statusEl.innerHTML = ts.length ? '' : `<div class="bz-empty">No tienes correos anclados. Pasa el ratón por un correo y pulsa ${svg('pin', 13)} para dejarlo arriba.</div>`;
+      html = ts.length ? sec(`Anclado · ${ts.length}`) + ts.map(rowHtml).join('') : '';
+      foot.innerHTML = '';
+    } else {
+      ts = threads();
+      const showPins = st.carpeta === 'inbox' && st.filtro === 'todos' && !st.q && pins.size;
+      const pt = showPins ? pinThreads() : [];
+      const pinSet = new Set(pt.map((x) => x.conv));
+      const rest = ts.filter((t) => !pinSet.has(t.conv));
+      statusEl.innerHTML = st.err ? `<div class="bz-empty err">${esc(st.err)} <button type="button" class="bz-link" data-retry>Reintentar</button></div>`
+        : st.cargando && !ts.length ? '<div class="bz-empty">Cargando correos…</div>'
+        : !ts.length && !pt.length ? `<div class="bz-empty">${st.q ? 'No hay correos que coincidan con la búsqueda.' : st.filtro === 'noleidos' ? 'No tienes correos sin leer aquí. 👌' : st.filtro === 'bandera' ? 'No hay correos con bandera en esta carpeta.' : 'No hay correos en los últimos 90 días.'}</div>`
+        : st.q ? `<div class="bz-hint">Resultados en todo el buzón para «${esc(st.q)}»</div>` : '';
+      if (pt.length) html += sec('Anclado') + pt.map(rowHtml).join('');
+      let last = null;
+      for (const t of rest) { const s = seccion(t.latest.fecha); if (s !== last && !st.q) { html += sec(s); last = s; } html += rowHtml(t); }
+      foot.innerHTML = st.next ? `<button type="button" class="bz-more-btn" data-more>${st.cargando ? 'Cargando…' : 'Cargar más'}</button>`
+        : (ts.length && !st.q ? '<p class="bz-hint">Aquí se ven los últimos 90 días. Para algo más antiguo, usa el buscador.</p>' : '');
+    }
+    list.innerHTML = html;
   }
+  const sec = (t) => `<li class="bz-sec" role="presentation">${esc(t)}</li>`;
+  // repintado sin perder el scroll
+  function paintListSoft() { const col = $('.bz-col'); const y = col.scrollTop; paintList(); col.scrollTop = y; }
+  const repaint = () => { paintListSoft(); if (st.hilo?.length) paintTools(); };
   statusEl.addEventListener('click', (e) => { if (e.target.closest('[data-retry]')) reload(); });
   foot.addEventListener('click', (e) => { if (e.target.closest('[data-more]')) more(); });
-  // tocar abre; tocar otra vez el mismo, cierra
-  list.addEventListener('click', (e) => { const li = e.target.closest('.bz-item'); if (!li) return; if (st.sel === li.dataset.conv) closeMsg(); else openThread(li.dataset.conv); });
+
+  list.addEventListener('click', (e) => {
+    const h = e.target.closest('[data-h]');
+    if (h) { e.stopPropagation(); return rowAction(h); }
+    const chev = e.target.closest('[data-chev]');
+    if (chev) { const li = chev.closest('.bz-item'); return toggleExp(li.dataset.conv); }
+    const sub = e.target.closest('.bz-subi');
+    if (sub) return openThread(sub.dataset.conv, { mid: sub.dataset.mid });
+    const li = e.target.closest('.bz-item');
+    if (!li || !e.target.closest('.bz-rowbtn')) return;
+    if (st.sel === li.dataset.conv) return closeMsg();
+    if (li.dataset.conv.startsWith('p:')) { P()?.clasico(li.dataset.pid); return; } // sin conversación de Outlook: vista clásica
+    openThread(li.dataset.conv, { pid: li.dataset.pid });
+  });
+  async function toggleExp(conv, force) {
+    const on = force ?? !st.exp.has(conv);
+    if (on) st.exp.add(conv); else st.exp.delete(conv);
+    paintListSoft();
+    if (on && !st.hcache.has(conv)) {
+      try { const r = await call('hilo', { conv, marcar: false }); st.hcache.set(conv, r.mensajes || []); }
+      catch { st.hcache.set(conv, []); }
+      paintListSoft();
+    }
+  }
+
+  // acciones al pasar el ratón (fila de conversación o mensaje suelto)
+  async function rowAction(b) {
+    const a = b.dataset.h, conv = b.dataset.conv || b.closest('[data-conv]')?.dataset.conv, mid = b.dataset.mid;
+    const t = conv ? (threadOf(conv) || pinThreads().find((x) => x.conv === conv) || pendThreads(st.filtro).find((x) => x.conv === conv)) : null;
+    const msgs = mid ? [(st.hcache.get(conv) || []).find((x) => x.id === mid)].filter(Boolean) : null;
+    if (a === 'anclar') return togglePin(conv, t?.latest || (st.hcache.get(conv) || [])[0]);
+    b.disabled = true;
+    try {
+      if (a === 'leido') {
+        const unread = mid ? !msgs[0]?.leido : !!t?.unread;
+        const ids = mid ? [mid] : unread ? st.items.filter((x) => x.conv === conv && !x.leido).map((x) => x.id) : [(t?.msgs || st.items.filter((x) => x.conv === conv))[0]?.id].filter(Boolean);
+        if (!ids.length && !mid) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; const x = h.find((y) => !y.mio) || h[0]; if (x) ids.push(x.id); }
+        await call('leido', { ids, valor: unread });
+        for (const x of st.items) if (ids.includes(x.id)) x.leido = unread;
+        for (const x of st.hcache.get(conv) || []) if (ids.includes(x.id)) x.leido = unread;
+        refreshFolders();
+      } else if (a === 'bandera') {
+        const on = mid ? !msgs[0]?.bandera : !t?.bandera;
+        const ids = mid ? [mid] : on ? [(t?.msgs || [])[0]?.id].filter(Boolean) : st.items.filter((x) => x.conv === conv && x.bandera).map((x) => x.id);
+        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; ids.push(...(on ? [h[0]?.id] : h.filter((x) => x.bandera).map((x) => x.id)).filter(Boolean)); }
+        await Promise.all(ids.map((id) => call('bandera', { id, valor: on })));
+        for (const x of st.items) if (ids.includes(x.id)) x.bandera = on;
+        for (const x of st.hcache.get(conv) || []) if (ids.includes(x.id)) x.bandera = on;
+        if (st.hilo) for (const x of st.hilo) if (ids.includes(x.id)) x.bandera = on;
+        toast(on ? 'Con bandera (también en Outlook)' : 'Bandera quitada');
+      } else if (a === 'eliminar') {
+        const ids = mid ? [mid] : st.items.filter((x) => x.conv === conv).map((x) => x.id);
+        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; ids.push(...h.filter((x) => !x.mio).map((x) => x.id)); }
+        await call('mover', { ids, destino: 'deleteditems' });
+        st.items = st.items.filter((x) => !ids.includes(x.id));
+        if (st.hcache.has(conv)) st.hcache.set(conv, st.hcache.get(conv).filter((x) => !ids.includes(x.id)));
+        if (st.sel === conv && !mid) closeMsg(true);
+        toast('Enviado a Elementos eliminados');
+        refreshFolders();
+      }
+    } catch (err) { toast('No se pudo: ' + err.message); }
+    b.disabled = false;
+    repaint();
+    if (st.sel === conv && st.hilo) paintTools();
+  }
 
   // Con «No leídos», la conversación abierta se queda en la lista hasta que la cierras o pasas a otra
   function dropIfRead(conv) {
-    if (!conv || st.ver !== 'noleidos') return;
+    if (!conv || st.filtro !== 'noleidos') return;
     st.items = st.items.filter((x) => x.conv !== conv || !x.leido);
   }
   function keepOpen(fresh) {
@@ -274,15 +466,17 @@
     const mine = st.items.filter((x) => x.conv === st.sel && !fresh.some((y) => y.id === x.id));
     return [...fresh, ...mine];
   }
+  const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q });
 
   let reqN = 0;
   async function reload() {
-    st.err = ''; st.items = []; st.next = null;
+    if (isPF()) { paintList(); return; }
+    st.err = ''; st.items = []; st.next = null; st.exp.clear();
     if (st.sel) closeMsg(true);
     if (st.cuenta === 'gmail') { paintList(); return; }
     const n = ++reqN; st.cargando = true; paintList();
     try {
-      const [r] = await Promise.all([call('lista', { carpeta: st.carpeta, ver: st.ver, bandera: st.bandera, adjuntos: st.adjuntos, q: st.q }), loadSmart().catch(() => null)]);
+      const r = await call('lista', listArgs());
       if (n !== reqN) return;
       st.items = r.items || []; st.next = r.next;
     } catch (e) { if (n === reqN) st.err = 'No se pudo cargar el correo: ' + e.message; }
@@ -290,25 +484,27 @@
   }
   async function more() {
     if (!st.next || st.cargando) return;
-    st.cargando = true; paintList();
+    st.cargando = true; paintListSoft();
     try { const r = await call('lista', { next: st.next }); st.items.push(...(r.items || []).filter((x) => !st.items.some((y) => y.id === x.id))); st.next = r.next; }
     catch (e) { st.err = e.message; }
-    st.cargando = false; paintList();
+    st.cargando = false; paintListSoft();
   }
   // actualización silenciosa (sin perder lo abierto)
   async function refreshQuiet() {
-    if (st.modo !== 'bandeja' || view.hidden || document.hidden || st.cargando || st.q || st.cuenta === 'gmail' || st.compose) return;
+    if (st.modo !== 'bandeja' || view.hidden || document.hidden || st.cargando || st.q || st.cuenta === 'gmail' || st.compose || isPF()) return;
     try {
-      const r = await call('lista', { carpeta: st.carpeta, ver: st.ver, bandera: st.bandera, adjuntos: st.adjuntos });
+      const r = await call('lista', listArgs());
       const fresh = r.items || [];
       const extra = st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
       st.items = keepOpen([...fresh, ...extra]);
-      paintList();
-      call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
+      for (const c of st.exp) if (c !== st.sel) st.hcache.delete(c);
+      st.exp.forEach((c) => { if (!st.hcache.has(c)) call('hilo', { conv: c, marcar: false }).then((x) => { st.hcache.set(c, x.mensajes || []); paintListSoft(); }).catch(() => null); });
+      paintListSoft();
+      refreshFolders();
     } catch { /* la próxima vez */ }
   }
 
-  /* ---------- conversación abierta (hilo completo, el más reciente arriba) ---------- */
+  /* ---------- correo abierto ---------- */
   // enlaces clicables (se buscan en el texto original y luego se escapa; antes «<https://…>» se rompía)
   const URL_RE = /\bhttps?:\/\/[^\s<>"'()\[\]{}]+/g;
   const linkify = (t) => {
@@ -327,111 +523,239 @@
   }
   window.addEventListener('popstate', () => { if (root.classList.contains('bz-reading')) closeMsg(false, true); });
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || st.modo !== 'bandeja' || view.hidden || !st.sel || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) return;
-    closeMsg();
+    if (e.key !== 'Escape' || st.modo !== 'bandeja' || view.hidden || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) return;
+    if (menuOpen()) { closeMenu(); return; }
+    if (st.sel) closeMsg();
   });
   function closeMsg(quiet, fromPop) {
     const conv = st.sel;
-    st.sel = null; st.hilo = null; st.compose = null; pane.innerHTML = '';
+    st.sel = null; st.selMid = null; st.hilo = null; st.compose = null; pane.innerHTML = '';
     if (root.classList.contains('bz-reading')) {
       root.classList.remove('bz-reading');
       if (!fromPop && mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} }
     }
     dropIfRead(conv);
     if (quiet) return;
-    paintList();
+    paintListSoft();
     const li = conv && [...list.querySelectorAll('.bz-item')].find((x) => x.dataset.conv === conv);
     if (li && mqNarrow.matches) li.scrollIntoView({ block: 'center' });
   }
   let openN = 0;
-  async function openThread(conv) {
+  async function openThread(conv, o = {}) {
     const prev = st.sel;
-    st.sel = conv; st.compose = null; st.hilo = null;
-    dropIfRead(prev);
-    const t = threadOf(conv);
-    paintList();
+    st.sel = conv; st.selMid = o.mid || null; st.compose = null;
+    if (prev !== conv) st.hilo = null;
+    if (prev && prev !== conv) dropIfRead(prev);
+    const t = threadOf(conv) || pendThreads(st.filtro).find((x) => x.conv === conv);
+    if (!mqNarrow.matches && (t?.n > 1 || t?.pend?.mensajes > 1)) st.exp.add(conv);
+    paintListSoft();
     reading(true);
-    pane.innerHTML = `<div class="bz-loading">Abriendo${t ? ' «' + esc(t.latest.asunto) + '»' : ''}…</div>`;
+    if (!st.hilo) pane.innerHTML = `<div class="bz-loading">Abriendo${t ? ' «' + esc(t.latest.asunto) + '»' : ''}…</div>`;
     const n = ++openN;
     try {
       const r = await call('hilo', { conv });
       if (n !== openN) return;
       st.hilo = r.mensajes || [];
       if (!st.hilo.length) throw new Error('Esta conversación ya no está en tu buzón.');
+      st.hcache.set(conv, st.hilo.map((x) => ({ ...x, leido: true })));
       const hadUnread = t?.unread;
       for (const x of st.items) if (x.conv === conv) x.leido = true;
-      paintList(); paintThread();
-      if (hadUnread) call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
-    } catch (e) { if (n === openN) pane.innerHTML = `<div class="bz-empty err">${esc(e.message)}</div>`; }
+      paintListSoft(); paintThread();
+      if (o.mid) focusMsg(o.mid);
+      if (o.sugerida) openSuggested(!!o.auto);
+      if (hadUnread) refreshFolders();
+    } catch (e) {
+      if (n !== openN) return;
+      const pm = pendOf(conv);
+      pane.innerHTML = `<div class="bz-empty err">${esc(e.message)}${pm ? ` <button type="button" class="bz-link" data-classic="${esc(pm.id)}">Verlo en Pendientes</button>` : ''}</div>`;
+    }
   }
   const lastIn = (h = st.hilo) => (h || []).find((x) => !x.mio) || (h || [])[0];
   const safeOutlook = (u) => { try { const x = new URL(u || ''); return x.protocol === 'https:' && /(^|\.)(office\.com|outlook\.com|cloud\.microsoft|office365\.com|live\.com)$/i.test(x.hostname) ? x.href : ''; } catch { return ''; } };
-  function msgHtml(x, i) {
-    const open = i === 0;
-    const de = x.mio ? 'Tú' : (x.de?.nombre || x.de?.mail || '');
-    return `<section class="bz-m${open ? ' open' : ''}${x.mio ? ' mio' : ''}" data-mid="${esc(x.id)}">
-      <button type="button" class="bz-mh" aria-expanded="${open}">
-        <span class="who"><b>${esc(de)}</b>${!x.mio && x.de?.mail && x.de?.nombre ? `<small>&lt;${esc(x.de.mail)}&gt;</small>` : ''}</span>
-        <span class="ics">${x.adj ? svg('clip', 13) : ''}</span>
-        <span class="when">${esc(open ? largo(x.fecha) : corto(x.fecha))}</span>
+  const tam = (b) => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+  const adjHtml = (x) => x.adjuntos?.length ? `<div class="bz-adj">${x.adjuntos.map((a) => `<button type="button" class="bz-att" data-att="${esc(a.id)}" data-mid="${esc(x.id)}">${svg('clip', 15)}<span><b>${esc(a.nombre)}</b><small>${esc(tam(a.tam))} · Ver o descargar</small></span></button>`).join('')}</div>` : '';
+  function msgHtml(x) {
+    const de = x.mio ? `${x.de?.nombre || 'Tú'} (tú)` : (x.de?.nombre || x.de?.mail || '');
+    return `<section class="bz-m${x.mio ? ' mio' : ''}" data-mid="${esc(x.id)}">
+      <button type="button" class="bz-mh" aria-expanded="false">
+        <span class="who"><b>${esc(de)}</b></span>
         <span class="pv">${esc(x.prev)}</span>
+        <span class="ics">${x.adj ? svg('clip', 13) : ''}</span>
+        <span class="when">${esc(corto(x.fecha))}</span>
       </button>
       <div class="bz-mb">
-        <div class="bz-meta">Para: ${esc(nombres(x.para) || '—')}${x.cc?.length ? ' · CC: ' + esc(nombres(x.cc)) : ''}</div>
-        ${x.adjuntos?.length ? `<div class="bz-adj">${x.adjuntos.map((a) => `<button type="button" class="bz-att" data-att="${esc(a.id)}" data-mid="${esc(x.id)}">${svg('clip', 15)}<span><b>${esc(a.nombre)}</b><small>${esc(tam(a.tam))} · Ver o descargar</small></span></button>`).join('')}</div>` : ''}
+        <div class="bz-meta">${esc(largo(x.fecha))} · Para: ${esc(nombres(x.para) || '—')}${x.cc?.length ? ' · CC: ' + esc(nombres(x.cc)) : ''}</div>
+        ${adjHtml(x)}
         <div class="bz-text">${linkify(x.cuerpo || x.prev || '')}</div>
         ${x.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false">Mostrar texto citado</button><div class="bz-text bz-quoted" hidden>${linkify(x.citado)}</div>` : ''}
       </div>
     </section>`;
   }
+  function focusMsg(mid) {
+    const h = st.hilo || [];
+    if (!mid || h[0]?.id === mid) return;
+    const sec2 = pane.querySelector(`.bz-m[data-mid="${CSS.escape(mid)}"]`);
+    if (!sec2) return;
+    sec2.classList.add('open'); sec2.querySelector('.bz-mh')?.setAttribute('aria-expanded', 'true');
+    scrollPane(sec2);
+  }
+
+  const ICONS = (flagged, pinned, mobile) => `
+    <button type="button" class="bz-ibtn" data-a="noleido" title="Marcar como no leído" aria-label="Marcar como no leído">${svg('unread', 17)}</button>
+    <button type="button" class="bz-ibtn${flagged ? ' on' : ''}" data-a="bandera" title="${flagged ? 'Quitar bandera' : 'Marcar con bandera'}" aria-label="${flagged ? 'Quitar bandera' : 'Marcar con bandera'}" aria-pressed="${flagged}">${svg('flag', 17)}</button>
+    <button type="button" class="bz-ibtn${pinned ? ' pin' : ''}" data-a="anclar" title="${pinned ? 'Desanclar' : 'Anclar arriba'}" aria-label="${pinned ? 'Desanclar' : 'Anclar arriba'}" aria-pressed="${pinned}">${svg('pin', 17)}</button>
+    <button type="button" class="bz-ibtn" data-a="archivar" title="Archivar" aria-label="Archivar">${svg('arch', 17)}</button>
+    <button type="button" class="bz-ibtn" data-a="eliminar" title="Eliminar" aria-label="Eliminar">${svg('del', 17)}</button>
+    ${mobile ? '' : `<label class="bz-ibtn bz-movew" title="Mover a carpeta">${svg('move', 17)}<span class="bz-sr">Mover a carpeta</span><select data-a="mover"><option value="">Mover a…</option>${moveOptions()}</select></label>
+    <button type="button" class="bz-ibtn" data-a="tarea" title="Pasar a tarea" aria-label="Pasar a tarea">${svg('task', 17)}</button>`}
+    <button type="button" class="bz-ibtn" data-a="mas" title="Más" aria-label="Más acciones" aria-haspopup="menu" aria-expanded="false">${svg('more', 17)}</button>`;
   function paintThread() {
     const h = st.hilo; if (!h?.length) return;
-    const top = h[0], s = smart.get(top.conv);
-    const t = threadOf(top.conv);
-    const flagged = t ? t.bandera : h.some((x) => x.bandera);
-    const enlace = safeOutlook(top.enlace);
-    const sum = s && (s.resumen || s.peticion) ? `<div class="bz-sum">
-        ${s.resumen ? `<div class="r"><span>Resumen</span><p>${esc(s.resumen)}</p></div>` : ''}
-        ${s.peticion ? `<div class="r pide"><span>Te piden</span><p><b>${esc(s.peticion)}</b></p></div>` : ''}
-      </div>` : '';
+    const top = h[0];
+    const pm = pendOf(top.conv);
+    const n = pm && isPend(pm) ? nivelOf(pm) : null;
+    const badge = pm && P()?.pospuesto(pm) ? '<span class="bz-tag otro">Para otro día</span>' : n === 'bloquea' ? '<span class="bz-tag urg">Urgente</span>' : n === 'pide' ? '<span class="bz-tag pide">Te piden algo</span>' : '';
+    const de = top.mio ? `${top.de?.nombre || 'Tú'} (tú)` : (top.de?.nombre || top.de?.mail || '');
     pane.innerHTML = `
-      <div class="bz-phead">
-        <div class="bz-ptools">
-          <button type="button" class="bz-back" data-a="volver">${svg('back', 20)}<span>Volver</span></button>
-          <span class="bz-tools">
-            <button type="button" class="bz-ibtn" data-a="archivar" title="Archivar" aria-label="Archivar">${svg('arch')}</button>
-            <button type="button" class="bz-ibtn" data-a="eliminar" title="Eliminar" aria-label="Eliminar">${svg('del')}</button>
-            <button type="button" class="bz-ibtn" data-a="noleido" title="Marcar como no leído" aria-label="Marcar como no leído">${svg('unread')}</button>
-            <button type="button" class="bz-ibtn${flagged ? ' on' : ''}" data-a="bandera" title="${flagged ? 'Quitar bandera' : 'Marcar con bandera'}" aria-label="${flagged ? 'Quitar bandera' : 'Marcar con bandera'}" aria-pressed="${flagged}">${svg('flag')}</button>
-            <label class="bz-ibtn bz-movew" title="Mover a carpeta">${svg('move')}<span class="bz-sr">Mover a carpeta</span><select data-a="mover"><option value="">Mover a…</option>${moveOptions()}</select></label>
-            <button type="button" class="bz-ibtn" data-a="tarea" title="Pasar a tarea" aria-label="Pasar a tarea">${svg('task')}</button>
-            ${enlace ? `<a class="bz-ibtn" href="${esc(enlace)}" target="_blank" rel="noopener" title="Abrir en Outlook" aria-label="Abrir en Outlook">${svg('ext')}</a>` : ''}
-            <button type="button" class="bz-ibtn bz-close" data-a="volver" title="Cerrar (Esc)" aria-label="Cerrar">✕</button>
-          </span>
+      <div class="bz-mtop"><button type="button" class="bz-back" data-a="volver">${svg('back', 20)}<span>${esc(isPF() ? ({ urgente: 'Urgente', pide: 'Te piden', otro: 'Otro día', anclados: 'Anclados' }[st.filtro]) : 'Bandeja')}</span></button><span class="bz-tools" data-tools="m"></span></div>
+      <div class="bz-phead"><h3>${esc(top.asunto)}</h3>${badge}<button type="button" class="bz-ibtn bz-close" data-a="volver" title="Cerrar (Esc)" aria-label="Cerrar">✕</button></div>
+      <div class="bz-card">
+        <div class="bz-acts">
+          <div class="bz-reply">
+            <button type="button" class="bz-btn pri" data-a="responder">${svg('reply', 15)}<span>Responder</span></button>
+            <button type="button" class="bz-btn ghost" data-a="todos">${svg('replyall', 15)}<span>Responder a todos</span></button>
+            <button type="button" class="bz-btn ghost" data-a="reenviar">${svg('fwd', 15)}<span>Reenviar</span></button>
+          </div>
+          <span class="bz-tools" data-tools="d"></span>
         </div>
-        <h3><span class="acc o" title="Outlook">O</span>${esc(top.asunto)}</h3>
-        <div class="bz-meta">${h.length > 1 ? `${h.length} mensajes · ` : ''}último: ${esc(largo(top.fecha))}</div>
+        <div class="bz-from">${avatar(de)}<div class="w"><div class="l1"><b>${esc(de)}</b><span>${esc(largo(top.fecha))}</span></div><div class="bz-meta">Para: ${esc(nombres(top.para) || '—')}${top.cc?.length ? ' · CC: ' + esc(nombres(top.cc)) : ''}</div></div></div>
+        <div class="bz-syn-slot"></div>
+        <p class="bz-msgst" aria-live="polite"></p>
+        <div class="bz-compose-slot"></div>
+        ${adjHtml(top)}
+        <div class="bz-text bz-body1">${linkify(top.cuerpo || top.prev || '')}</div>
+        ${top.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false">Mostrar texto citado</button><div class="bz-text bz-quoted" hidden>${linkify(top.citado)}</div>` : ''}
       </div>
-      <div class="bz-reply">
-        <button type="button" class="bz-btn pri" data-a="responder">${svg('reply', 16)}<span>Responder</span></button>
-        <button type="button" class="bz-btn" data-a="todos">${svg('replyall', 16)}<span>Responder a todos</span></button>
-        <button type="button" class="bz-btn" data-a="reenviar">${svg('fwd', 16)}<span>Reenviar</span></button>
-      </div>
-      <p class="bz-msgst" aria-live="polite"></p>
-      ${sum}
-      <div class="bz-compose-slot"></div>
-      <div class="bz-thread">${h.map(msgHtml).join('')}</div>`;
-    // respuesta sugerida: si en Pendientes te piden algo, la caja de respuesta ya viene abierta con la propuesta
-    if (s && s.sugerida && (s.nivel === 'pide' || s.nivel === 'bloquea' || s.peticion)) openCompose({ tipo: 'responder', texto: s.sugerida, sugerida: true });
+      ${h.length > 1 ? `<div class="bz-prev"><div class="bz-plbl">Mensajes anteriores del hilo · ${h.length - 1}</div><div class="bz-thread">${h.slice(1).map(msgHtml).join('')}</div></div>` : ''}
+      <div class="bz-mbot">
+        <button type="button" class="bz-btn pri" data-a="responder">${svg('reply', 15)}<span>Responder</span></button>
+        <button type="button" class="bz-btn" data-a="todos">${svg('replyall', 15)}<span>A todos</span></button>
+        <button type="button" class="bz-btn" data-a="reenviar">${svg('fwd', 15)}<span>Reenviar</span></button>
+      </div>`;
+    paintTools(); paintSyn();
   }
-  const tam = (b) => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+  function paintTools() {
+    const h = st.hilo; if (!h?.length) return;
+    const conv = h[0].conv, t = threadOf(conv);
+    const flagged = t ? t.bandera : h.some((x) => x.bandera);
+    const pinned = pins.has(conv);
+    pane.querySelectorAll('[data-tools]').forEach((x) => { x.innerHTML = ICONS(flagged, pinned, x.dataset.tools === 'm'); });
+  }
+
+  // recuadro Synqalia: resumen, lo que te piden, responder con…, Gestionado / Para mañana
+  function paintSyn() {
+    const slot = pane.querySelector('.bz-syn-slot'); if (!slot || !st.hilo?.length) return;
+    const pm = pendOf(st.hilo[0].conv);
+    if (!pm) { slot.innerHTML = ''; return; }
+    const pend = isPend(pm), pos = P()?.pospuesto(pm), done = pm.estado === 'gestionado' || (!pend && !pos);
+    if (!pm.resumen && !pm.peticion && done) { slot.innerHTML = ''; return; }
+    const motivo = P()?.motivo(pm) || '';
+    const hasClassic = !!slot.querySelector('.bz-classic');
+    if (hasClassic && slot.dataset.pid === pm.id && !done) return; // no tocar la caja de respuesta abierta
+    slot.dataset.pid = pm.id;
+    slot.innerHTML = `<div class="bz-syn${done ? ' done' : ''}">
+      <div class="bz-synh">${svg('spark', 14)}<span>Synqalia</span>${done ? `<em>${svg('check', 13)} Gestionado${pm.cierre?.motivo ? ' · ' + esc(pm.cierre.motivo) : ''}</em>` : pos ? `<em>${svg('clock', 13)} Para otro día</em>` : ''}</div>
+      ${pm.resumen ? `<p><b>Resumen:</b> ${esc(pm.resumen)}</p>` : ''}
+      ${pm.peticion ? `<p class="pide"><b>Te piden:</b> ${esc(pm.peticion)}</p>` : ''}
+      ${motivo && nivelOf(pm) === 'bloquea' ? `<p class="mot"><b>Por qué es urgente:</b> ${esc(motivo)}</p>` : ''}
+      ${done ? '' : `<div class="bz-synr">
+        <span class="lbl">Responder con:</span>
+        <button type="button" class="bz-sbtn sug" data-a="sugerida">✨ Respuesta sugerida</button>
+        <button type="button" class="bz-sbtn" data-a="gracias">¡Muchas gracias!</button>
+        <span class="bz-synb">
+          <button type="button" class="bz-btn gest" data-a="gestionado">${svg('check', 14)}<span>Gestionado</span></button>
+          ${pos ? `<button type="button" class="bz-btn" data-a="reactivar">${svg('clock', 14)}<span>Volver a pendientes</span></button>` : `<button type="button" class="bz-btn" data-a="manana">${svg('clock', 14)}<span>Para mañana</span></button>`}
+        </span>
+      </div>`}
+      <div class="bz-classic-slot"></div>
+    </div>`;
+  }
+  // la caja de respuesta de siempre (propuesta con IA, «¿qué quieres contestar?», pulir, CC, programar, adjuntos, tareas…)
+  function openSuggested(auto) {
+    const pm = st.hilo?.length && pendOf(st.hilo[0].conv);
+    const slot = pane.querySelector('.bz-classic-slot');
+    if (!pm || !slot || !P()?.composer) return false;
+    if (slot.firstChild) { scrollPane(slot); return true; }
+    const box = P().composer(pm.id, auto || (!pm.sugerida));
+    if (!box) return false;
+    // fuera lo que ya se ve en el correo (cabecera, texto y resumen): empieza en «¿Qué quieres contestar?»
+    while (box.firstChild && !box.firstChild.classList?.contains('ask')) box.firstChild.remove();
+    const w = document.createElement('div');
+    w.className = 'bz-classic';
+    w.innerHTML = `<div class="bz-classic-h"><b>Respuesta sugerida</b><button type="button" class="bz-link" data-a="cerrar-sug">Cerrar</button></div>`;
+    w.appendChild(box);
+    slot.appendChild(w);
+    pane.querySelector('.bz-sbtn.sug')?.setAttribute('aria-pressed', 'true');
+    scrollPane(w);
+    return true;
+  }
+
+  /* ---------- menú «más» ---------- */
+  let menuEl = null;
+  const menuOpen = () => !!menuEl;
+  function closeMenu() { menuEl?.remove(); menuEl = null; pane.querySelectorAll('[data-a="mas"]').forEach((x) => x.setAttribute('aria-expanded', 'false')); }
+  document.addEventListener('click', (e) => { if (menuEl && !menuEl.contains(e.target) && !e.target.closest('[data-a="mas"]')) closeMenu(); });
+  function openMenu(btn) {
+    if (menuEl) { closeMenu(); return; }
+    const h = st.hilo; if (!h?.length) return;
+    const pm = pendOf(h[0].conv), enlace = safeOutlook(h[0].enlace);
+    const nv = pm ? (pm.nivelManual || '') : '';
+    menuEl = document.createElement('div');
+    menuEl.className = 'bz-menu'; menuEl.setAttribute('role', 'menu');
+    menuEl.innerHTML = `
+      <button type="button" role="menuitem" data-a="tarea">${svg('task', 16)}Pasar a tarea</button>
+      <label class="bz-mi">${svg('move', 16)}<span>Mover a…</span><select data-a="mover"><option value="">Elegir carpeta</option>${moveOptions()}</select></label>
+      <div class="bz-msep"></div>
+      ${pm ? `<div class="bz-mlbl">Clasificación</div>
+      <button type="button" role="menuitemradio" aria-checked="${nv === 'bloquea'}" data-cls="bloquea">Es urgente</button>
+      <button type="button" role="menuitemradio" aria-checked="${nv === 'pide'}" data-cls="pide">Te piden algo</button>
+      <button type="button" role="menuitemradio" aria-checked="${nv === 'no'}" data-cls="no">No me piden nada</button>
+      ${nv ? '<button type="button" role="menuitem" data-cls="">Como lo clasificó la IA</button>' : ''}
+      <div class="bz-msep"></div>` : ''}
+      ${enlace ? `<a role="menuitem" href="${esc(enlace)}" target="_blank" rel="noopener">${svg('ext', 16)}Abrir en Outlook</a>` : ''}
+      ${pm ? `<button type="button" role="menuitem" data-classic="${esc(pm.id)}">Ver en Pendientes (vista de siempre)</button>` : ''}`;
+    btn.setAttribute('aria-expanded', 'true');
+    const r = btn.getBoundingClientRect();
+    menuEl.style.top = Math.min(r.bottom + 4, innerHeight - 20) + 'px';
+    menuEl.style.right = Math.max(8, innerWidth - r.right) + 'px';
+    document.body.appendChild(menuEl);
+    menuEl.addEventListener('click', (e) => {
+      const c = e.target.closest('[data-cls]');
+      if (c) { P()?.clasificar(pm.id, c.dataset.cls || null); closeMenu(); return; }
+      const k = e.target.closest('[data-classic]');
+      if (k) { closeMenu(); P()?.clasico(k.dataset.classic); return; }
+      const tk = e.target.closest('[data-a="tarea"]');
+      if (tk) { closeMenu(); makeTask(); return; }
+      if (e.target.closest('a')) closeMenu();
+    });
+    menuEl.addEventListener('change', (e) => { const s = e.target.closest('select[data-a="mover"]'); if (s?.value) { const f = st.carpetas.find((x) => (x.wk || x.id) === s.value); closeMenu(); quitar(s.value, 'Movido a ' + (f ? fname(f) : 'otra carpeta')); } });
+    menuEl.querySelector('button, a, select')?.focus();
+  }
+
+  function scrollPane(el) {
+    if (!el) return;
+    if (mqNarrow.matches) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+    pane.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - 8), behavior: 'smooth' });
+  }
   const msgStatus = (t, bad) => { const p = pane.querySelector('.bz-msgst'); if (p) { p.textContent = t; p.classList.toggle('bad', !!bad); } };
 
   pane.addEventListener('click', async (e) => {
     const att = e.target.closest('[data-att]');
     if (att) return download(att.dataset.mid, att.dataset.att, att);
+    const k = e.target.closest('[data-classic]');
+    if (k) return P()?.clasico(k.dataset.classic);
     const mh = e.target.closest('.bz-mh');
-    if (mh) { const sec = mh.parentElement; const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); mh.setAttribute('aria-expanded', String(on)); const x = st.hilo?.find((y) => y.id === sec.dataset.mid); const w = mh.querySelector('.when'); if (x && w) w.textContent = on ? largo(x.fecha) : corto(x.fecha); return; }
+    if (mh) { const sec2 = mh.parentElement; const on = !sec2.classList.contains('open'); sec2.classList.toggle('open', on); mh.setAttribute('aria-expanded', String(on)); return; }
     const qt = e.target.closest('.bz-qt');
     if (qt) { const q = qt.nextElementSibling; q.hidden = !q.hidden; qt.setAttribute('aria-expanded', String(!q.hidden)); qt.textContent = q.hidden ? 'Mostrar texto citado' : 'Ocultar texto citado'; return; }
     const b = e.target.closest('button[data-a]');
@@ -440,7 +764,16 @@
     if (a === 'volver') return closeMsg();
     if (!st.hilo?.length) return;
     const conv = st.sel, t = threadOf(conv), last = lastIn();
-    if (a === 'responder' || a === 'todos' || a === 'reenviar') return openCompose({ tipo: a });
+    const pm = pendOf(conv);
+    if (a === 'mas') return openMenu(b);
+    if (a === 'responder' || a === 'todos' || a === 'reenviar') { openCompose({ tipo: a }); scrollPane(pane.querySelector('.bz-compose-slot')); return; }
+    if (a === 'gracias') { openCompose({ tipo: 'responder', texto: '¡Muchas gracias!\n\nUn saludo,' }); scrollPane(pane.querySelector('.bz-compose-slot')); return; }
+    if (a === 'sugerida') { if (!openSuggested(false)) msgStatus('No encuentro la propuesta de este correo.', true); return; }
+    if (a === 'cerrar-sug') { const s = pane.querySelector('.bz-classic-slot'); if (s) s.innerHTML = ''; pane.querySelector('.bz-sbtn.sug')?.setAttribute('aria-pressed', 'false'); return; }
+    if (a === 'gestionado' && pm) { st.adv = conv; P().gestionado(pm.id); return afterHandled('Gestionado ✓'); }
+    if (a === 'manana' && pm) { st.adv = conv; P().posponer(pm.id); return afterHandled('Lo verás mañana'); }
+    if (a === 'reactivar' && pm) { P().reactivar(pm.id); return; }
+    if (a === 'anclar') return togglePin(conv, t?.latest || st.hilo[0]);
     if (a === 'noleido') {
       b.disabled = true;
       try {
@@ -448,32 +781,46 @@
         for (const x of st.items) if (x.id === last.id) x.leido = false;
         toast('Marcado como no leído');
         closeMsg();
-        call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
+        refreshFolders();
       } catch (err) { msgStatus(err.message, true); b.disabled = false; }
       return;
     }
     if (a === 'bandera') {
       const v = !(t ? t.bandera : st.hilo.some((x) => x.bandera));
-      const ids = v ? [last.id] : st.items.filter((x) => x.conv === conv && x.bandera).map((x) => x.id).concat(st.hilo.filter((x) => x.bandera).map((x) => x.id));
+      const ids = v ? [last.id] : [...st.items.filter((x) => x.conv === conv && x.bandera).map((x) => x.id), ...st.hilo.filter((x) => x.bandera).map((x) => x.id)];
       b.disabled = true;
       try {
         await Promise.all([...new Set(ids.length ? ids : [last.id])].map((id) => call('bandera', { id, valor: v })));
         for (const x of st.items) if (x.conv === conv) x.bandera = v ? x.id === last.id || x.bandera : false;
         for (const x of st.hilo) x.bandera = v ? x.id === last.id : false;
-        paintList(); paintThread();
+        toast(v ? 'Con bandera (también en Outlook)' : 'Bandera quitada');
+        repaint();
       } catch (err) { msgStatus(err.message, true); b.disabled = false; }
       return;
     }
     if (a === 'archivar' || a === 'eliminar') return quitar(a === 'archivar' ? 'archive' : 'deleteditems', a === 'archivar' ? 'Archivado' : 'Enviado a Elementos eliminados');
-    if (a === 'tarea') {
-      if (typeof window.__sqAddTask !== 'function') return msgStatus('No se pudo crear la tarea desde aquí.', true);
-      const s = smart.get(conv);
-      b.disabled = true;
-      const id = await window.__sqAddTask({ titulo: (s?.peticion || last.asunto).slice(0, 300), detalle: `Correo de ${last.de?.nombre || last.de?.mail || ''} · ${last.asunto}`, prioridad: s?.nivel === 'bloquea' ? 'Alta' : 'Media', origen: 'correo', ref: s?.id || null, persona: last.mio ? null : (last.de?.nombre || null), extra: { enlace: last.enlace || null } });
-      b.disabled = false;
-      msgStatus(id ? 'Tarea creada: la tienes en Tareas.' : 'No se pudo crear la tarea.', !id);
-    }
+    if (a === 'tarea') { b.disabled = true; await makeTask(); b.disabled = false; }
   });
+  async function makeTask() {
+    if (typeof window.__sqAddTask !== 'function') return msgStatus('No se pudo crear la tarea desde aquí.', true);
+    const conv = st.sel, last = lastIn(), s = pendOf(conv);
+    const id = await window.__sqAddTask({ titulo: (s?.peticion || last.asunto).slice(0, 300), detalle: `Correo de ${last.de?.nombre || last.de?.mail || ''} · ${last.asunto}`, prioridad: s && nivelOf(s) === 'bloquea' ? 'Alta' : 'Media', origen: 'correo', ref: s?.id || null, persona: last.mio ? null : (last.de?.nombre || null), extra: { enlace: last.enlace || null } });
+    msgStatus(id ? 'Tarea creada: la tienes en Tareas.' : 'No se pudo crear la tarea.', !id);
+  }
+  // tras Gestionado / Para mañana: en los filtros de Pendientes sale de la lista y se abre el siguiente
+  function afterHandled(txt) {
+    toast(txt);
+    const conv = st.sel;
+    st.adv = conv;
+    if (!PEND_F.includes(st.filtro)) { setTimeout(paintSyn, 300); return; }
+    const ts = pendThreads(st.filtro), i = ts.findIndex((x) => x.conv === conv);
+    setTimeout(() => {
+      const nts = pendThreads(st.filtro).filter((x) => x.conv !== conv);
+      const nx = nts[Math.min(Math.max(i, 0), nts.length - 1)];
+      closeMsg(true); paintListSoft();
+      if (nx && !mqNarrow.matches && !nx.conv.startsWith('p:')) openThread(nx.conv, { pid: nx.pid });
+    }, 250);
+  }
   pane.addEventListener('change', (e) => {
     const sel = e.target.closest('select[data-a="mover"]');
     if (!sel || !sel.value) return;
@@ -484,18 +831,19 @@
   async function quitar(destino, txt) {
     const conv = st.sel; if (!conv) return;
     const ts = threads(), i = ts.findIndex((x) => x.conv === conv);
-    const ids = st.items.filter((x) => x.conv === conv).map((x) => x.id);
+    let ids = st.items.filter((x) => x.conv === conv).map((x) => x.id);
+    if (!ids.length) ids = (st.hilo || []).filter((x) => !x.mio).map((x) => x.id); // abierto desde un filtro de Pendientes
     if (!ids.length) return;
     msgStatus('Un momento…');
     try {
       await call('mover', { ids, destino });
       st.items = st.items.filter((x) => x.conv !== conv);
+      st.hcache.delete(conv);
       toast(txt);
       closeMsg(true);
-      paintList();
-      const nx = threads()[Math.min(i, threads().length - 1)];
-      if (!mqNarrow.matches && nx) openThread(nx.conv);
-      call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
+      paintListSoft();
+      if (!isPF()) { const nx = threads()[Math.min(i, threads().length - 1)]; if (!mqNarrow.matches && nx) openThread(nx.conv); }
+      refreshFolders();
     } catch (err) { msgStatus(err.message, true); }
   }
   async function download(mid, aid, btn) {
@@ -512,6 +860,14 @@
     btn.disabled = false;
   }
 
+  // Desde Inicio, Tareas o Agenda: abrir un correo de Pendientes aquí mismo (si tiene conversación de Outlook)
+  window.__sqBuzonOpenMail = (m, auto) => {
+    if (!m || !m.conv || m.categoria === 'Reuniones') { if (m && m.categoria !== 'Reuniones') setModo('pend'); return false; }
+    if (st.modo !== 'bandeja') setModo('bandeja');
+    if (!st.carpetas.length && !st.cargando) start();
+    openThread(m.conv, { pid: m.id, sugerida: auto, auto });
+    return true;
+  };
 
   /* ---------- sugerencias de personas en «Para» y «CC» (como Outlook) ---------- */
   const localPeople = () => {
@@ -924,7 +1280,7 @@
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       slot.innerHTML = '';
     }));
-    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? '[data-chips="para"] input' : 'textarea'); first?.focus({ preventScroll: false }); slot.scrollIntoView({ block: 'nearest' }); }
+    if (!o.sugerida) { const first = f.querySelector(o.tipo === 'nuevo' && !f.querySelector('select[name="cuenta"]').value ? 'select[name="cuenta"]' : o.tipo === 'nuevo' || o.tipo === 'reenviar' ? '[data-chips="para"] input' : 'textarea'); first?.focus({ preventScroll: true }); if (!ext) scrollPane(slot); else slot.scrollIntoView({ block: 'nearest' }); }
   }
   async function send(f, o, enviar) {
     const say = o.say || msgStatus;
@@ -954,7 +1310,13 @@
       if (o.tipo === 'nuevo') { pane.innerHTML = ''; root.classList.remove('bz-reading'); if (mqNarrow.matches) { try { if (history.state?.bz) history.back(); } catch {} } return; }
       f.parentElement.innerHTML = '';
       say(okTxt);
-      if (enviar) { loadSmart().catch(() => null); const c = st.sel; if (c) setTimeout(() => { if (st.sel === c && !st.compose) openThread(c); }, 2500); }
+      if (enviar) {
+        // contestado desde aquí: si estaba en Pendientes, queda gestionado (como en la vista de siempre)
+        const c = st.sel, pm = pendOf(c);
+        if (pm && isPend(pm) && o.tipo !== 'nuevo') { st.adv = c; P().gestionado(pm.id); if (PEND_F.includes(st.filtro)) { afterHandled('Enviado y gestionado ✓'); return; } }
+        st.hcache.delete(c);
+        if (c) setTimeout(() => { if (st.sel === c && !st.compose) openThread(c); }, 2500);
+      }
     } catch (err) {
       say('No se pudo ' + (enviar ? 'enviar' : 'guardar') + ': ' + err.message, true);
       f.querySelectorAll('button').forEach((x) => { x.disabled = false; });
@@ -974,6 +1336,7 @@
   /* ---------- arranque ---------- */
   async function start() {
     st.cargando = true; paintList();
+    loadPins().then(repaint).catch(() => null);
     try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; paintFolders(); }
     catch (e) {
       st.cargando = false;
@@ -985,6 +1348,7 @@
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshQuiet(); });
   setInterval(refreshQuiet, 90000);
-  paintFilters(); syncCounts();
-  setModo(st.modo);
+  // de móvil a PC (o al revés) sin perder lo abierto
+  mqNarrow.addEventListener('change', () => { if (st.hilo?.length) paintThread(); });
+  setModo('bandeja');
 })();
