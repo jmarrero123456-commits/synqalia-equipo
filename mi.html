@@ -3277,6 +3277,23 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     return data;
   }
   window.__sqGraphCall = graphCall;
+  // Pendientes al día con Outlook (25/11): lo respondido, reenviado, archivado o borrado allí (y lo leído si no te piden nada)
+  // sale solo de Pendientes; y lo que marcas «Gestionado» aquí queda leído en Outlook.
+  function leidoEnOutlook(id) { buzonCall({op: 'leidoPend', mail: id}).catch(() => null); }
+  let concAt = 0, concBusy = false;
+  async function conciliarOutlook() {
+    if (concBusy || document.hidden || !window.__sb || window.__sqOffline) return;
+    concBusy = true; concAt = Date.now();
+    try {
+      const r = await buzonCall({op: 'conciliar'});
+      const n = (r && r.cerrados || []).length;
+      if (n) setSync(n === 1 ? '1 correo ya gestionado en Outlook sale de Pendientes' : n + ' correos ya gestionados en Outlook salen de Pendientes');
+    } catch (e) { /* sin Microsoft 365 o sin conexión: se intenta más tarde */ }
+    concBusy = false;
+  }
+  setTimeout(conciliarOutlook, 5000);
+  setInterval(conciliarOutlook, 3 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - concAt > 60000) conciliarOutlook(); });
   async function buzonCall(body) {
     const { data, error } = await window.__sb.functions.invoke('buzon', { body });
     if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch (e) {} throw new Error(t); }
@@ -4022,7 +4039,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         }
       }
       const done = el('button', 'btn ghost', isMeeting(m) ? 'Ya resuelta' : 'Gestionado'); done.type = 'button';
-      done.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), isMeeting(m) ? 'Reunión resuelta' : 'Correo gestionado'));
+      done.addEventListener('click', () => { write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), isMeeting(m) ? 'Reunión resuelta' : 'Correo gestionado'); if (!isMeeting(m)) leidoEnOutlook(m.id); });
       act.appendChild(done);
     } else {
       const undo = el('button', 'btn ghost', 'Devolver'); undo.type = 'button';
@@ -4596,7 +4613,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     inMegaNotes().forEach((n) => out.push({score: 99, key: 'n' + n.id, tag: 'Mega · tu nota', cls: 'mega', title: n.titulo || String(n.cuerpo || '').slice(0, 90) || 'Nota', sub: (window.__sqNotas.bookName(n.libreta) || 'Notas') + ' · ' + relDay(n.creada || todayISO), open: () => window.__sqNotas.open(n.id),
       acts: [['Abrir', 'pri', () => window.__sqNotas.open(n.id)], ['Ya está', '', () => window.__sqNotas.update(n.id, {mega: false})]]}));
     const mailItem = (m, score, tag, cls) => out.push({score, key: 'm' + m.id, tag, cls, title: String(m.asunto || '(sin asunto)'), who: 'Correo · ' + personaDe(m.de), sub: String(m.peticion || m.resumen || motivoDe(m) || '').slice(0, 180), open: () => window.__sqOpenMail(m.id), age: fechaDe(m),
-      acts: [['Abrir', 'pri', () => window.__sqOpenMail(m.id)], ['Mañana', '', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Lo verás mañana')], ['Gestionado', '', () => write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Correo gestionado')]]});
+      acts: [['Abrir', 'pri', () => window.__sqOpenMail(m.id)], ['Mañana', '', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Lo verás mañana')], ['Gestionado', '', () => { write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Correo gestionado'); leidoEnOutlook(m.id); }]]});
     const ms = inMails();
     ms.filter(isUrgent).forEach((m) => mailItem(m, 90, 'Urgente · decide tú', 'urg'));
     state.tasks.filter((t) => forToday(t) && espOf(t) === 'mia' && t.prioridad !== 'Mega').forEach((t) => out.push({score: isLate(t) ? 80 : 76, key: 't' + t.id, tag: isLate(t) ? 'Tarea · vencida' : 'Tarea · vence hoy', cls: isLate(t) ? 'late' : 'task', title: t.titulo, sub: [otherPerson(t) ? firstName(otherPerson(t)) : '', t.prioridad && t.prioridad !== 'Media' ? 'prioridad ' + t.prioridad.toLowerCase() : ''].filter(Boolean).join(' · '), open: () => openTaskEdit(t),
