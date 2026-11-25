@@ -294,6 +294,11 @@
   .pl-turn.hl{background:color-mix(in srgb,#f5c542 22%,transparent);border-radius:8px}
   .pl-turn mark{background:#f5c542;color:inherit;border-radius:3px}
   .pl-find{width:100%;font:inherit;font-size:13.5px;padding:7px 10px;border-radius:9px;border:1px solid var(--line,#e5e7eb);margin-bottom:10px;background:transparent;color:inherit}
+  .pl-audio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px 2px}
+  .pl-audio audio{flex:1 1 260px;min-width:0;height:36px}
+  .pl-audio .m{font-size:12.5px;color:var(--muted,#6b7280)}
+  .pl-audio .m.err{color:#b42318}
+  .pl-turn .pl-t{cursor:pointer}.pl-turn .pl-t:hover{color:var(--accent,#0f766e);text-decoration:underline}
   .pl-sp0{color:#0f766e}.pl-sp1{color:#7c3aed}.pl-sp2{color:#c2410c}.pl-sp3{color:#2563eb}.pl-sp4{color:#be185d}`;
   document.head.appendChild(css2);
   const mmss = (ms) => { const s = Math.floor((Number(ms) || 0) / 1000); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(x); };
@@ -331,6 +336,29 @@
     const sm = document.createElement('summary');
     sm.innerHTML = `<b>🎙️ Plaud</b><span class="s">${esc(g.nombre || 'Grabación')} · ${esc(g.hIni)}–${esc(g.hFin)} · ${g.minutos || 0} min</span><span class="ch">▾</span>`;
     d.appendChild(sm);
+    // audio: el enlace de Plaud caduca en minutos, así que se pide al darle a escuchar (y otra vez si caduca)
+    const bar = document.createElement('div'); bar.className = 'pl-audio';
+    const msg = document.createElement('span'); msg.className = 'm';
+    const ponMsg = (t, err) => { msg.textContent = t || ''; msg.classList.toggle('err', !!err); };
+    async function enlace() { const r = await call('audio', { fileId: g.id }); if (!r || !r.url) throw new Error((r && r.error) || 'Sin audio'); return r.url; }
+    async function escuchar(ms) {
+      try {
+        if (!ps.audio) {
+          ponMsg('Pidiendo el audio a Plaud…');
+          const a = document.createElement('audio'); a.controls = true; a.preload = 'auto'; a.src = await enlace();
+          let reintento = 0;
+          a.addEventListener('error', async () => { if (reintento++ > 2) { ponMsg('No se ha podido cargar el audio.', true); return; } const t = a.currentTime; try { a.src = await enlace(); a.currentTime = t; a.play().catch(() => {}); } catch (e) { ponMsg(e.message, true); } });
+          a.addEventListener('playing', () => ponMsg(''));
+          ps.audio = a;
+        }
+        if (!bar.contains(ps.audio)) { bar.replaceChildren(ps.audio, msg); }
+        if (ms != null) { const go = () => { ps.audio.currentTime = Math.max(0, ms / 1000 - 1); ps.audio.play().catch(() => {}); }; if (ps.audio.readyState >= 1) go(); else ps.audio.addEventListener('loadedmetadata', go, { once: true }); }
+        else ps.audio.play().catch(() => {});
+      } catch (e) { ponMsg(e.message || 'No se ha podido pedir el audio', true); }
+    }
+    if (ps.audio) bar.append(ps.audio, msg);
+    else { const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'pl-btn'; pb.textContent = '▶ Escuchar el audio'; pb.onclick = () => escuchar(); bar.append(pb, msg); }
+    d.appendChild(bar);
     const tabs = document.createElement('div'); tabs.className = 'pl-tabs';
     const body = document.createElement('div'); body.className = 'pl-body';
     const turns = Array.isArray(g.turnos) ? g.turnos : [];
@@ -364,6 +392,7 @@
             const r = document.createElement('div'); r.className = 'pl-turn'; r.dataset.t = x[0];
             const txt = q ? esc(x[2]).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (z) => '<mark>' + z + '</mark>') : esc(x[2]);
             r.innerHTML = `<span class="pl-t">${mmss(x[0])}</span><div><span class="w pl-sp${spk.indexOf(x[1]) % 5}" title="Toca para poner el nombre">${esc(nombreDe(g, x[1]))}</span><div>${txt}</div></div>`;
+            const tl = r.querySelector('.pl-t'); tl.title = 'Escuchar desde aquí'; tl.onclick = () => escuchar(x[0]);
             r.querySelector('.w').onclick = async () => {
               const nv = prompt('¿Quién es «' + nombreDe(g, x[1]) + '»? (se cambia en toda la transcripción)', nombreDe(g, x[1]) === x[1] ? '' : nombreDe(g, x[1]));
               if (nv == null) return;
