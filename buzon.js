@@ -258,7 +258,7 @@
     const fcol = root.classList.contains('bz-fcol');
     const curF = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
     folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) : '')}</span>`
-      + main.map(li).join('') + `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') + `<button type="button" class="bz-fnew" data-fnew>+ Nueva carpeta</button>`;
+      + main.map(li).join('') + `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') + `<button type="button" class="bz-fnew" data-fnew>+ Nueva carpeta</button><button type="button" class="bz-fnew bz-fread" data-fread>✓ Marcar leídos hasta…</button>`;
     fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
     if (!st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.insertAdjacentHTML('afterbegin', `<option value="${esc(st.carpeta)}">${esc(WKN[st.carpeta] || 'Carpeta')}</option>`);
     fsel.value = st.carpeta;
@@ -267,6 +267,7 @@
   folders.addEventListener('click', (e) => {
     if (e.target.closest('[data-fold]')) { setFcol(!root.classList.contains('bz-fcol')); return; }
     if (e.target.closest('[data-fnew]')) { askFolder(); return; }
+    if (e.target.closest('[data-fread]')) { askReadUntil(); return; }
     const b = e.target.closest('[data-f]'); if (b) openFolder(b.dataset.f);
   });
   function setFcol(on) { root.classList.toggle('bz-fcol', on); try { localStorage.setItem('sq-bz-fcol', on ? '1' : ''); } catch {} paintFolders(); }
@@ -313,6 +314,59 @@
       } catch (err) { say(err.message, true); f.querySelectorAll('button').forEach((x) => { x.disabled = false; }); inp.focus(); }
     });
     inp.focus();
+  }
+  /* ---------- marcar como leído todo lo anterior a un día (25/11): en todo el buzón, también en Outlook ---------- */
+  function askReadUntil() {
+    document.querySelector('.bz-fdlg')?.remove();
+    const d0 = new Date(); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7) - 7); // el lunes de la semana pasada (hoy, 16 de noviembre)
+    const def = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
+    const d = document.createElement('div');
+    d.className = 'bz-viewer bz-fdlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'Marcar como leídos');
+    d.innerHTML = `<form class="bz-fbox" novalidate>
+      <div class="bz-poph">${svg('read', 18)}<b>Marcar como leídos</b><button type="button" class="bz-ibtn" data-x aria-label="Cerrar">✕</button></div>
+      <label class="bz-tkf"><span>Todo lo que llegó hasta el día (incluido)</span><input name="hasta" type="date" value="${def}" max="${new Date().toISOString().slice(0, 10)}" required></label>
+      <p class="bz-popnote">Se marcan como leídos en todo el buzón (todas las carpetas) y también en Outlook. Lo de después de ese día no se toca.</p>
+      <div class="bz-rprog" hidden><div class="bar"><i></i></div><span></span></div>
+      <p class="bz-msgst" aria-live="polite"></p>
+      <div class="bz-tkacts"><button type="submit" class="bz-btn gest">${svg('check', 15)}<span>Marcar como leídos</span></button><button type="button" class="bz-link" data-x>Cancelar</button></div>
+    </form>`;
+    document.body.appendChild(d);
+    const f = d.querySelector('form'), say = (t, bad) => { const p = f.querySelector('.bz-msgst'); p.textContent = t; p.classList.toggle('bad', !!bad); };
+    let busy = false;
+    const close = () => { if (!busy) d.remove(); };
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-x]')) close(); });
+    d.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hasta = f.hasta.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(hasta)) { say('Elige un día.', true); return; }
+      busy = true; f.querySelectorAll('button, input').forEach((x) => { x.disabled = true; });
+      const pr = f.querySelector('.bz-rprog'); pr.hidden = false;
+      let total = 0, vueltas = 0;
+      say('Marcando en Outlook… puede tardar unos minutos si hay muchos. No cierres Synqalia.');
+      try {
+        for (;;) {
+          const r = await call('leerHasta', { hasta });
+          total += r.hechos || 0; vueltas++;
+          pr.querySelector('span').textContent = `${total.toLocaleString('es-ES')} marcados como leídos`;
+          pr.querySelector('i').style.width = Math.min(95, 10 + vueltas * 12) + '%';
+          if (!r.quedan) break;
+          if (r.pausa) { say('Outlook pide una pausa; sigo en unos segundos…'); await new Promise((res) => setTimeout(res, 8000)); }
+          if (vueltas > 60) throw new Error('quedan algunos; vuelve a pulsarlo dentro de un rato');
+        }
+        pr.querySelector('i').style.width = '100%';
+        busy = false;
+        say(`Hecho: ${total.toLocaleString('es-ES')} correos marcados como leídos hasta el ${hasta.split('-').reverse().join('/')}.`);
+        f.querySelector('[data-x].bz-link').disabled = false; f.querySelector('[data-x].bz-link').textContent = 'Cerrar';
+        f.querySelector('.bz-ibtn[data-x]').disabled = false;
+        toast(`${total.toLocaleString('es-ES')} correos marcados como leídos`);
+        for (const x of st.items) if (String(x.fecha).slice(0, 10) <= hasta) x.leido = true;
+        full.clear(); refreshFolders(); paintListSoft(); refreshQuiet();
+      } catch (err) {
+        busy = false; say(`Se marcaron ${total.toLocaleString('es-ES')}, pero ${err.message}.`, true);
+        f.querySelectorAll('button, input').forEach((x) => { x.disabled = false; });
+      }
+    });
   }
   // «Mover a…»: carpeta existente, o crear una y mover ahí
   function moverA(sel) {

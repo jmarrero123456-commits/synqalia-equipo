@@ -491,3 +491,8 @@ body.bz-noscroll { overflow: hidden; }
 .bz-fchk { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); }
 .bz-fbox .bz-msgst:empty { display: none; }
 @media (max-width: 599px) { .bz-fdlg { padding: 16px; align-items: flex-start; padding-top: 18vh; } .bz-fdlg .bz-fbox { width: 100%; } }
+.bz-fread { color: #43505f; margin-top: 4px; }
+.bz-rprog { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #0b6e63; }
+.bz-rprog .bar { height: 8px; border-radius: 4px; background: #e3e6ec; overflow: hidden; }
+.bz-rprog .bar i { display: block; height: 100%; width: 5%; background: #2bb3a3; transition: width .4s; }
+.bz-fbox input[type="date"] { height: 38px; border: 1px solid #0b0e13; border-radius: 8px; padding: 0 10px; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); }

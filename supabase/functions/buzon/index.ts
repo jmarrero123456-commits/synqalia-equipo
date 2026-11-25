@@ -13,6 +13,7 @@
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
 // hilo (25/11): html (como en Outlook, sin scripts, imágenes internas incrustadas) y ligero:true para desplegar la lista.
 // lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
+// leerHasta (25/11): marcar como leído todo lo anterior a un día (por tandas).
 // carpetaNueva (25/11): crea una carpeta en Outlook (nombre; dentro = carpeta madre opcional).
 // adjuntar / trozo / enviarBorrador (24/11): adjuntos al redactar (hasta 25 MB; los grandes en trozos por sesión de subida).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -350,6 +351,31 @@ async function boxNewFolder(ctx: Ctx, b: any) {
     .catch((e) => { if (e.status === 409 || /ErrorFolderExists/i.test(e.message)) throw new Error(`Ya tienes una carpeta «${nombre}»`); throw e; });
   return { id: f.id, nombre: f.displayName };
 }
+// leerHasta (25/11): marca como leído todo lo no leído del buzón recibido hasta un día (incluido), por tandas.
+// Cada llamada trabaja ~90 s y dice si queda más; la app repite hasta terminar.
+async function boxReadUntil(ctx: Ctx, b: any) {
+  const d = String(b.hasta || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Fecha no válida");
+  const lim = new Date(new Date(d + "T00:00:00Z").getTime() + 864e5 - 3600e3).toISOString(); // fin del día en Madrid (aprox.)
+  const t0 = Date.now();
+  let hechos = 0, fallos = 0;
+  while (Date.now() - t0 < 90000) {
+    const j = await g(ctx, `/me/messages?$filter=${encodeURIComponent(`isRead eq false and receivedDateTime le ${lim}`)}&$select=id&$top=200`);
+    const ids: string[] = (j?.value || []).map((x: any) => x.id);
+    if (!ids.length) return { hechos, quedan: false, fallos };
+    let ok = 0;
+    for (let i = 0; i < ids.length; i += 20) {
+      const part = ids.slice(i, i + 20);
+      const r = await g(ctx, `/$batch`, { method: "POST", body: JSON.stringify({ requests: part.map((id, k) => ({ id: String(k), method: "PATCH", url: `/me/messages/${encodeURIComponent(id)}`, headers: { "Content-Type": "application/json" }, body: { isRead: true } })) }) });
+      const bien = (r?.responses || []).filter((x: any) => x.status >= 200 && x.status < 300).length;
+      ok += bien; fallos += part.length - bien;
+      if (bien < part.length) await new Promise((res) => setTimeout(res, 1500)); // Outlook pide calma: se espera un poco
+    }
+    hechos += ok;
+    if (!ok) return { hechos, quedan: true, fallos, pausa: true };
+  }
+  return { hechos, quedan: true, fallos };
+}
 const idList = (b: any) => (Array.isArray(b.ids) && b.ids.length ? b.ids : [b.id]).slice(0, 50).map(okId);
 async function boxMove(ctx: Ctx, b: any, destino: string) {
   const dest = WK.includes(destino) ? destino : decodeURIComponent(okId(destino));
@@ -551,6 +577,7 @@ async function boxAction(ctx: Ctx, b: any, acc: any) {
     case "conciliar": return await boxConciliar(ctx, acc);
     case "leidoPend": return await boxLeidoPend(ctx, b);
     case "carpetaNueva": return await boxNewFolder(ctx, b);
+    case "leerHasta": return await boxReadUntil(ctx, b);
   }
   throw new Error("Operación no válida");
 }
