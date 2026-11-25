@@ -1233,7 +1233,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261125v4b">
+<link rel="stylesheet" href="buzon.css?v=20261125v4c">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -3735,7 +3735,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         const t = ta.value.trim();
         if (!t) { setStatus('La respuesta está vacía.', true); return; }
         if (/\[[^\]]+\]/.test(t)) { setStatus('Quedan huecos entre [corchetes] por completar.', true); return; }
-        if (!sample) { finish(t); return; }
+        // sin ronda de correcciones (25/11): se envía tal cual lo has dejado, con lo que hayas cambiado a mano
+        { await finish(t); return; }
         ready.disabled = true; setStatus('Revisando el texto antes de darlo por listo…');
         try {
           const prompt = 'Revisa este borrador de correo de Jaime Marrero (director de la unidad de salones de Provalliance España) antes de enviarlo. Busca: erratas y ortografía, puntuación, frases cortadas o sin verbo, respuestas ambiguas para el destinatario, saludo y cierre (debe terminar en «Un saludo,» SIN nombre ni firma debajo, porque Outlook añade la firma electrónica; si lleva «Jaime» u otra firma al final, quítala), y tono (directo y cordial). Respeta lo que Jaime quiere decir: no añadas compromisos, datos ni fechas nuevos; si algo es ambiguo, señálalo en vez de inventarlo.\n\nCorreo al que responde:\n' + mailContext(m) + '\n\nBORRADOR:\n' + t + '\n\nDevuelve SOLO JSON: {"ok": true si no hace falta cambiar nada, "cambios": ["cada cambio en una frase corta"], "texto": "versión corregida completa"}';
@@ -3828,6 +3829,11 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         box.appendChild(full); if (adj) box.appendChild(adj);
       }
       if (tb) box.insertBefore(tb, box.firstChild);
+      // Correo único (25/11): el correo ya se ve arriba; aquí solo «¿Qué quieres contestar?» y, justo debajo, la propuesta
+      if (o.bz) {
+        [...box.children].forEach((x) => { if (x === full || x === adj || x.classList.contains('mail-full') || (x.classList.contains('section-label') && x.textContent === 'Correo')) x.remove(); });
+        box.insertBefore(askBox, prop);
+      }
     }
     return box;
   }
@@ -6197,7 +6203,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261125f" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261125v4b" defer></script>
+<script src="buzon.js?v=20261125v4c" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 </body>
