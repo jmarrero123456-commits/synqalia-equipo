@@ -83,7 +83,7 @@
       <div class="field"><label for="nm-hora">Hora</label><input id="nm-hora" type="time" step="900"></div>
       <div class="field"><label for="nm-dur">Duración</label><select id="nm-dur"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">1 h</option><option value="90">1 h 30</option><option value="120">2 h</option><option value="180">3 h</option></select></div>
     </div>
-    <div class="field"><label for="nm-q">Personas</label>
+    <div class="field"><label for="nm-q">Personas <span style="font-weight:500;text-transform:none;letter-spacing:0">(opcional: sin nadie, solo bloqueas el tiempo en tu calendario)</span></label>
       <div class="nm-people" id="nm-people"><input id="nm-q" autocomplete="off" placeholder="Escribe un nombre o un correo…" aria-autocomplete="list"><div class="nm-sug" id="nm-sug" role="listbox" hidden></div></div>
       <p class="note" id="nm-cnote">Cargando tus contactos…</p>
     </div>
@@ -123,6 +123,13 @@
   const people = [];
   const q = $('#nm-q'), sug = $('#nm-sug'), box = $('#nm-people');
   let sel = -1, shown = [];
+  // sin personas = bloquear tiempo: el botón lo dice y Teams se desmarca (salvo que lo marques tú)
+  let teamsTouched = false;
+  function syncGo() {
+    const go = card.querySelector('#nm-go'), tm = card.querySelector('#nm-teams');
+    if (go && !go.disabled) go.textContent = people.length ? 'Convocar' : 'Bloquear tiempo';
+    if (tm && !teamsTouched) tm.checked = people.length > 0;
+  }
   function paintChips() {
     box.querySelectorAll('.nm-chip').forEach((c) => c.remove());
     people.forEach((p, i) => {
@@ -131,6 +138,7 @@
       c.querySelector('button').addEventListener('click', () => { people.splice(i, 1); paintChips(); availSoon(); });
       box.insertBefore(c, q);
     });
+    syncGo();
   }
   function addPerson(p) {
     const email = String(p.email || '').toLowerCase().trim();
@@ -174,7 +182,7 @@
   const availSoon = () => { clearTimeout(avTimer); avTimer = setTimeout(availability, 500); };
   async function availability() {
     const fecha = $('#nm-fecha').value;
-    if (!fecha || !people.length) { av.hidden = true; lastAv = null; return; }
+    if (!fecha) { av.hidden = true; lastAv = null; return; }
     const my = ++avSeq;
     av.hidden = false; av.innerHTML = '<span class="note">Mirando la agenda de todos…</span>';
     try {
@@ -202,12 +210,13 @@
     if (r.huecos.length) {
       const opts = [];
       for (const h of r.huecos) { let a = toMin(h.inicio); const b = toMin(h.fin); const now = new Date(); if (r.fecha === isoDay(now)) a = Math.max(a, Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15); if (b - a >= dur) opts.push({ a, b }); }
-      html += opts.length ? `<div class="lbl">Huecos en los que estáis todos libres (${dur} min)</div><div class="nm-slots">${opts.map((o) => `<button type="button" data-a="${hm(o.a)}" class="${hora === hm(o.a) ? 'on' : ''}" title="Libres de ${hm(o.a)} a ${hm(o.b)}">${hm(o.a)}${o.b - o.a > dur ? ' – ' + hm(o.b) : ''}</button>`).join('')}</div>` : '<span class="note">Ese día no hay ningún hueco en el que estéis todos libres. Prueba otro día o acorta la reunión.</span>';
-    } else html += '<span class="note">Ese día no hay ningún hueco en el que estéis todos libres. Prueba otro día o acorta la reunión.</span>';
+      html += opts.length ? `<div class="lbl">${people.length ? 'Huecos en los que estáis todos libres' : 'Tus huecos libres'} (${dur} min)</div><div class="nm-slots">${opts.map((o) => `<button type="button" data-a="${hm(o.a)}" class="${hora === hm(o.a) ? 'on' : ''}" title="Libres de ${hm(o.a)} a ${hm(o.b)}">${hm(o.a)}${o.b - o.a > dur ? ' – ' + hm(o.b) : ''}</button>`).join('')}</div>` : '<span class="note">Ese día no hay ningún hueco libre. Prueba otro día o acorta la duración.</span>';
+    } else html += '<span class="note">Ese día no hay ningún hueco libre. Prueba otro día o acorta la duración.</span>';
     if (choque.length) html += `<span class="note" style="color:var(--warn)">A esa hora tienen otra cosa: ${esc(choque.join(', '))}.</span>`;
     av.innerHTML = html;
     av.querySelectorAll('.nm-slots button').forEach((b) => b.addEventListener('click', () => { $('#nm-hora').value = b.dataset.a; paintAvail(); }));
   }
+  $('#nm-teams').addEventListener('change', () => { teamsTouched = true; });
   $('#nm-fecha').addEventListener('change', availSoon);
   $('#nm-dur').addEventListener('change', availSoon);
   $('#nm-hora').addEventListener('change', () => paintAvail());
@@ -216,14 +225,14 @@
   const msg = $('#nm-msg');
   const say = (t, kind) => { msg.hidden = !t; msg.textContent = t || ''; msg.className = 'nm-msg' + (kind ? ' ' + kind : ''); };
   function reset() {
-    people.length = 0; paintChips(); q.value = ''; $('#nm-tit').value = ''; $('#nm-txt').value = ''; $('#nm-lugar').value = ''; $('#nm-teams').checked = true; $('#nm-dur').value = '30'; $('#nm-hora').value = '';
+    people.length = 0; paintChips(); q.value = ''; $('#nm-tit').value = ''; $('#nm-txt').value = ''; $('#nm-lugar').value = ''; teamsTouched = false; syncGo(); $('#nm-dur').value = '30'; $('#nm-hora').value = '';
     const d = new Date(); if (d.getHours() >= 18 || d.getDay() === 0 || d.getDay() === 6) { do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6); }
     $('#nm-fecha').value = isoDay(d); $('#nm-fecha').min = isoDay(new Date());
     av.hidden = true; lastAv = null; say('');
   }
   function open() {
     if (window.__sqGraph && !window.__sqGraph.connected) { alert('Para convocar reuniones desde Synqalia, primero conecta Microsoft 365.'); return; }
-    reset(); card.hidden = false; openBtn.hidden = true;
+    reset(); card.hidden = false; openBtn.hidden = true; availSoon();
     if (!contacts.length) loadContacts();
     card.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#nm-tit').focus(), 250);
   }
@@ -236,23 +245,24 @@
     const titulo = $('#nm-tit').value.trim(), fecha = $('#nm-fecha').value, hora = $('#nm-hora').value, dur = Number($('#nm-dur').value);
     const pend = q.value.trim(); if (EMAIL.test(pend)) addPerson({ email: pend });
     if (!titulo) { say('Pon un título a la reunión.', 'err'); $('#nm-tit').focus(); return; }
-    if (!people.length) { say('Añade al menos una persona.', 'err'); q.focus(); return; }
     if (!fecha || !hora) { say('Elige la fecha y la hora (o toca uno de los huecos libres).', 'err'); return; }
     const a = toMin(hora), b = a + dur;
     if (b > 24 * 60) { say('La reunión termina después de medianoche: revisa la hora.', 'err'); return; }
     if (new Date(fecha + 'T' + hora) < new Date()) { if (!confirm('Esa hora ya ha pasado. ¿Convocar igualmente?')) return; }
     const fechaTxt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
     const lista = people.map((p) => '• ' + nice(p) + ' <' + p.email + '>').join('\n');
-    if (!confirm(`¿Enviar la convocatoria?\n\n«${titulo}»\n${fechaTxt}, ${hora}–${hm(b)}${$('#nm-teams').checked ? ' · Teams' : ''}${$('#nm-lugar').value.trim() ? ' · ' + $('#nm-lugar').value.trim() : ''}\n\nA ${people.length} ${people.length === 1 ? 'persona' : 'personas'}:\n${lista}`)) return;
-    const go = $('#nm-go'); go.disabled = true; go.textContent = 'Convocando…'; say('');
+    const bloqueo = !people.length;
+    if (bloqueo && !confirm(`¿Bloquear este tiempo en tu calendario?\n\n«${titulo}»\n${fechaTxt}, ${hora}–${hm(b)}${$('#nm-teams').checked ? ' · Teams' : ''}${$('#nm-lugar').value.trim() ? ' · ' + $('#nm-lugar').value.trim() : ''}\n\nNo se invita a nadie: solo aparece como ocupado en tu calendario.`)) return;
+    if (!bloqueo && !confirm(`¿Enviar la convocatoria?\n\n«${titulo}»\n${fechaTxt}, ${hora}–${hm(b)}${$('#nm-teams').checked ? ' · Teams' : ''}${$('#nm-lugar').value.trim() ? ' · ' + $('#nm-lugar').value.trim() : ''}\n\nA ${people.length} ${people.length === 1 ? 'persona' : 'personas'}:\n${lista}`)) return;
+    const go = $('#nm-go'); go.disabled = true; go.textContent = bloqueo ? 'Guardando…' : 'Convocando…'; say('');
     try {
       const r = await call({ action: 'crearReunion', titulo, fecha, inicio: hora, fin: hm(b), asistentes: people.map((p) => ({ email: p.email, nombre: p.nombre })), teams: $('#nm-teams').checked, lugar: $('#nm-lugar').value.trim(), texto: $('#nm-txt').value.trim() });
       close();
       if (typeof window.__sqGoDay === 'function') window.__sqGoDay(fecha);
-      const t = document.createElement('p'); t.className = 'nm-msg ok'; t.textContent = `✓ Convocatoria enviada a ${r.asistentes} ${r.asistentes === 1 ? 'persona' : 'personas'}: «${titulo}», ${fechaTxt} a las ${hora}.`;
+      const t = document.createElement('p'); t.className = 'nm-msg ok'; t.textContent = bloqueo ? `✓ Tiempo bloqueado en tu calendario: «${titulo}», ${fechaTxt} de ${hora} a ${hm(b)}.` : `✓ Convocatoria enviada a ${r.asistentes} ${r.asistentes === 1 ? 'persona' : 'personas'}: «${titulo}», ${fechaTxt} a las ${hora}.`;
       agendaCard?.querySelector('.row-between')?.after(t); setTimeout(() => t.remove(), 12000);
-    } catch (e) { say('No se pudo convocar: ' + e.message, 'err'); }
-    go.disabled = false; go.textContent = 'Convocar';
+    } catch (e) { say((bloqueo ? 'No se pudo guardar: ' : 'No se pudo convocar: ') + e.message, 'err'); }
+    go.disabled = false; syncGo();
   });
 
   // precarga silenciosa de los contactos (si ya están guardados, al instante)
