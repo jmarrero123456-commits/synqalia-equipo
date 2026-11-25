@@ -201,10 +201,19 @@
   function paintFolders() {
     const main = st.carpetas.filter((f) => f.wk), mine = st.carpetas.filter((f) => !f.wk);
     const li = (f) => `<button type="button" data-f="${esc(f.wk || f.id)}" aria-current="${(f.wk || f.id) === st.carpeta ? 'true' : 'false'}" class="${f.dentro ? 'in' : ''}"><span>${esc(fname(f))}</span>${f.noLeidos ? `<b>${f.noLeidos}</b>` : (f.wk === 'drafts' && f.total ? `<i>${f.total}</i>` : '')}</button>`;
-    folders.innerHTML = main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
+    const fcol = root.classList.contains('bz-fcol');
+    const cur = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
+    folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(cur ? fname(cur) : '')}</span>`
+      + main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
     fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
   }
-  folders.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) openFolder(b.dataset.f); });
+  folders.addEventListener('click', (e) => {
+    if (e.target.closest('[data-fold]')) { setFcol(!root.classList.contains('bz-fcol')); return; }
+    const b = e.target.closest('[data-f]'); if (b) openFolder(b.dataset.f);
+  });
+  // carpetas recogidas o desplegadas (se recuerda); recogidas, la carpeta se elige en el desplegable de arriba
+  function setFcol(on) { root.classList.toggle('bz-fcol', on); try { localStorage.setItem('sq-bz-fcol', on ? '1' : ''); } catch {} paintFolders(); }
+  try { if (localStorage.getItem('sq-bz-fcol')) root.classList.add('bz-fcol'); } catch {}
   function openFolder(f) { st.carpeta = f; st.q = ''; $('#bz-q').value = ''; paintFolders(); reload(); }
   const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${esc(fname(f))}</option>`).join('');
 
