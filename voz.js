@@ -32,7 +32,7 @@
     <div class="vz-foot">
       <div class="vz-state"><span class="vz-orb" aria-hidden="true"></span><span class="vz-st">Pulsa el micro y habla</span></div>
       <button type="button" class="vz-mic" aria-label="Hablar">${mic}</button>
-      <p class="vz-hint">Ej.: «¿Cuándo puedo verme con Belén?» · «Apúntame una nota…» · «¿Qué tengo urgente?» · Para acabar: «gracias».</p>
+      <p class="vz-hint">Puedes cortarle hablando. Ej.: «¿Cuándo puedo verme con Belén?» · «Pásame la de las 3 a la 1» · «Apúntame una nota…» · Para acabar: «gracias».</p>
     </div></div>`;
   document.body.appendChild(box);
   const $l = box.querySelector('.vz-log'), $st = box.querySelector('.vz-st'), $mic = box.querySelector('.vz-mic'), $card = box.querySelector('.vz-card');
@@ -65,6 +65,7 @@
     if (p.tipo === 'correo') return `Respondo a ${String(p.para).replace(/<[^>]*>/g, '').trim()} sobre «${String(p.asunto).replace(/^(re|rv|fw|fwd)\s*:\s*/i, '')}»: ${p.texto} ¿Lo envío?`;
     if (p.tipo === 'convocatoria') return `${RESP[p.respuesta]} «${p.titulo}», el ${fmtDia(p.fecha)} a las ${hora(p.inicio)}${p.serie > 1 ? ', toda la serie' : ''}${p.comentario ? ', con el mensaje: ' + p.comentario : ''}. ¿La envío?`;
     if (p.tipo === 'mensaje') return `Le mando a ${corto(p.para.nombre)} por Synqalia: ${p.texto} ¿Lo envío?`;
+    if (p.tipo === 'mover') return `Muevo «${p.titulo}» ${p.nfecha === p.fecha ? 'del ' + fmtDia(p.fecha) + ' de las ' + hora(p.inicio) + ' a las ' + hora(p.ninicio) : 'al ' + fmtDia(p.nfecha) + ' a las ' + hora(p.ninicio)}, hasta las ${hora(p.nfin)}. ${p.asistentes ? 'Microsoft avisará a ' + (p.asistentes === 1 ? 'la persona invitada' : 'los ' + p.asistentes + ' asistentes') + '. ' : ''}¿La muevo?`;
     return `${p.cambia ? 'La cambio a' : 'Convoco'} «${p.titulo}», el ${fmtDia(p.fecha)} de ${hora(p.inicio)} a ${hora(p.fin)}, ${p.teams ? 'por Teams' : (p.lugar ? 'en ' + p.lugar : 'presencial')}, con ${quien(p)}. ¿La envío?`;
   }
   function showCard() {
@@ -73,6 +74,7 @@
     if (p.tipo === 'asignar') $card.innerHTML = k('Tarea para ' + esc(corto(p.para.nombre))) + `<div class="vz-card-t">${esc(p.titulo)}</div><div class="vz-card-m">${p.vence ? esc(fmtDia(p.vence)) : 'Sin fecha'} · prioridad ${esc((p.prioridad || 'Media').toLowerCase())}</div>`;
     else if (p.tipo === 'correo') $card.innerHTML = k('Respuesta de correo') + `<div class="vz-card-t">RE: ${esc(p.asunto)}</div><div class="vz-card-m">Para ${esc(p.para)}</div><div class="vz-card-txt">${esc(p.texto)}</div>`;
     else if (p.tipo === 'convocatoria') $card.innerHTML = k('Respuesta a convocatoria') + `<div class="vz-card-t">${esc(RESP[p.respuesta])} · ${esc(p.titulo)}</div><div class="vz-card-m">${esc(fmtDia(p.fecha))} · ${esc(p.inicio)}–${esc(p.fin || '')}${p.serie > 1 ? ' · toda la serie' : ''}${p.organiza ? ' · convoca ' + esc(p.organiza) : ''}</div>${p.comentario ? `<div class="vz-card-txt">${esc(p.comentario)}</div>` : ''}`;
+    else if (p.tipo === 'mover') $card.innerHTML = k('Mover reunión') + `<div class="vz-card-t">${esc(p.titulo)}</div><div class="vz-card-m">Ahora: ${esc(fmtDia(p.fecha))} · ${esc(p.inicio)}–${esc(p.fin)}</div><div class="vz-card-m"><b>Nueva: ${esc(fmtDia(p.nfecha))} · ${esc(p.ninicio)}–${esc(p.nfin)}</b>${p.asistentes ? ' · avisa a ' + p.asistentes + (p.asistentes === 1 ? ' persona' : ' personas') : ''}</div>`;
     else if (p.tipo === 'mensaje') $card.innerHTML = k('Mensaje de Synqalia') + `<div class="vz-card-t">Para ${esc(p.para.nombre)}</div><div class="vz-card-txt">${esc(p.texto)}</div>`;
     else $card.innerHTML = k(p.cambia ? 'Cambio de la reunión' : 'Convocatoria preparada') + `<div class="vz-card-t">${esc(p.titulo)}</div>
       <div class="vz-card-m">${esc(fmtDia(p.fecha))} · ${esc(p.inicio)}–${esc(p.fin)} · ${p.teams ? 'Teams' : esc(p.lugar || 'Presencial')}</div>
@@ -88,13 +90,52 @@
     u.lang = 'es-ES'; u.rate = 1.05;
     const v = TTS.getVoices().find((x) => /^es(-|_)ES/i.test(x.lang)) || TTS.getVoices().find((x) => /^es/i.test(x.lang)); if (v) u.voice = v;
     let done = false;
-    const fin = () => { if (done) return; done = true; clearTimeout(S.ttsTimer); S.utter = null; if (S.open && S.phase === 'speaking') { setPhase('idle'); then && then(); } };
+    const fin = () => { if (done) return; done = true; clearTimeout(S.ttsTimer); S.utter = null; stopBarge(); if (S.open && S.phase === 'speaking') { setPhase('idle'); then && then(); } };
     u.onend = fin; u.onerror = fin;
     S.utter = u; TTS.speak(u);
     // algunos móviles no avisan del final: plan B por la longitud del texto
     S.ttsTimer = setTimeout(fin, 2500 + String(text).length * 75);
+    startBarge(text);
   }
-  function stopSpeak() { clearTimeout(S.ttsTimer); if (TTS && (TTS.speaking || TTS.pending)) TTS.cancel(); S.utter = null; }
+  function stopSpeak() { clearTimeout(S.ttsTimer); stopBarge(); if (TTS && (TTS.speaking || TTS.pending)) TTS.cancel(); S.utter = null; }
+
+  /* ---------- interrumpir hablando ----------
+     Mientras el asistente habla, el micro sigue escuchando. Lo que oye y coincide con lo que está diciendo el propio
+     asistente (el eco del altavoz) no cuenta; en cuanto oye palabras tuyas que no está diciendo él, se calla y te escucha. */
+  const CORTAS = new Set(['si', 'no', 'para', 'espera', 'calla', 'stop', 'alto', 'vale', 'oye', 'perdona']);
+  function stopBarge() { const r = S.barge; S.barge = null; if (r && !r._taken) { r.onend = null; try { r.abort(); } catch (e) { /* ya parado */ } } }
+  function startBarge(spoken) {
+    if (!SR || !S.open) return;
+    const said = new Set(norm(spoken).split(' '));
+    const r = new SR(); r.lang = 'es-ES'; r.continuous = true; r.interimResults = true; S.barge = r;
+    let fin = '', inter = '', live = null, quiet = 0;
+    r.onresult = (ev) => {
+      inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t + ' '; else inter += t; }
+      const txt = (fin + inter).replace(/\s+/g, ' ').trim();
+      if (!r._taken) {
+        const ws = norm(txt).split(' ').filter(Boolean);
+        const nuevas = ws.filter((w) => !said.has(w) && (w.length > 2 || CORTAS.has(w)));
+        const corta = ws.length <= 2 && nuevas.some((w) => CORTAS.has(w));
+        if (!((nuevas.length >= 2 && nuevas.length / ws.length >= 0.5) || corta)) return;
+        // te ha oído a ti: se calla y sigue escuchándote con este mismo micro
+        r._taken = true; S.barge = null; S.rec = r;
+        setPhase('listening'); clearTimeout(S.ttsTimer); if (TTS) TTS.cancel(); S.utter = null;
+        live = bubble('yo', txt, 'live');
+      } else if (live) live.textContent = txt;
+      clearTimeout(quiet); quiet = setTimeout(() => { try { r.stop(); } catch (e) { /* ya parado */ } }, 1400);
+    };
+    r.onerror = () => {};
+    r.onend = () => {
+      clearTimeout(quiet);
+      if (r._taken) {
+        if (S.rec !== r) return; S.rec = null;
+        const text = (fin + ' ' + inter).replace(/\s+/g, ' ').trim();
+        if (!text) { if (live) live.remove(); setPhase('idle'); listen(); return; }
+        live.classList.remove('live'); live.textContent = text; S.retries = 0; handle(text);
+      } else if (S.barge === r && S.phase === 'speaking' && S.open) { S.barge = null; startBarge(spoken); }
+    };
+    try { r.start(); } catch (e) { S.barge = null; }
+  }
 
   /* ---------- escuchar ---------- */
   function listen() {
@@ -200,17 +241,18 @@
   async function enviarOtro(p) {
     S.busy = true; setPhase('thinking', 'Enviando…');
     try {
-      const A = window.__sqActs; if (!A) throw new Error('la app aún está cargando');
+      const A = window.__sqActs; if (!A && p.tipo !== 'mover') throw new Error('la app aún está cargando');
       let txt;
       if (p.tipo === 'asignar') { await A.asignar(p); txt = 'Hecho. ' + corto(p.para.nombre) + ' ya la tiene en su lista y tú la ves en «Esperando a otros».'; }
       else if (p.tipo === 'correo') { const r = await A.correo(p); txt = r === 'cola' ? 'La he dejado en la cola de Outlook: saldrá en la próxima actualización.' : 'Enviado. He dado el correo por gestionado.'; }
       else if (p.tipo === 'convocatoria') { await A.convocatoria(p); txt = 'Hecho, respuesta enviada a ' + (p.organiza ? corto(p.organiza) : 'quien convoca') + '.'; }
       else if (p.tipo === 'mensaje') { await A.mensaje(p); txt = 'Mensaje enviado a ' + corto(p.para.nombre) + '.'; }
+      else if (p.tipo === 'mover') { await callReuniones({ action: 'moverReunion', enlace: p.enlace, fecha: p.nfecha, inicio: p.ninicio, fin: p.nfin }); txt = 'Movida a las ' + hora(p.ninicio) + (p.nfecha !== p.fecha ? ' del ' + fmtDia(p.nfecha) : '') + '.' + (p.asistentes ? ' Ya les llega el aviso.' : ''); }
       else throw new Error('no sé hacer eso todavía');
       S.pend = null; showCard();
       S.msgs.push({ role: 'user', content: 'Sí' }, { role: 'assistant', content: txt });
       say(txt, listen, 'ok');
-    } catch (e) { say('No he podido hacerlo: ' + e.message + '.', listen, 'err'); } finally { S.busy = false; }
+    } catch (e) { say('No he podido hacerlo: ' + (/NO_ORGANIZADOR/.test(e.message) ? 'esa reunión la convoca otra persona y solo ella puede moverla' : e.message) + '.', listen, 'err'); } finally { S.busy = false; }
   }
   async function cancelar() {
     const u = S.ultima; if (!u || !u.id || S.busy) return;
