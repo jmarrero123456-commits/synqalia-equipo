@@ -44,7 +44,7 @@
 .bz-movew select { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; }
 
 /* tres columnas: carpetas · lista · correo */
-.bz-body { --bz-fw: 168px; display: grid; grid-template-columns: var(--bz-fw) minmax(300px, 400px) minmax(0, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); height: calc(100dvh - var(--sq-bar, 54px) - 120px); min-height: 460px; }
+.bz-body { --bz-fw: 168px; display: grid; grid-template-columns: var(--bz-fw) var(--bz-lw, minmax(300px, 400px)) 0 minmax(0, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); height: calc(100dvh - var(--sq-bar, 54px) - 120px); min-height: 460px; }
 .bz-folders { background: color-mix(in srgb, var(--ink) 3%, var(--panel)); border-right: 1px solid var(--line); padding: 6px; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
 .bz-folders button[data-f] { display: flex; justify-content: space-between; gap: 6px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 9px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .bz-folders button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -55,8 +55,9 @@
 .bz-flbl { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); padding: 12px 9px 4px; }
 .bz-fold { align-self: flex-end; display: flex; align-items: center; justify-content: center; width: 30px; height: 26px; margin: 0 0 2px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
 .bz-fold:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
-.bz.bz-fcol .bz-body { --bz-fw: 42px !important; }
-.bz.bz-fcol .bz-folders { padding: 8px 4px; align-items: center; }
+.bz.bz-fcol .bz-body { --bz-fw: 26px !important; }
+.bz.bz-fcol .bz-folders { padding: 6px 0; align-items: center; }
+.bz.bz-fcol .bz-fold { width: 22px; }
 .bz.bz-fcol .bz-fold { align-self: center; }
 .bz.bz-fcol .bz-folders > :not(.bz-fold):not(.bz-fmini) { display: none; }
 .bz-fmini { display: none; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 6px; white-space: nowrap; }
@@ -240,7 +241,7 @@ span.bz-chev { cursor: default; }
   .bz-top { flex-wrap: wrap; }
   .bz-search { flex: 1 1 200px; }
   .bz-filters { order: 3; flex: 1 1 100%; }
-  .bz-body { --bz-fw: 120px; grid-template-columns: var(--bz-fw) minmax(230px, 290px) minmax(0, 1fr); }
+  .bz-body { --bz-fw: 120px; grid-template-columns: var(--bz-fw) var(--bz-lw, minmax(230px, 290px)) 0 minmax(0, 1fr); }
   .bz-folders button[data-f] { padding: 6px 7px; font-size: 12.5px; }
   .bz-pane { padding: 10px 12px 20px; }
   .bz-phead h3 { font-size: 16.5px; }
@@ -374,3 +375,23 @@ span.bz-chev { cursor: default; }
 .bz-files li > span { display: grid; gap: 0; min-width: 0; }
 .bz-files li.inl { border-color: color-mix(in srgb, #5fe0cf 60%, var(--line)); }
 
+
+/* 25/11 · menos márgenes a los lados y lista que se estrecha arrastrando (como Outlook) */
+.bz-grip { position: relative; z-index: 4; width: 0; cursor: col-resize; touch-action: none; }
+.bz-grip::before { content: ""; position: absolute; top: 0; bottom: 0; left: -4px; width: 8px; }
+.bz-grip:hover::after, .bz-grip:focus-visible::after, .bz.bz-dragw .bz-grip::after { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 3px; background: #2bb3a3; }
+.bz.bz-dragw { user-select: none; cursor: col-resize; }
+.bz.bz-dragw .bz-pane { pointer-events: none; }
+.bz-chev { width: 18px; padding-left: 2px; }
+.bz-sec { padding-left: 22px; }
+/* lista estrecha: sin iniciales, todo el sitio para el texto */
+.bz.bz-lnarrow .bz-col .bz-av { display: none; }
+.bz.bz-lnarrow .bz-rowbtn { padding-left: 4px; }
+.bz.bz-lnarrow .bz-subbtn { padding-left: 26px; }
+.bz.bz-lnarrow .bz-n { display: none; }
+@media (min-width: 600px) {
+  .app:has(> #view-correo:not([hidden])) { padding-left: 10px; padding-right: 10px; }
+  #view-correo .card.bz-on { padding: 8px; border-radius: 10px; }
+  .bz-search { flex-basis: 170px; min-width: 110px; }
+}
+@media (max-width: 899px) { .bz-grip { display: none; } .bz-body { --bz-lw: initial; } }
