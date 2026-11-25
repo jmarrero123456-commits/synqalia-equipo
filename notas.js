@@ -499,6 +499,7 @@
     return arr.sort((x, y) => (y.fijada ? 1 : 0) - (x.fijada ? 1 : 0) || (byDay ? String(y.dia || '').localeCompare(String(x.dia || '')) : 0) || String(y.editada).localeCompare(String(x.editada)));
   }
   function renderNav() {
+    try { document.dispatchEvent(new CustomEvent('sq-notas')); } catch (e) { /* sin eventos */ }
     list.innerHTML = ''; list.append(h('div', { class: 'lb-sync' })); setTimeout(setSync, 0);
     const active = [...S.notes.values()].filter((n) => !n.archivada);
     if (!S.book) {
@@ -673,6 +674,20 @@
     db.collection('lb_libretas').onSnapshot(async (s) => { await applyRemote('lb_libretas', s.docs); renderNav(); });
     db.collection('lb_notas').onSnapshot(async (s) => { const prev2 = S.note && S.notes.get(S.note); await applyRemote('lb_notas', s.docs); refreshFromRemote(prev2); });
   }
+  /* ---------- Inicio: apuntar notas rápidas y verlas marcadas como «mega importante» ---------- */
+  const pickBook = (id) => S.books.get(id) || [...S.books.values()].find((b) => /idea/i.test(b.nombre || '') && (b.tipo || 'libre') === 'libre') || [...S.books.values()].find((b) => (b.tipo || 'libre') === 'libre') || booksSorted()[0];
+  window.__sqNotas = {
+    list: () => [...S.notes.values()],
+    bookName: (id) => (S.books.get(id) || {}).nombre || '',
+    async add(p) {
+      const b = pickBook(p.libreta);
+      const n = newNote({ libreta: b ? b.id : null, titulo: String(p.titulo || '').slice(0, 140), cuerpo: String(p.cuerpo || ''), origen: p.origen || 'inicio', ...(p.mega ? { mega: true } : {}) });
+      await saveNote(n); renderNav(); if (S.book) renderPage(); return n;
+    },
+    async update(id, patch) { const n = S.notes.get(id); if (!n) return false; Object.assign(n, patch); await saveNote(n); renderNav(); return true; },
+    open(id) { location.hash = '#notas'; setTimeout(() => openNote(id), 60); },
+  };
+
   (async () => {
     // 1) copia del dispositivo: abre al instante y sin conexión
     try { for (const r of (await idb.all()) || []) { delete r.busy; recs.set(keyOf(r.col, r.id), r); if (!r.del && r.data) (r.col === 'lb_notas' ? S.notes : S.books).set(r.id, r.data); } } catch (e) { console.warn('IndexedDB', e); }

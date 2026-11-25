@@ -74,7 +74,8 @@
   card.className = 'card sq-teams'; card.hidden = true;
   card.innerHTML = `<div class="row-between"><h2>Teams · sin leer</h2><span class="sq-live" hidden>Al instante</span></div><div class="list"></div>`;
   const mailCard = document.getElementById('hoy-mail')?.closest('section');
-  if (mailCard) mailCard.after(card); else hoy.appendChild(card);
+  const slot = document.getElementById('in-teams-slot');
+  if (slot) { card.classList.add('in-card'); slot.appendChild(card); } else if (mailCard) mailCard.after(card); else hoy.appendChild(card);
 
   function paintTeams() {
     if (!st?.connected) { card.hidden = true; return; }
