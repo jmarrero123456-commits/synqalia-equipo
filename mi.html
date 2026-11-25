@@ -1231,7 +1231,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261124y">
 <link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261124j">
+<link rel="stylesheet" href="buzon.css?v=20261125a">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
 <link rel="stylesheet" href="inicio.css?v=20261125c">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -3617,9 +3617,31 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         return v;
       };
       let progAt = null; // envío programado (24/11)
+      let att = null; // adjuntos (25/11)
       const finish = async (t, toDrafts) => {
         const cc = ccOk();
         if (cc === null) return;
+        if (direct && att && att.count()) {
+          // con adjuntos o imágenes: borrador preparado → se suben → se envía (o se queda en Borradores)
+          const prog = toDrafts ? null : progAt; progAt = null;
+          if (!toDrafts && !(await saveReply(m, {texto: t, estado: 'enviando'}))) return;
+          ready.disabled = true; setStatus('Preparando el correo…');
+          try {
+            const {draft} = await buzonCall({op: 'pendiente', mail: m.id, texto: t, cc, inline: att.inlineCids(), preparar: true});
+            await att.upload(draft);
+            if (toDrafts) { att.clear(); delete state.drafts[m.id]; setStatus('En tus Borradores de Outlook, con los adjuntos.'); renderAll(); return; }
+            setStatus(prog ? 'Programando…' : 'Enviando…');
+            await buzonCall({op: 'enviarBorrador', draft, tipo: 'responder', programar: prog ? prog.toISOString() : null});
+            if (cc) rememberCc(cc);
+            att.clear();
+            const row = [...document.querySelectorAll('#mail-list .mrow')].find((x) => x.dataset.mid === m.id);
+            const nid = row && row.nextElementSibling && row.nextElementSibling.dataset.mid ? row.nextElementSibling.dataset.mid : null;
+            delete state.drafts[m.id]; state.openReply = null; state.scrollToMid = nid;
+            await write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), prog && window.__sqSchedule ? 'Programado: sale ' + window.__sqSchedule.label(prog) + ' ✓ · correo gestionado' : 'Enviado ✓ · correo gestionado');
+            renderAll();
+          } catch (e) { ready.disabled = false; setStatus('No se pudo enviar: ' + e.message, true); }
+          return;
+        }
         if (direct && toDrafts && cc) {
           setStatus('Guardando en Borradores de Outlook con la copia…');
           try { await buzonCall({op: 'pendiente', mail: m.id, texto: t, cc, enviar: false}); delete state.drafts[m.id]; setStatus('En tus Borradores de Outlook, con la copia.'); renderAll(); }
@@ -3685,6 +3707,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (direct) { const dr = el('button', 'btn ghost', 'A Borradores de Outlook'); dr.type = 'button'; dr.title = 'No la envía: la deja en tus Borradores de Outlook, dentro del hilo'; dr.addEventListener('click', () => { const t = ta.value.trim(); if (!t) { setStatus('La respuesta está vacía.', true); return; } finish(t, true); }); btns.appendChild(dr); }
       else btns.appendChild(replyOutlookBtn(m, ta, setStatus));
       btns.appendChild(ready);
+      // adjuntos e imágenes pegadas (25/11)
+      if (direct && typeof window.__sqAttach === 'function') { att = window.__sqAttach(ta, setStatus); box.appendChild(att.node); }
       if (direct && window.__sqSchedule) {
         // ⏱ Programar: elige la hora y sigue el mismo camino que «Enviar» (revisión incluida)
         const pb = el('button', 'btn', '⏱ Programar'); pb.type = 'button'; pb.title = 'Elegir cuándo se envía';
@@ -6090,7 +6114,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261125d" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261124j" defer></script>
+<script src="buzon.js?v=20261125a" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 </body>
