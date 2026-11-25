@@ -456,3 +456,28 @@ iframe.bz-html { display: block; width: 100%; height: 120px; border: 0; backgrou
 .bz-body1, .bz-hslot { border-radius: 6px; overflow: hidden; }
 .bz-quoted { border-left: 3px solid var(--line); padding-left: 10px; }
 .bz-quoted iframe.bz-html { opacity: .92; }
+
+/* ver adjuntos sin descargar (25/11) */
+.bz-attw { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); max-width: 100%; }
+.bz-attw .bz-att { border: 0; border-radius: 6px 0 0 6px; }
+.bz-attw .bz-att:hover, .bz-attw .bz-attdl:hover { background: color-mix(in srgb, #5fe0cf 14%, var(--panel)); }
+.bz-attw .bz-attdl { height: auto; width: 36px; border-left: 1px solid var(--line); border-radius: 0 6px 6px 0; }
+body.bz-noscroll { overflow: hidden; }
+.bz-viewer { position: fixed; inset: 0; z-index: 500; background: rgba(11, 14, 19, .6); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.bz-vbox { width: min(1100px, 100%); height: min(92vh, 100%); background: var(--panel); border-radius: 12px; box-shadow: 0 24px 60px rgba(0, 0, 0, .35); display: flex; flex-direction: column; overflow: hidden; }
+.bz-vhead { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.bz-vhead b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.bz-vbody { flex: 1; min-height: 0; overflow: auto; background: #eef1f5; display: flex; flex-direction: column; }
+.bz-vbody > .bz-loading, .bz-vbody > .bz-empty { padding: 24px; }
+.bz-vpdf { flex: 1; width: 100%; border: 0; background: #fff; }
+.bz-vpages { display: grid; gap: 10px; justify-items: center; padding: 8px; }
+.bz-vpages canvas { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); max-width: 100%; }
+.bz-vimg { max-width: 100%; max-height: 100%; margin: auto; object-fit: contain; padding: 8px; box-sizing: border-box; }
+.bz-vtabs { flex: none; display: flex; gap: 6px; padding: 8px; overflow-x: auto; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bz-vsheet, .bz-vdoc { padding: 8px; }
+.bz-vtext { margin: 0; padding: 16px; white-space: pre-wrap; font-size: 13px; background: #fff; flex: 1; }
+@media (max-width: 599px) {
+  .bz-viewer { padding: 0; }
+  .bz-vbox { width: 100%; height: 100%; border-radius: 0; }
+  .bz-vhead .bz-btn span { display: none; }
+}

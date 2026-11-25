@@ -47,6 +47,7 @@
     pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     chev: '<path d="M9 6l6 6-6 6"/>',
+    down: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
     more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
     check: '<path d="M5 12l5 5L20 7"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -686,7 +687,7 @@
   const lastIn = (h = st.hilo) => (h || []).find((x) => !x.mio) || (h || [])[0];
   const safeOutlook = (u) => { try { const x = new URL(u || ''); return x.protocol === 'https:' && /(^|\.)(office\.com|outlook\.com|cloud\.microsoft|office365\.com|live\.com)$/i.test(x.hostname) ? x.href : ''; } catch { return ''; } };
   const tam = (b) => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
-  const adjHtml = (x) => x.adjuntos?.length ? `<div class="bz-adj">${x.adjuntos.map((a) => `<button type="button" class="bz-att" data-att="${esc(a.id)}" data-mid="${esc(x.id)}">${svg('clip', 15)}<span><b>${esc(a.nombre)}</b><small>${esc(tam(a.tam))} · Ver o descargar</small></span></button>`).join('')}</div>` : '';
+  const adjHtml = (x) => x.adjuntos?.length ? `<div class="bz-adj">${x.adjuntos.map((a) => `<span class="bz-attw"><button type="button" class="bz-att" data-att="${esc(a.id)}" data-mid="${esc(x.id)}" title="Ver sin descargar">${svg('clip', 15)}<span><b>${esc(a.nombre)}</b><small>${esc(tam(a.tam))} · Ver</small></span></button><button type="button" class="bz-ibtn bz-attdl" data-dl="${esc(a.id)}" data-mid="${esc(x.id)}" title="Descargar" aria-label="Descargar ${esc(a.nombre)}">${svg('down', 16)}</button></span>`).join('')}</div>` : '';
   function msgHtml(x) {
     const de = x.mio ? `${x.de?.nombre || 'Tú'} (tú)` : (x.de?.nombre || x.de?.mail || '');
     return `<section class="bz-m${x.mio ? ' mio' : ''}" data-mid="${esc(x.id)}">
@@ -756,6 +757,8 @@
         <button type="button" class="bz-btn" data-a="reenviar">${svg('fwd', 15)}<span>Reenviar</span></button>
       </div>`;
     paintTools(); paintSyn(); fitFrames();
+    // los adjuntos del último mensaje se traen ya, para verlos al instante
+    (top.adjuntos || []).filter((x) => (x.tam || 0) < 6 * 1024 * 1024).slice(0, 3).forEach((x) => getAtt(top.id, x.id).catch(() => null));
   }
   const fillMsg = (sec2) => { const slot = sec2.querySelector('.bz-hslot'); const x = st.hilo?.find((y) => y.id === sec2.dataset.mid); if (slot && x && !slot.firstChild) { slot.innerHTML = bodyOf(x); fitFrames(sec2); } };
   // icono de tarea: turquesa y con número cuando ese correo ya está en Tareas (25/11)
@@ -868,8 +871,10 @@
   const msgStatus = (t, bad) => { const p = pane.querySelector('.bz-msgst'); if (p) { p.textContent = t; p.classList.toggle('bad', !!bad); } };
 
   pane.addEventListener('click', async (e) => {
+    const dl = e.target.closest('[data-dl]');
+    if (dl) return download(dl.dataset.mid, dl.dataset.dl, dl);
     const att = e.target.closest('[data-att]');
-    if (att) return download(att.dataset.mid, att.dataset.att, att);
+    if (att) return preview(att.dataset.mid, att.dataset.att, att);
     const k = e.target.closest('[data-classic]');
     if (k) return P()?.clasico(k.dataset.classic);
     const mh = e.target.closest('.bz-mh');
@@ -1083,18 +1088,104 @@
       refreshFolders();
     } catch (err) { msgStatus(err.message, true); }
   }
-  async function download(mid, aid, btn) {
-    btn.disabled = true; msgStatus('Descargando el adjunto…');
-    try {
-      const r = await call('adjunto', { id: mid, aid });
+  // adjuntos: se traen una vez y se guardan mientras dure la sesión (ver y luego descargar no lo pide dos veces)
+  const attCache = new Map();
+  async function getAtt(mid, aid) {
+    const k = mid + '|' + aid;
+    if (attCache.has(k)) return attCache.get(k);
+    const p = call('adjunto', { id: mid, aid }).then((r) => {
       const bin = atob(r.b64), arr = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([arr], { type: r.tipo || 'application/octet-stream' }));
-      const a = document.createElement('a'); a.href = url; a.download = r.nombre || 'adjunto'; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-      msgStatus('');
-    } catch (err) { msgStatus(err.message, true); }
+      return { nombre: r.nombre || 'adjunto', tipo: r.tipo || 'application/octet-stream', bytes: arr };
+    });
+    attCache.set(k, p); p.catch(() => attCache.delete(k));
+    if (attCache.size > 12) attCache.delete(attCache.keys().next().value);
+    return p;
+  }
+  function saveFile(f) {
+    const url = URL.createObjectURL(new Blob([f.bytes], { type: f.tipo }));
+    const a = document.createElement('a'); a.href = url; a.download = f.nombre; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  async function download(mid, aid, btn) {
+    btn.disabled = true; msgStatus('Descargando el adjunto…');
+    try { saveFile(await getAtt(mid, aid)); msgStatus(''); } catch (err) { msgStatus(err.message, true); }
     btn.disabled = false;
+  }
+
+  /* ---------- ver un adjunto sin descargarlo (25/11): PDF, imágenes, Excel, Word y texto ---------- */
+  let viewer = null;
+  function closeViewer() { if (!viewer) return; viewer.urls.forEach((u) => URL.revokeObjectURL(u)); viewer.el.remove(); viewer = null; document.body.classList.remove('bz-noscroll'); }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && viewer) { e.stopPropagation(); closeViewer(); } }, true);
+  const loadScript = (src) => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error('No se pudo cargar el visor')); document.head.appendChild(sc); });
+  const ext = (n) => (String(n).toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1] || '';
+  async function preview(mid, aid, btn) {
+    closeViewer();
+    const nombre = btn.querySelector('b')?.textContent || 'Adjunto';
+    const el = document.createElement('div');
+    el.className = 'bz-viewer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Vista previa de ' + nombre);
+    el.innerHTML = `<div class="bz-vbox"><div class="bz-vhead"><b>${esc(nombre)}</b><button type="button" class="bz-btn" data-vdl disabled>${svg('down', 15)}<span>Descargar</span></button><button type="button" class="bz-ibtn" data-vx aria-label="Cerrar (Esc)" title="Cerrar (Esc)">✕</button></div><div class="bz-vbody"><p class="bz-loading">Abriendo el archivo…</p></div></div>`;
+    document.body.appendChild(el); document.body.classList.add('bz-noscroll');
+    viewer = { el, urls: [] };
+    const me = viewer;
+    el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('[data-vx]')) closeViewer(); });
+    el.querySelector('[data-vx]').focus();
+    const body = el.querySelector('.bz-vbody');
+    let f;
+    try { f = await getAtt(mid, aid); } catch (err) { if (viewer === me) body.innerHTML = `<p class="bz-empty err">${esc(err.message)}</p>`; return; }
+    if (viewer !== me) return;
+    const dlb = el.querySelector('[data-vdl]'); dlb.disabled = false; dlb.addEventListener('click', () => saveFile(f));
+    const x = ext(f.nombre), t = f.tipo.toLowerCase();
+    const blobUrl = (type) => { const u = URL.createObjectURL(new Blob([f.bytes], { type: type || f.tipo })); me.urls.push(u); return u; };
+    try {
+      if (t === 'application/pdf' || x === 'pdf') {
+        if (navigator.pdfViewerEnabled && !mqNarrow.matches) { body.innerHTML = `<iframe class="bz-vpdf" title="${esc(f.nombre)}" src="${blobUrl('application/pdf')}#view=FitH"></iframe>`; return; }
+        // móvil: se pinta página a página con pdf.js
+        const pdfjs = await import(new URL('vendor/pdfjs/pdf.min.mjs', location.href).href);
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.mjs', location.href).href;
+        const doc = await pdfjs.getDocument({ data: f.bytes.slice(), isEvalSupported: false }).promise;
+        if (viewer !== me) return;
+        body.innerHTML = `<div class="bz-vpages"></div>`;
+        const wrap = body.firstChild, w = Math.min(body.clientWidth - 16, 1000);
+        for (let i = 1; i <= Math.min(doc.numPages, 60); i++) {
+          const page = await doc.getPage(i);
+          if (viewer !== me) return;
+          const v0 = page.getViewport({ scale: 1 }), scale = w / v0.width, dpr = Math.min(2, window.devicePixelRatio || 1);
+          const vp = page.getViewport({ scale: scale * dpr });
+          const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.style.width = Math.round(vp.width / dpr) + 'px';
+          wrap.appendChild(c);
+          await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        }
+        if (doc.numPages > 60) wrap.insertAdjacentHTML('beforeend', '<p class="bz-hint">Se ven las 60 primeras páginas. Descárgalo para verlo entero.</p>');
+        return;
+      }
+      if (/^image\//.test(t) || /^(png|jpe?g|gif|webp|bmp|svg)$/.test(x)) { body.innerHTML = `<img class="bz-vimg" alt="${esc(f.nombre)}" src="${blobUrl(x === 'svg' ? 'image/svg+xml' : '')}">`; return; }
+      if (/^(xlsx|xlsm|xls|csv|ods)$/.test(x) || /spreadsheet|ms-excel/.test(t)) {
+        if (!window.XLSX) await loadScript('vendor/xlsx.full.min.js');
+        const XLSX = window.XLSX;
+        const wb = XLSX.read(f.bytes, { type: 'array' });
+        if (viewer !== me) return;
+        const tabs = wb.SheetNames.slice(0, 20);
+        body.innerHTML = `${tabs.length > 1 ? `<div class="bz-vtabs">${tabs.map((n, i) => `<button type="button" class="bz-chip" data-sh="${i}" aria-pressed="${i === 0}">${esc(n)}</button>`).join('')}</div>` : ''}<div class="bz-vsheet"></div>`;
+        const show = (i) => { const html = XLSX.utils.sheet_to_html(wb.Sheets[tabs[i]], { editable: false }).replace(/^[\s\S]*?<body>|<\/body>[\s\S]*$/g, ''); body.querySelector('.bz-vsheet').innerHTML = frameHtml(`<style>table{border-collapse:collapse;font-size:12.5px}td,th{border:1px solid #d5dbe3;padding:3px 6px;white-space:nowrap}tr:first-child td{background:#f1f4f7;font-weight:700}</style>${html}`); fitFrames(body); body.querySelectorAll('[data-sh]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.sh === i))); };
+        body.querySelector('.bz-vtabs')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sh]'); if (b) show(+b.dataset.sh); });
+        show(0); return;
+      }
+      if (x === 'docx' || /wordprocessingml/.test(t)) {
+        if (!window.mammoth) await loadScript('vendor/mammoth.browser.min.js');
+        const r = await window.mammoth.convertToHtml({ arrayBuffer: f.bytes.buffer.slice(0) });
+        if (viewer !== me) return;
+        body.innerHTML = `<div class="bz-vdoc">${frameHtml(`<style>body{max-width:780px;margin:0 auto;padding:24px;font-size:14.5px;line-height:1.55}table{border-collapse:collapse}td,th{border:1px solid #d5dbe3;padding:4px 6px}</style>${r.value}`)}</div>`;
+        fitFrames(body); return;
+      }
+      if (/^text\//.test(t) || /^(txt|log|json|xml|md|ics|vcf)$/.test(x)) { body.innerHTML = `<pre class="bz-vtext">${esc(new TextDecoder().decode(f.bytes).slice(0, 300000))}</pre>`; return; }
+      body.innerHTML = `<div class="bz-empty">Este tipo de archivo (${esc(x ? '.' + x : f.tipo)}) no se puede ver aquí. <button type="button" class="bz-link" data-vdl2>Descárgalo</button> para abrirlo.</div>`;
+      body.querySelector('[data-vdl2]').addEventListener('click', () => saveFile(f));
+    } catch (err) {
+      if (viewer !== me) return;
+      body.innerHTML = `<div class="bz-empty err">No se pudo mostrar: ${esc(err.message)}. <button type="button" class="bz-link" data-vdl2>Descargar</button></div>`;
+      body.querySelector('[data-vdl2]').addEventListener('click', () => saveFile(f));
+    }
   }
 
   // Desde Inicio, Tareas o Agenda: abrir un correo de Pendientes aquí mismo (si tiene conversación de Outlook)
