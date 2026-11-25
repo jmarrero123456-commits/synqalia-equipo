@@ -534,16 +534,19 @@ ${hist}`;
           ${info.live ? `<label class="sqm-tchk"><input id="tk-av" type="checkbox"${f.avisar ? ' checked' : ''}><span>Avisar en el chat</span></label>${f.avisar ? `<input id="tk-avt" type="text" maxlength="300" class="sqm-tdate" value="${esc(f.aviso)}" aria-label="Mensaje de aviso">` : ''}` : ''}
         </details>
         </div>
-        <div class="sqm-tact"><button type="button" class="sqm-tgo" data-tk="crear"${loading ? ' disabled' : ''}>${loading ? 'Preparando…' : 'Crear tarea'}</button><button type="button" class="sqm-tno" data-tk="x">Cancelar</button></div>
+        <div class="sqm-tact"><button type="button" class="sqm-tgo" data-tk="crear">Crear tarea</button><button type="button" class="sqm-tno" data-tk="x">Cancelar</button></div>
       </div>`;
       const dt = el.querySelector('.sqm-tmore'); if (dt) dt.addEventListener('toggle', () => { f.dOpen = dt.open; });
     };
     paintT();
+    // Lo que toque Jaime mientras la IA prepara la tarea no se pisa
+    const touched = new Set();
+    el.addEventListener('input', (e) => { const id = e.target && e.target.id; if (id === 'tk-t') touched.add('titulo'); if (id === 'tk-d') touched.add('detalle'); if (id === 'tk-f') touched.add('vence'); if (id === 'tk-avt') touched.add('aviso'); });
     el.addEventListener('click', async (e) => {
       const t = e.target;
       if (t === el || t.closest('[data-tk="x"]')) { closeTask(); return; }
-      const fb = t.closest('[data-tk-f]'); if (fb) { read(); const v = fb.dataset.tkF; if (v === 'otra') { f.otra = true; } else { f.otra = false; f.vence = v || null; } paintT(); if (f.otra) el.querySelector('#tk-f')?.focus(); return; }
-      const pb = t.closest('[data-tk-p]'); if (pb) { read(); f.prioridad = pb.dataset.tkP; paintT(); return; }
+      const fb = t.closest('[data-tk-f]'); if (fb) { touched.add('vence'); read(); const v = fb.dataset.tkF; if (v === 'otra') { f.otra = true; } else { f.otra = false; f.vence = v || null; } paintT(); if (f.otra) el.querySelector('#tk-f')?.focus(); return; }
+      const pb = t.closest('[data-tk-p]'); if (pb) { touched.add('prioridad'); read(); f.prioridad = pb.dataset.tkP; paintT(); return; }
       if (t.closest('#tk-av')) { read(); paintT(); return; }
       if (t.closest('[data-tk="vc-x"]')) { read(); f.vc = ''; paintT(); el.querySelector('#tk-vc')?.focus(); return; }
       if (t.closest('[data-tk="crear"]')) { read(); await createTask(info, f, focus, el); }
@@ -552,13 +555,14 @@ ${hist}`;
       const r = await aiTask(info, focus);
       if (taskSheet !== el) return;
       read();
-      if (r.titulo) f.titulo = String(r.titulo).slice(0, 300);
-      if (r.detalle) f.detalle = String(r.detalle).slice(0, 1000);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(r.vence || '')) f.vence = r.vence;
-      if (['Mega', 'Alta', 'Media', 'Baja'].includes(r.prioridad)) f.prioridad = r.prioridad;
-      if (r.aviso) f.aviso = String(r.aviso).slice(0, 300);
+      if (r.titulo && !touched.has('titulo')) f.titulo = String(r.titulo).slice(0, 300);
+      if (r.detalle && !touched.has('detalle')) f.detalle = String(r.detalle).slice(0, 1000);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(r.vence || '') && !touched.has('vence')) f.vence = r.vence;
+      if (['Mega', 'Alta', 'Media', 'Baja'].includes(r.prioridad) && !touched.has('prioridad')) f.prioridad = r.prioridad;
+      if (r.aviso && !touched.has('aviso')) f.aviso = String(r.aviso).slice(0, 300);
     } catch (err) { aiErr = String(err.message || err); }
-    loading = false; if (taskSheet === el) paintT();
+    loading = false;
+    if (taskSheet === el) { const a = document.activeElement, aid = a && el.contains(a) ? a.id : null, pos = aid && a.selectionStart; paintT(); if (aid) { const n = el.querySelector('#' + aid); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } } }
   }
   async function createTask(info, f, focus, el) {
     const titulo = String(f.titulo || '').replace(/\s+/g, ' ').trim();
@@ -597,7 +601,7 @@ ${hist}`;
     const t = document.createElement('div'); t.className = 'sqm sqm-toast sqm-flash'; t.setAttribute('role', 'status');
     t.innerHTML = `${ICON.task}<span>Creada${nota ? esc(nota) : ''}</span>`;
     if (nota) t.style.animationDuration = '2s'; // si algo ha fallado (aviso en el chat), se deja leer un poco más
-    document.body.appendChild(t); setTimeout(() => t.remove(), nota ? 2000 : 500);
+    document.body.appendChild(t); setTimeout(() => t.remove(), nota ? 2000 : 400);
   }
   function verTareas() { if (st.open) closeConv(); location.hash = 'tareas'; }
   // móvil: mantener pulsado un mensaje
