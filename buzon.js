@@ -257,7 +257,8 @@
     folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) : '')}</span>`
       + main.map(li).join('') + (mine.length ? `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') : '');
     fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
-    if (st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.value = st.carpeta;
+    if (!st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.insertAdjacentHTML('afterbegin', `<option value="${esc(st.carpeta)}">${esc(WKN[st.carpeta] || 'Carpeta')}</option>`);
+    fsel.value = st.carpeta;
     paintCounts();
   }
   folders.addEventListener('click', (e) => {
@@ -443,7 +444,7 @@
     if (on) st.exp.add(conv); else st.exp.delete(conv);
     paintListSoft();
     if (on && !st.hcache.has(conv)) {
-      try { const r = await call('hilo', { conv, marcar: false }); st.hcache.set(conv, r.mensajes || []); }
+      try { const r = await call('hilo', { conv, marcar: false, ligero: true }); st.hcache.set(conv, r.mensajes || []); }
       catch { st.hcache.set(conv, []); }
       paintListSoft();
     }
@@ -460,7 +461,7 @@
       if (a === 'leido') {
         const unread = mid ? !msgs[0]?.leido : !!t?.unread;
         const ids = mid ? [mid] : unread ? st.items.filter((x) => x.conv === conv && !x.leido).map((x) => x.id) : [(t?.msgs || st.items.filter((x) => x.conv === conv))[0]?.id].filter(Boolean);
-        if (!ids.length && !mid) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; const x = h.find((y) => !y.mio) || h[0]; if (x) ids.push(x.id); }
+        if (!ids.length && !mid) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false, ligero: true })).mensajes || []; const x = h.find((y) => !y.mio) || h[0]; if (x) ids.push(x.id); }
         await call('leido', { ids, valor: unread });
         for (const x of st.items) if (ids.includes(x.id)) x.leido = unread;
         for (const x of st.hcache.get(conv) || []) if (ids.includes(x.id)) x.leido = unread;
@@ -468,7 +469,7 @@
       } else if (a === 'bandera') {
         const on = mid ? !msgs[0]?.bandera : !t?.bandera;
         const ids = mid ? [mid] : on ? [(t?.msgs || [])[0]?.id].filter(Boolean) : st.items.filter((x) => x.conv === conv && x.bandera).map((x) => x.id);
-        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; ids.push(...(on ? [h[0]?.id] : h.filter((x) => x.bandera).map((x) => x.id)).filter(Boolean)); }
+        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false, ligero: true })).mensajes || []; ids.push(...(on ? [h[0]?.id] : h.filter((x) => x.bandera).map((x) => x.id)).filter(Boolean)); }
         await Promise.all(ids.map((id) => call('bandera', { id, valor: on })));
         for (const x of st.items) if (ids.includes(x.id)) x.bandera = on;
         for (const x of st.hcache.get(conv) || []) if (ids.includes(x.id)) x.bandera = on;
@@ -476,7 +477,7 @@
         toast(on ? 'Con bandera (también en Outlook)' : 'Bandera quitada');
       } else if (a === 'eliminar') {
         const ids = mid ? [mid] : st.items.filter((x) => x.conv === conv).map((x) => x.id);
-        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false })).mensajes || []; ids.push(...h.filter((x) => !x.mio).map((x) => x.id)); }
+        if (!ids.length) { const h = st.hcache.get(conv) || (await call('hilo', { conv, marcar: false, ligero: true })).mensajes || []; ids.push(...h.filter((x) => !x.mio).map((x) => x.id)); }
         await call('mover', { ids, destino: 'deleteditems' });
         st.items = st.items.filter((x) => !ids.includes(x.id));
         if (st.hcache.has(conv)) st.hcache.set(conv, st.hcache.get(conv).filter((x) => !ids.includes(x.id)));
@@ -533,7 +534,7 @@
       const extra = st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
       st.items = keepOpen([...fresh, ...extra]);
       for (const c of st.exp) if (c !== st.sel) st.hcache.delete(c);
-      st.exp.forEach((c) => { if (!st.hcache.has(c)) call('hilo', { conv: c, marcar: false }).then((x) => { st.hcache.set(c, x.mensajes || []); paintListSoft(); }).catch(() => null); });
+      st.exp.forEach((c) => { if (!st.hcache.has(c)) call('hilo', { conv: c, marcar: false, ligero: true }).then((x) => { st.hcache.set(c, x.mensajes || []); paintListSoft(); }).catch(() => null); });
       paintListSoft();
       refreshFolders();
     } catch { /* la próxima vez */ }
@@ -552,6 +553,26 @@
     }
     return out + esc(t.slice(last));
   };
+  /* ---------- el correo tal cual se ve en Outlook (25/11): HTML en un marco aislado, sin scripts ---------- */
+  const FRAME_CSS = `html,body{margin:0;padding:0;background:#fff}body{font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.45;color:#121821;overflow-wrap:anywhere;overflow-x:auto}img{max-width:100%;height:auto}table{max-width:100%}pre{white-space:pre-wrap}a{color:#0b6e63}blockquote{margin:0 0 0 8px;padding-left:10px;border-left:3px solid #e3e6ec}`;
+  const frameHtml = (html) => `<iframe class="bz-html" title="Texto del correo" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="${esc(`<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>${FRAME_CSS}</style></head><body>${html}</body></html>`)}"></iframe>`;
+  // alto del marco = alto del correo (también cuando terminan de cargar las imágenes)
+  function fitFrames(scope = pane) {
+    scope.querySelectorAll('iframe.bz-html:not([data-fit])').forEach((f) => {
+      f.dataset.fit = '1';
+      const fit = () => { try { const d = f.contentDocument; if (!d?.body) return; f.style.height = Math.max(40, Math.ceil(d.documentElement.scrollHeight)) + 'px'; } catch { /* */ } };
+      f.addEventListener('load', () => {
+        fit();
+        try {
+          const d = f.contentDocument;
+          d.querySelectorAll('img').forEach((im) => im.addEventListener('load', fit));
+          new ResizeObserver(fit).observe(d.body);
+        } catch { /* */ }
+      });
+    });
+  }
+  const bodyOf = (x, full) => full ? (x.htmlCompleto ? frameHtml(x.htmlCompleto) : `<div class="bz-text">${linkify(x.citado)}</div>`)
+    : (x.html ? frameHtml(x.html) : `<div class="bz-text">${linkify(x.cuerpo || x.prev || '')}</div>`);
   function reading(on) {
     root.classList.toggle('bz-reading', on);
     if (on && mqNarrow.matches) { try { if (!history.state?.bz) history.pushState({ bz: 1 }, ''); } catch {} window.scrollTo({ top: 0 }); }
@@ -592,7 +613,7 @@
       if (n !== openN) return;
       st.hilo = r.mensajes || [];
       if (!st.hilo.length) throw new Error('Esta conversación ya no está en tu buzón.');
-      st.hcache.set(conv, st.hilo.map((x) => ({ ...x, leido: true })));
+      st.hcache.set(conv, st.hilo.map((x) => ({ ...x, html: '', htmlCompleto: '', cuerpo: '', citado: '', leido: true })));
       const hadUnread = t?.unread;
       for (const x of st.items) if (x.conv === conv) x.leido = true;
       paintListSoft(); paintThread();
@@ -621,8 +642,8 @@
       <div class="bz-mb">
         <div class="bz-meta">${esc(largo(x.fecha))} · Para: ${esc(nombres(x.para) || '—')}${x.cc?.length ? ' · CC: ' + esc(nombres(x.cc)) : ''}</div>
         ${adjHtml(x)}
-        <div class="bz-text">${linkify(x.cuerpo || x.prev || '')}</div>
-        ${x.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false">Mostrar texto citado</button><div class="bz-text bz-quoted" hidden>${linkify(x.citado)}</div>` : ''}
+        <div class="bz-hslot"></div>
+        ${x.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false" data-full="${esc(x.id)}">Mostrar texto citado</button><div class="bz-quoted" hidden></div>` : ''}
       </div>
     </section>`;
   }
@@ -631,7 +652,7 @@
     if (!mid || h[0]?.id === mid) return;
     const sec2 = pane.querySelector(`.bz-m[data-mid="${CSS.escape(mid)}"]`);
     if (!sec2) return;
-    sec2.classList.add('open'); sec2.querySelector('.bz-mh')?.setAttribute('aria-expanded', 'true');
+    sec2.classList.add('open'); sec2.querySelector('.bz-mh')?.setAttribute('aria-expanded', 'true'); fillMsg(sec2);
     scrollPane(sec2);
   }
 
@@ -668,8 +689,8 @@
         <p class="bz-msgst" aria-live="polite"></p>
         <div class="bz-compose-slot"></div>
         ${adjHtml(top)}
-        <div class="bz-text bz-body1">${linkify(top.cuerpo || top.prev || '')}</div>
-        ${top.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false">Mostrar texto citado</button><div class="bz-text bz-quoted" hidden>${linkify(top.citado)}</div>` : ''}
+        <div class="bz-body1">${bodyOf(top)}</div>
+        ${top.citado ? `<button type="button" class="bz-link bz-qt" aria-expanded="false" data-full="${esc(top.id)}">Mostrar texto citado</button><div class="bz-quoted" hidden></div>` : ''}
       </div>
       ${h.length > 1 ? `<div class="bz-prev"><div class="bz-plbl">Mensajes anteriores del hilo · ${h.length - 1}</div><div class="bz-thread">${h.slice(1).map(msgHtml).join('')}</div></div>` : ''}
       <div class="bz-mbot">
@@ -677,8 +698,9 @@
         <button type="button" class="bz-btn" data-a="todos">${svg('replyall', 15)}<span>A todos</span></button>
         <button type="button" class="bz-btn" data-a="reenviar">${svg('fwd', 15)}<span>Reenviar</span></button>
       </div>`;
-    paintTools(); paintSyn();
+    paintTools(); paintSyn(); fitFrames();
   }
+  const fillMsg = (sec2) => { const slot = sec2.querySelector('.bz-hslot'); const x = st.hilo?.find((y) => y.id === sec2.dataset.mid); if (slot && x && !slot.firstChild) { slot.innerHTML = bodyOf(x); fitFrames(sec2); } };
   // icono de tarea: turquesa y con número cuando ese correo ya está en Tareas (25/11)
   function taskBtn() {
     const n = mailTasks().length;
@@ -794,9 +816,9 @@
     const k = e.target.closest('[data-classic]');
     if (k) return P()?.clasico(k.dataset.classic);
     const mh = e.target.closest('.bz-mh');
-    if (mh) { const sec2 = mh.parentElement; const on = !sec2.classList.contains('open'); sec2.classList.toggle('open', on); mh.setAttribute('aria-expanded', String(on)); return; }
+    if (mh) { const sec2 = mh.parentElement; const on = !sec2.classList.contains('open'); sec2.classList.toggle('open', on); mh.setAttribute('aria-expanded', String(on)); if (on) fillMsg(sec2); return; }
     const qt = e.target.closest('.bz-qt');
-    if (qt) { const q = qt.nextElementSibling; q.hidden = !q.hidden; qt.setAttribute('aria-expanded', String(!q.hidden)); qt.textContent = q.hidden ? 'Mostrar texto citado' : 'Ocultar texto citado'; return; }
+    if (qt) { const q = qt.nextElementSibling; if (!q.firstChild) { const x = st.hilo?.find((y) => y.id === qt.dataset.full); if (x) { q.innerHTML = bodyOf(x, true); fitFrames(q); } } q.hidden = !q.hidden; qt.setAttribute('aria-expanded', String(!q.hidden)); qt.textContent = q.hidden ? 'Mostrar texto citado' : 'Ocultar texto citado'; return; }
     const b = e.target.closest('button[data-a]');
     if (!b) return;
     const a = b.dataset.a;
@@ -1100,7 +1122,7 @@
     slot.innerHTML = '<p class="bz-loading">Preparando…</p>';
     try {
       if (!st.outlook) { try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; } catch {} }
-      const r = await call('hilo', { conv, marcar: false });
+      const r = await call('hilo', { conv, marcar: false, ligero: true });
       if (!r.mensajes?.length) throw new Error('No encuentro este correo en tu buzón.');
       slot.innerHTML = '';
       openCompose({ tipo, ext: { slot, hilo: r.mensajes, status, onDone: opt.onDone, onCancel: opt.onCancel } });
