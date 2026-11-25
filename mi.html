@@ -3956,6 +3956,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   const byFecha = (a, b) => fechaDe(b).localeCompare(fechaDe(a));
   const sortMails = (a, b) => (state.mailSort === 'prioridad' ? (PRIO[a.prioridad] ?? 1) - (PRIO[b.prioridad] ?? 1) : 0) || byFecha(a, b);
   const isMeeting = (m) => m.categoria === 'Reuniones';
+  // aviso de que una reunión se ha cancelado («Cancelado: …», «Canceled: …»): no es una convocatoria por responder
+  const isCancelMail = (m) => !!m && (/^\s*(cancelad[oa]s?|cancel+ed|anulad[oa])\s*:/i.test(String(m.asunto || '')) || /cancel/i.test(String(m.meetingMessageType || m.tipoReunion || '')));
   // Nivel de lo que se espera de Jaime: 'bloquea' (urgente · decide tú), 'pide' (te piden algo, sin prisa) o null (en copia / informativo).
   // Lo pone la IA al clasificar (campos nivel, motivo, plazo); Jaime puede corregirlo (nivelManual: bloquea | pide | no).
   // «Te piden algo» sube solo a urgente si lleva más de 5 días o el plazo es en 48 h o menos.
@@ -4004,7 +4006,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   };
   const meetingPast = (m) => (m.reunion && m.reunion.fecha) ? m.reunion.fecha < todayISO : (/reenv[ií]o|cancelad|actualiz/i.test(m.asunto || '') || daysSince(fechaDe(m)) > 3);
   const agendaAccepted = (m) => { const r = m.reunion; if (!r || !r.fecha || !state.agenda[r.fecha]) return false; const tk = normTxt(r.titulo || m.asunto).slice(0, 12); return (state.agenda[r.fecha].eventos || []).some((e) => sameSlot(e, r) && (!tk || normTxt(e.titulo).includes(tk) || tk.includes(normTxt(e.titulo).slice(0, 12))) && !/sin confirmar|tentative|provisional/i.test(e.estado || '')); };
-  const meetingDone = (m) => meetingPast(m) || agendaAccepted(m) || m.estado === 'gestionado' || (state.decisions[m.id] && state.decisions[m.id].estado === 'hecha');
+  const meetingDone = (m) => isCancelMail(m) || meetingPast(m) || agendaAccepted(m) || m.estado === 'gestionado' || (state.decisions[m.id] && state.decisions[m.id].estado === 'hecha');
   const meetingDecided = () => false;
 
   function renderAll() { renderMail(); renderMeetings(); renderHoy(); try { window.dispatchEvent(new Event('sq-mails')); } catch (e) {} }
@@ -4054,7 +4056,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const openMob = state.openReply === m.id && !o.compact && !o.split && !!o.inbox && !isMeeting(m);
     if (!o.compact && !o.pane && !openMob && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
     if (snoozed(m)) body.appendChild(el('div', 'detail', 'Vuelve a tu lista el ' + dayName(m.posponer)));
-    if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
+    if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (isCancelMail(m) ? 'pasada' : agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), isCancelMail(m) ? 'Reunión cancelada · no hay que responder' : agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
     else if (r || dz) { const meta = el('div', 'meta'); if (r) meta.appendChild(el('span', 'rstate ' + r.estado, RLABEL[r.estado] || r.estado)); if (dz) meta.appendChild(el('span', 'rstate ' + (dz.estado === 'hecha' ? 'enviada' : 'lista'), (DLABEL[dz.decision] || dz.decision) + (dz.estado === 'hecha' ? ' · hecho en Outlook' : ' · decidida, falta aplicar en Outlook'))); body.appendChild(meta); }
     if (m.reunion && m.reunion.fecha && state.agenda[m.reunion.fecha] && !meetingDone(m)) {
       const evs = state.agenda[m.reunion.fecha].eventos || [];
@@ -4475,7 +4477,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         });
       });
     }
-    state.mails.filter((m) => isMeeting(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO).forEach((m) => {
+    state.mails.filter((m) => isMeeting(m) && !isCancelMail(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO).forEach((m) => {
       const r = m.reunion; const ag = state.agenda[r.fecha];
       if (ag && (ag.eventos || []).some((e) => sameSlot(e, r))) return; // ya está en el calendario
       if (raw.some((x) => x.fecha === r.fecha && x.inicio === r.inicio)) return;
