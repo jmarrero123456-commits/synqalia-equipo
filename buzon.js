@@ -240,7 +240,16 @@
     const vals = { noleidos: inbox?.noLeidos || '', urgente: n('urgente') || '', pide: n('pide') || '', otro: n('otro') || '', anclados: pins.size || '' };
     root.querySelectorAll('[data-n]').forEach((x) => { x.textContent = vals[x.dataset.n] ?? ''; });
   }
+  // gestionado = leído: en la lista se ve al momento (Outlook lo marca por detrás)
+  function leidoLocal(conv) {
+    let n = 0;
+    for (const x of st.items) if (x.conv === conv && !x.leido) { x.leido = true; n++; }
+    if (n) paintListSoft();
+    return n;
+  }
   window.addEventListener('sq-mails', () => {
+    // lo gestionado desde cualquier sitio (Inicio, la vista de siempre…) deja de verse como no leído
+    if (P()) { const vistos = new Set(); for (const x of st.items) if (!x.leido && x.conv && !vistos.has(x.conv)) { vistos.add(x.conv); const pm = pendOf(x.conv); if (pm?.estado === 'gestionado') for (const y of st.items) if (y.conv === x.conv) y.leido = true; } }
     // contestado o gestionado desde la caja de respuesta: en los filtros de Pendientes se pasa al siguiente
     if (st.sel && PEND_F.includes(st.filtro) && st.adv !== st.sel && P() && !pendThreads(st.filtro).some((x) => x.conv === st.sel)) { afterHandled('Gestionado ✓'); return; }
     paintCounts();
@@ -991,7 +1000,7 @@
     if (a === 'gracias') { openCompose({ tipo: 'responder', texto: '¡Muchas gracias!\n\nUn saludo,' }); scrollPane(pane.querySelector('.bz-compose-slot')); return; }
     if (a === 'sugerida') { if (!openSuggested(false)) msgStatus('No encuentro la propuesta de este correo.', true); return; }
     if (a === 'cerrar-sug') { const s = pane.querySelector('.bz-classic-slot'); if (s) s.innerHTML = ''; pane.querySelector('.bz-sbtn.sug')?.setAttribute('aria-pressed', 'false'); return; }
-    if (a === 'gestionado' && pm) { st.adv = conv; P().gestionado(pm.id); return afterHandled('Gestionado ✓'); }
+    if (a === 'gestionado' && pm) { st.adv = conv; P().gestionado(pm.id); leidoLocal(conv); return afterHandled('Gestionado ✓'); }
     if (a === 'manana' && pm) { st.adv = conv; P().posponer(pm.id); return afterHandled('Lo verás mañana'); }
     if (a === 'reactivar' && pm) { P().reactivar(pm.id); return; }
     if (a === 'anclar') return togglePin(conv, t?.latest || st.hilo[0]);
@@ -1802,6 +1811,7 @@
     await pc;
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshQuiet(); });
+  window.addEventListener('sq-bz-refresh', () => { refreshFolders(); setTimeout(refreshQuiet, 800); });
   setInterval(refreshQuiet, 90000);
   // de móvil a PC (o al revés) sin perder lo abierto
   mqNarrow.addEventListener('change', () => { if (st.hilo?.length) paintThread(); });
