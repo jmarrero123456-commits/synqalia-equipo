@@ -922,7 +922,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     #agenda-card .free-sum .fs-day { display: inline; color: var(--muted); }
     #agenda-card .free-sum:not(.empty) .fs-day::after { content: " · "; }
   }
-  @media (max-width: 400px) { .ag-bar .seg button { padding: 0 7px; font-size: 12.5px; } .ag-bar .ag-ico, .ag-bar .day-nav { width: 30px; min-width: 30px; } }
+  @media (max-width: 420px) {
+    #agenda-card { padding: 8px; }
+    .ag-bar #ag-tools > .ag-ico:first-child { display: none; } /* el panel del mes: en el móvil basta con el botón de elegir fecha */
+    .ag-bar .seg button { padding: 0 8px; font-size: 12.5px; }
+    .ag-bar .ag-ico, .ag-bar .day-nav { width: 30px; min-width: 30px; }
+    .ag-bar #agenda-day > .chip[aria-pressed="true"] { padding: 0 10px; }
+    #ag-pend .ag-pend-btn, #agenda-card .ag-bar .nm-open { padding: 0 8px; font-size: 12.5px; }
+  }
   .ag-bar > .chips { margin: 0; }
   @media (max-width: 700px) {
     .ag-tools .wk-lbl { font-size: 14px; flex-basis: 100%; order: 9; margin: 0; }
@@ -988,7 +995,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .slot-ghost { position: absolute; z-index: 4; pointer-events: none; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1.5px dashed var(--accent); color: var(--accent); font-size: 11.5px; font-weight: 800; padding: 2px 6px; box-sizing: border-box; overflow: hidden; white-space: nowrap; }
   .cal.slots, .wk-col.slots { cursor: copy; }
   .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; z-index: 2; }
-  .ev-rs.top { top: 0; bottom: auto; }
+  .ev-rs.ev-rs-top { top: 0; bottom: auto; } /* ojo: no usar la clase «top», es la de la cabecera de la app */
   .cal-ev.mv:hover .ev-rs { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .cal-pop { position: absolute; z-index: 20; width: min(400px, 94%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15,27,45,.24); padding: 4px 4px 8px; }
   .cal-pop .item { border: 0; box-shadow: none; background: transparent; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 6px; }
@@ -2961,7 +2968,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     box.classList.add('mv');
     box.title = (box.title ? box.title + ' · ' : '') + 'Arrastra para moverla' + (o.cols ? ' (también a otro día)' : '');
     const rs = el('div', 'ev-rs'); rs.title = 'Arrastra para cambiar la hora de fin'; box.appendChild(rs);
-    const rt = el('div', 'ev-rs top'); rt.title = 'Arrastra para cambiar la hora de inicio'; box.appendChild(rt);
+    const rt = el('div', 'ev-rs ev-rs-top'); rt.title = 'Arrastra para cambiar la hora de inicio'; box.appendChild(rt);
     box.addEventListener('touchmove', (k) => { if (box.classList.contains('drag')) k.preventDefault(); }, {passive: false});
     box.addEventListener('click', (k) => { if (Date.now() - dragEndedAt < 450) { k.stopImmediatePropagation(); k.preventDefault(); } }, true);
     box.addEventListener('pointerdown', (p0) => {
