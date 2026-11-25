@@ -13,6 +13,7 @@
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
 // hilo (25/11): html (como en Outlook, sin scripts, imágenes internas incrustadas) y ligero:true para desplegar la lista.
 // lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
+// carpetaNueva (25/11): crea una carpeta en Outlook (nombre; dentro = carpeta madre opcional).
 // adjuntar / trozo / enviarBorrador (24/11): adjuntos al redactar (hasta 25 MB; los grandes en trozos por sesión de subida).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -340,6 +341,15 @@ async function boxThread(ctx: Ctx, b: any, acc: any) {
   }
   return { mensajes: out };
 }
+// carpeta nueva (25/11): se crea en Outlook (suelta o dentro de otra)
+async function boxNewFolder(ctx: Ctx, b: any) {
+  const nombre = String(b.nombre || "").replace(/[\\/]+/g, "-").trim().slice(0, 120);
+  if (!nombre) throw new Error("Pon un nombre a la carpeta");
+  const base = b.dentro ? `/me/mailFolders/${okFolder(b.dentro)}/childFolders` : `/me/mailFolders`;
+  const f = await g(ctx, base, { method: "POST", body: JSON.stringify({ displayName: nombre }) })
+    .catch((e) => { if (e.status === 409 || /ErrorFolderExists/i.test(e.message)) throw new Error(`Ya tienes una carpeta «${nombre}»`); throw e; });
+  return { id: f.id, nombre: f.displayName };
+}
 const idList = (b: any) => (Array.isArray(b.ids) && b.ids.length ? b.ids : [b.id]).slice(0, 50).map(okId);
 async function boxMove(ctx: Ctx, b: any, destino: string) {
   const dest = WK.includes(destino) ? destino : decodeURIComponent(okId(destino));
@@ -540,6 +550,7 @@ async function boxAction(ctx: Ctx, b: any, acc: any) {
     case "agenda": return await boxAgenda(ctx, b);
     case "conciliar": return await boxConciliar(ctx, acc);
     case "leidoPend": return await boxLeidoPend(ctx, b);
+    case "carpetaNueva": return await boxNewFolder(ctx, b);
   }
   throw new Error("Operación no válida");
 }
