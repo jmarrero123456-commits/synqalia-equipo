@@ -132,7 +132,10 @@
     modo: 'bandeja', cuenta: 'todas', filtro: 'todos', q: '', carpeta: 'inbox',
     carpetas: [], items: [], next: null, sel: null, selMid: null, hilo: null, cargando: false, err: '', compose: null,
     exp: new Set(), hcache: new Map(), outlook: '',
+    // Prioritarios / Otros, como la Bandeja de entrada de Outlook (por defecto, Prioritarios; se recuerda)
+    foco: (() => { try { return localStorage.getItem('sq-bz-foco') || 'prioritarios'; } catch { return 'prioritarios'; } })(),
   };
+  const usaFoco = () => st.carpeta === 'inbox' && !st.q && !isPF() && !st.sinFoco;
   const isPF = () => PEND_F.includes(st.filtro) || st.filtro === 'anclados';
 
   /* ---------- esqueleto ---------- */
@@ -393,7 +396,7 @@
       foot.innerHTML = '';
     } else {
       ts = threads();
-      const showPins = st.carpeta === 'inbox' && st.filtro === 'todos' && !st.q && pins.size;
+      const showPins = st.carpeta === 'inbox' && st.filtro === 'todos' && !st.q && pins.size && !(usaFoco() && st.foco === 'otros');
       const pt = showPins ? pinThreads() : [];
       const pinSet = new Set(pt.map((x) => x.conv));
       const rest = ts.filter((t) => !pinSet.has(t.conv));
@@ -401,15 +404,19 @@
         : st.cargando && !ts.length ? '<div class="bz-empty">Cargando correos…</div>'
         : !ts.length && !pt.length ? `<div class="bz-empty">${st.q ? 'No hay correos que coincidan con la búsqueda.' : st.filtro === 'noleidos' ? 'No tienes correos sin leer aquí. 👌' : st.filtro === 'bandera' ? 'No hay correos con bandera en esta carpeta.' : 'No hay correos en los últimos 90 días.'}</div>`
         : st.q ? `<div class="bz-hint">Resultados en todo el buzón para «${esc(st.q)}»</div>` : '';
-      if (pt.length) html += sec('Anclado') + pt.map(rowHtml).join('');
+      const sw = usaFoco() ? `<span class="bz-foco" role="tablist" aria-label="Bandeja de entrada"><button type="button" role="tab" data-foco="prioritarios" aria-selected="${st.foco === 'prioritarios'}">Prioritarios</button><button type="button" role="tab" data-foco="otros" aria-selected="${st.foco === 'otros'}">Otros</button></span>` : '';
+      let first = true;
+      const sec1 = (t) => { const h = sec(t, first ? sw : ''); first = false; return h; };
+      if (pt.length) html += sec1('Anclado') + pt.map(rowHtml).join('');
       let last = null;
-      for (const t of rest) { const s = seccion(t.latest.fecha); if (s !== last && !st.q) { html += sec(s); last = s; } html += rowHtml(t); }
+      for (const t of rest) { const s = seccion(t.latest.fecha); if (s !== last && !st.q) { html += sec1(s); last = s; } html += rowHtml(t); }
+      if (first && sw) html = sec1(st.foco === 'otros' ? 'Otros' : 'Prioritarios') + html;
       foot.innerHTML = st.next ? `<button type="button" class="bz-more-btn" data-more>${st.cargando ? 'Cargando…' : 'Cargar más'}</button>`
         : (ts.length && !st.q ? '<p class="bz-hint">Aquí se ven los últimos 90 días. Para algo más antiguo, usa el buscador.</p>' : '');
     }
     list.innerHTML = html;
   }
-  const sec = (t) => `<li class="bz-sec" role="presentation">${esc(t)}</li>`;
+  const sec = (t, extra = '') => `<li class="bz-sec${extra ? ' bz-sec1' : ''}" role="presentation"><span>${esc(t)}</span>${extra}</li>`;
   // repintado sin perder el scroll
   function paintListSoft() { const col = $('.bz-col'); const y = col.scrollTop; paintList(); col.scrollTop = y; }
   const repaint = () => { paintListSoft(); if (st.hilo?.length) paintTools(); };
@@ -417,6 +424,8 @@
   foot.addEventListener('click', (e) => { if (e.target.closest('[data-more]')) more(); });
 
   list.addEventListener('click', (e) => {
+    const fo = e.target.closest('[data-foco]');
+    if (fo) { if (st.foco !== fo.dataset.foco) { st.foco = fo.dataset.foco; try { localStorage.setItem('sq-bz-foco', st.foco); } catch {} reload(); } return; }
     const h = e.target.closest('[data-h]');
     if (h) { e.stopPropagation(); return rowAction(h); }
     const chev = e.target.closest('[data-chev]');
@@ -491,7 +500,7 @@
     const mine = st.items.filter((x) => x.conv === st.sel && !fresh.some((y) => y.id === x.id));
     return [...fresh, ...mine];
   }
-  const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q });
+  const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q, foco: usaFoco() ? st.foco : null });
 
   let reqN = 0;
   async function reload() {
@@ -504,6 +513,7 @@
       const r = await call('lista', listArgs());
       if (n !== reqN) return;
       st.items = r.items || []; st.next = r.next;
+      if (r.sinFoco) st.sinFoco = true; // Outlook no tiene activada la Bandeja Prioritarios: se ve todo
     } catch (e) { if (n === reqN) st.err = 'No se pudo cargar el correo: ' + e.message; }
     if (n === reqN) { st.cargando = false; paintList(); }
   }
