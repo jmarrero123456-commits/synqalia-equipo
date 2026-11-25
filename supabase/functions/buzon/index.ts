@@ -11,6 +11,7 @@
 // agenda (24/11): ocupado de tu calendario entre dos días, para rellenar fechas libres en las respuestas.
 // inline (25/11): imágenes pegadas dentro del texto (cid). pendiente admite preparar para adjuntos.
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
+// hilo (25/11): html (como en Outlook, sin scripts, imágenes internas incrustadas) y ligero:true para desplegar la lista.
 // lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
 // adjuntar / trozo / enviarBorrador (24/11): adjuntos al redactar (hasta 25 MB; los grandes en trozos por sesión de subida).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -70,7 +71,13 @@ type Ctx = { owner: string; token: string; me: any; deadline: number; log: strin
 async function g(ctx: Ctx, path: string, init: RequestInit & { prefer?: string[] } = {}) {
   const headers: Record<string, string> = { Authorization: `Bearer ${ctx.token}`, "Content-Type": "application/json" };
   if (init.prefer?.length) headers.Prefer = init.prefer.join(", ");
-  const r = await fetch(path.startsWith("http") ? path : G + path, { ...init, headers });
+  let r = await fetch(path.startsWith("http") ? path : G + path, { ...init, headers });
+  // Outlook solo deja unas pocas peticiones a la vez por buzón: si dice «espera» (429/503), se reintenta
+  for (let k = 0; k < 3 && (r.status === 429 || r.status === 503); k++) {
+    const wait = Math.min(4000, (Number(r.headers.get("Retry-After")) || 1) * 1000);
+    await new Promise((res) => setTimeout(res, wait));
+    r = await fetch(path.startsWith("http") ? path : G + path, { ...init, headers });
+  }
   if (r.status === 204) return null;
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { const e: any = new Error(`${r.status} ${j?.error?.code || ""} ${j?.error?.message || ""}`.trim()); e.status = r.status; throw e; }
@@ -141,7 +148,8 @@ const slim = (m: any) => ({
 });
 const XVERB = () => `&$expand=${encodeURIComponent("singleValueExtendedProperties($filter=id eq 'Integer 0x1081')")}`;
 async function boxFolders(ctx: Ctx) {
-  const wk = await Promise.all(WK.map((w) => g(ctx, `/me/mailFolders/${w}?$select=id,displayName,unreadItemCount,totalItemCount`).catch(() => null)));
+  const wk: any[] = [];
+  for (const w of WK) wk.push(await g(ctx, `/me/mailFolders/${w}?$select=id,displayName,unreadItemCount,totalItemCount`).catch(() => null));
   const byId = new Map<string, string>();
   wk.forEach((f, i) => { if (f) byId.set(f.id, WK[i]); });
   const top = await gAll(ctx, `/me/mailFolders?$top=100&$select=id,displayName,unreadItemCount,totalItemCount,childFolderCount`, [], 200);
@@ -268,25 +276,64 @@ async function boxCompose(ctx: Ctx, b: any, acc: any) {
   }
   return { enviado: true, programado: programar };
 }
+/* ---------- correo tal cual se ve en Outlook (25/11): HTML limpio (sin scripts) e imágenes internas incrustadas ---------- */
+const decodeEnt = (t: string) => t.replace(/&nbsp;/gi, " ").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16))).replace(/&amp;/gi, "&");
+function htmlToText(h: string) {
+  return decodeEnt(String(h || "").replace(/<(head|style|script)[\s\S]*?<\/\1>/gi, "").replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6]|table|blockquote)>/gi, "\n").replace(/<[^>]+>/g, "")).replace(/[ \t ]+\n/g, "\n").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+function cleanHtml(h: string) {
+  return String(h || "")
+    .replace(/<(script|iframe|object|embed|form|frameset|frame|applet)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<(script|iframe|object|embed|form|base|link|meta)\b[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/(href|src|action|formaction|xlink:href)\s*=\s*(["']?)\s*(javascript|vbscript|data:text\/html)[^"'\s>]*\2/gi, '$1="#"')
+    .slice(0, 400000);
+}
 async function boxThread(ctx: Ctx, b: any, acc: any) {
   const conv = String(b.conv || "");
   if (!/^[A-Za-z0-9_\-=+/.]{1,400}$/.test(conv)) throw new Error("Conversación no válida");
-  const sel = `${MSG_SEL},body,uniqueBody,webLink`;
-  const all = await gAll(ctx, `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${conv}'`)}&$top=50&$select=${sel}`, ['outlook.body-content-type="text"'], 60);
+  const ligero = b.ligero === true; // solo para desplegar el hilo en la lista: sin el texto
+  const sel = ligero ? MSG_SEL : `${MSG_SEL},body,uniqueBody,webLink`;
+  const all = await gAll(ctx, `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${conv}'`)}&$top=50&$select=${sel}`, [], 60);
   const yo = String(acc.upn || "").toLowerCase();
   const msgs = all.filter((m: any) => !m.isDraft).sort((x: any, y: any) => String(y.receivedDateTime || y.sentDateTime).localeCompare(String(x.receivedDateTime || x.sentDateTime)));
   const clean = (t: string, n: number) => String(t || "").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
-  const out = await Promise.all(msgs.map(async (m: any) => {
+  let presupuesto = 3 * 1024 * 1024; // imágenes internas incrustadas en todo el hilo, como mucho
+  const out = await Promise.all(msgs.map(async (m: any, i: number) => {
+    const mio = String(m.from?.emailAddress?.address || "").toLowerCase() === yo;
+    if (ligero) return { ...slim(m), mio };
     let adjuntos: any[] = [];
+    let inl: any[] = [];
     if (m.hasAttachments) {
       const a = await g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments?$select=id,name,size,contentType,isInline`).catch(() => null);
       adjuntos = (a?.value || []).filter((x: any) => !x.isInline).map((x: any) => ({ id: x.id, nombre: x.name, tam: x.size, tipo: x.contentType }));
+      inl = (a?.value || []).filter((x: any) => x.isInline && x.size < 400000);
     }
-    const completo = clean(m.body?.content, 40000);
-    const nuevo = clean(m.uniqueBody?.content, 40000) || completo;
-    return { ...slim(m), mio: String(m.from?.emailAddress?.address || "").toLowerCase() === yo, cuerpo: nuevo, citado: completo.length > nuevo.length + 40 ? completo : "", adjuntos, enlace: m.webLink || null };
+    const isHtml = m.body?.contentType === "html";
+    const fullH = isHtml ? String(m.body?.content || "") : "";
+    const uniqH = m.uniqueBody?.contentType === "html" ? String(m.uniqueBody?.content || "") : "";
+    const completo = clean(isHtml ? htmlToText(fullH) : m.body?.content, 40000);
+    const nuevo = clean(uniqH ? htmlToText(uniqH) : (m.uniqueBody?.content || ""), 40000) || completo;
+    const conCita = completo.length > nuevo.length + 40;
+    let html = isHtml ? cleanHtml(uniqH || fullH) : "";
+    let htmlCompleto = isHtml && conCita && i === 0 ? cleanHtml(fullH) : "";
+    // imágenes pegadas o del logotipo de la firma (cid:) → dentro del correo
+    if ((html || htmlCompleto) && inl.length && /cid:/i.test(html + htmlCompleto)) {
+      for (const x of inl.slice(0, 8)) {
+        if (presupuesto < x.size) break;
+        const f = await g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments/${encodeURIComponent(x.id)}`).catch(() => null);
+        if (!f?.contentBytes || !f.contentId) continue;
+        presupuesto -= x.size;
+        const uri = `data:${f.contentType || "image/png"};base64,${f.contentBytes}`;
+        const re = new RegExp(`cid:${escRe(String(f.contentId).replace(/^<|>$/g, ""))}`, "gi");
+        html = html.replace(re, uri); htmlCompleto = htmlCompleto.replace(re, uri);
+      }
+    }
+    return { ...slim(m), mio, cuerpo: nuevo, citado: conCita ? completo : "", html, htmlCompleto, adjuntos, enlace: m.webLink || null };
   }));
-  if (b.marcar !== false) {
+  if (b.marcar !== false && !ligero) {
     const sinLeer = msgs.filter((m: any) => !m.isRead);
     await Promise.all(sinLeer.map((m: any) => g(ctx, `/me/messages/${encodeURIComponent(m.id)}`, { method: "PATCH", body: JSON.stringify({ isRead: true }) }).catch(() => null)));
     for (const m of out) m.leido = true;
