@@ -233,3 +233,8 @@ body.sqm-lock { overflow: hidden; }
 .sqm-tfast .sqm-tact { flex: 0 0 auto; margin: 0; padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--panel); }
 .sqm-tfast .sqm-tgo { min-height: 50px; font-size: 16px; }
 @media (min-width: 900px) { .sqm-tbox.sqm-tfast { max-height: none; } }
+
+/* 25/11: aviso «Creada» flash (0,5 s) */
+.sqm-toast.sqm-flash { top: 50%; bottom: auto; transform: translate(-50%, -50%); padding: 12px 20px; border-radius: 14px; font-size: 15px; gap: 8px; animation: sqmFlash .5s ease-out forwards; pointer-events: none; }
+@keyframes sqmFlash { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.92); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sqm-toast.sqm-flash { animation: none; } }
