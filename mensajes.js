@@ -588,14 +588,16 @@ ${hist}`;
       } catch (e) { nota += ' · no se ha podido avisar en el chat'; }
     }
     closeTask();
-    toast(`Tarea creada: «${data.titulo.slice(0, 60)}»${data.vence ? ' · ' + fechaTxt(data.vence) : ''}${vc ? ' · ver con ' + vc : ''}${nota}`);
+    toast(nota);
     if (st.open === info.id) paintConv();
   }
-  function toast(msg) {
-    const t = document.createElement('div'); t.className = 'sqm sqm-toast'; t.setAttribute('role', 'status');
-    t.innerHTML = `${ICON.task}<span>${esc(msg)}</span><button type="button" class="sqm-link" data-act="ver-tareas">Ver en Tareas</button>`;
-    document.body.appendChild(t); setTimeout(() => t.remove(), 6000);
-    t.addEventListener('click', (e) => { if (e.target.closest('[data-act="ver-tareas"]')) { t.remove(); verTareas(); } });
+  // Aviso «Creada» tipo flash: aparece y se va solo en medio segundo
+  function toast(nota) {
+    document.querySelectorAll('.sqm-toast').forEach((x) => x.remove());
+    const t = document.createElement('div'); t.className = 'sqm sqm-toast sqm-flash'; t.setAttribute('role', 'status');
+    t.innerHTML = `${ICON.task}<span>Creada${nota ? esc(nota) : ''}</span>`;
+    if (nota) t.style.animationDuration = '2s'; // si algo ha fallado (aviso en el chat), se deja leer un poco más
+    document.body.appendChild(t); setTimeout(() => t.remove(), nota ? 2000 : 500);
   }
   function verTareas() { if (st.open) closeConv(); location.hash = 'tareas'; }
   // móvil: mantener pulsado un mensaje
