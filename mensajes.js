@@ -518,20 +518,25 @@ ${hist}`;
     const paintT = () => {
       const fechas = [[addDays(0), 'Hoy'], [addDays(1), 'Mañana']];
       if (f.vence && !fechas.some(([v]) => v === f.vence)) fechas.push([f.vence, fechaTxt(f.vence)]);
-      el.innerHTML = `<div class="sqm-tbox">
-        <div class="sqm-thead"><b>Nueva tarea</b><button type="button" class="sqm-ib" data-tk="x" aria-label="Cerrar">${ICON.x}</button></div>
-        ${focus ? `<p class="sqm-tquote"><b>${esc(focus.de)}:</b> «${esc(String(focus.texto || '').slice(0, 220))}»</p>` : `<p class="sqm-tquote">Desde el chat con <b>${esc(info.nombre)}</b></p>`}
-        <p class="sqm-tai${aiErr ? ' err' : ''}">${ICON.spark}<span>${loading ? 'La IA está preparando la tarea con el chat…' : aiErr ? 'No se ha podido rellenar con IA: escríbela tú.' : 'Rellenada con el chat · revisa y crea'}</span></p>
-        <label class="sqm-tf"><span>Tarea</span><input id="tk-t" type="text" maxlength="300" value="${esc(f.titulo)}" placeholder="¿Qué hay que hacer?"></label>
-        <label class="sqm-tf"><span>Detalle</span><textarea id="tk-d" rows="2" maxlength="1000">${esc(f.detalle)}</textarea></label>
-        <div class="sqm-tf"><span>Para cuándo</span><div class="sqm-pills">${fechas.map(([v, t]) => pill(f.vence === v && !f.otra, `data-tk-f="${v}"`, t)).join('')}${pill(f.otra, 'data-tk-f="otra"', 'Otra fecha')}${pill(!f.vence && !f.otra, 'data-tk-f=""', 'Sin fecha')}</div>
-          ${f.otra ? `<input id="tk-f" type="date" value="${esc(f.vence || '')}" class="sqm-tdate">` : ''}</div>
-        <div class="sqm-tf"><span>Prioridad</span><div class="sqm-pills">${['Mega', 'Alta', 'Media', 'Baja'].map((p) => pill(f.prioridad === p, `data-tk-p="${p}"`, p === 'Mega' ? 'Mega ⚡' : p)).join('')}</div></div>
-        <label class="sqm-tf"><span>Ver con</span><span class="sqm-tvc"><input id="tk-vc" type="text" maxlength="80" list="tk-vc-l" value="${esc(f.vc)}" placeholder="Nadie (solo para mí)">${f.vc ? '<button type="button" class="sqm-tvcx" data-tk="vc-x" aria-label="Quitar">×</button>' : ''}</span>
+      const dOpen = f.dOpen ? ' open' : '';
+      el.innerHTML = `<div class="sqm-tbox sqm-tfast">
+        <div class="sqm-thead"><b>Nueva tarea</b><span class="sqm-tai${aiErr ? ' err' : ''}">${ICON.spark}<span>${loading ? 'Preparando con IA…' : aiErr ? 'Sin IA: escríbela tú' : 'Rellenada con IA'}</span></span><button type="button" class="sqm-ib" data-tk="x" aria-label="Cerrar">${ICON.x}</button></div>
+        <div class="sqm-tbody">
+        ${focus ? `<p class="sqm-tquote" title="${esc(String(focus.texto || ''))}"><b>${esc(focus.de)}:</b> «${esc(String(focus.texto || '').slice(0, 220))}»</p>` : ''}
+        <label class="sqm-tf"><span class="sqm-sr">Tarea</span><textarea id="tk-t" rows="2" maxlength="300" placeholder="¿Qué hay que hacer?">${esc(f.titulo)}</textarea></label>
+        <div class="sqm-trow"><span>Cuándo</span><div class="sqm-pills sqm-p4">${fechas.slice(0, 2).map(([v, t]) => pill(f.vence === v && !f.otra, `data-tk-f="${v}"`, t)).join('')}${pill(f.otra || (f.vence && !fechas.slice(0, 2).some(([v]) => v === f.vence)), 'data-tk-f="otra"', f.vence && !fechas.slice(0, 2).some(([v]) => v === f.vence) && !f.otra ? fechaTxt(f.vence) : 'Otra')}${pill(!f.vence && !f.otra, 'data-tk-f=""', 'Sin fecha')}</div></div>
+        ${f.otra ? `<input id="tk-f" type="date" value="${esc(f.vence || '')}" class="sqm-tdate" aria-label="Fecha">` : ''}
+        <div class="sqm-trow"><span>Prioridad</span><div class="sqm-pills sqm-p4">${['Mega', 'Alta', 'Media', 'Baja'].map((p) => pill(f.prioridad === p, `data-tk-p="${p}"`, p === 'Mega' ? 'Mega ⚡' : p)).join('')}</div></div>
+        <label class="sqm-trow"><span>Ver con</span><span class="sqm-tvc"><input id="tk-vc" type="text" maxlength="80" list="tk-vc-l" value="${esc(f.vc)}" placeholder="Nadie (solo para mí)">${f.vc ? '<button type="button" class="sqm-tvcx" data-tk="vc-x" aria-label="Quitar">×</button>' : ''}</span>
           <datalist id="tk-vc-l">${[...new Set([chatPerson(info, focus), ...people.map((p) => p.name)].filter(Boolean))].map((n) => `<option value="${esc(n)}"></option>`).join('')}</datalist></label>
-        ${info.live ? `<label class="sqm-tchk"><input id="tk-av" type="checkbox"${f.avisar ? ' checked' : ''}><span>Avisar en el chat</span></label>${f.avisar ? `<input id="tk-avt" type="text" maxlength="300" class="sqm-tdate" value="${esc(f.aviso)}">` : ''}` : ''}
+        <details class="sqm-tmore"${dOpen}><summary>Detalle${info.live ? ' y aviso en el chat' : ''}</summary>
+          <label class="sqm-tf"><span class="sqm-sr">Detalle</span><textarea id="tk-d" rows="3" maxlength="1000">${esc(f.detalle)}</textarea></label>
+          ${info.live ? `<label class="sqm-tchk"><input id="tk-av" type="checkbox"${f.avisar ? ' checked' : ''}><span>Avisar en el chat</span></label>${f.avisar ? `<input id="tk-avt" type="text" maxlength="300" class="sqm-tdate" value="${esc(f.aviso)}" aria-label="Mensaje de aviso">` : ''}` : ''}
+        </details>
+        </div>
         <div class="sqm-tact"><button type="button" class="sqm-tgo" data-tk="crear"${loading ? ' disabled' : ''}>${loading ? 'Preparando…' : 'Crear tarea'}</button><button type="button" class="sqm-tno" data-tk="x">Cancelar</button></div>
       </div>`;
+      const dt = el.querySelector('.sqm-tmore'); if (dt) dt.addEventListener('toggle', () => { f.dOpen = dt.open; });
     };
     paintT();
     el.addEventListener('click', async (e) => {
@@ -556,7 +561,7 @@ ${hist}`;
     loading = false; if (taskSheet === el) paintT();
   }
   async function createTask(info, f, focus, el) {
-    const titulo = String(f.titulo || '').trim();
+    const titulo = String(f.titulo || '').replace(/\s+/g, ' ').trim();
     if (!titulo) { el.querySelector('#tk-t')?.focus(); return; }
     const btn = el.querySelector('[data-tk="crear"]'); btn.disabled = true; btn.textContent = 'Creando…';
     const id = newTaskId(), now = new Date().toISOString();
