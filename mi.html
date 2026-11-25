@@ -1016,6 +1016,70 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .mv-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
   .mv-form .field { margin: 0; }
   @media (prefers-color-scheme: dark) { .ag-pend-btn { background: #3a2f12 !important; color: var(--ink) !important; } }
+  /* Agenda en el móvil y el Z Fold, al estilo de Outlook (26/11/2026): solo la agenda, a todo el ancho.
+     Cabecera con el mes (se despliega), Hoy, Por responder y Día/Semana/Mes; tira de días que se desliza; botón ＋ flotante. */
+  .ag-pend-btn .api, .agm-h, .agm-strip, .agm-fab { display: none; }
+  #agenda-card.agm { border: 0; border-radius: 0; box-shadow: none; padding: 0; background: var(--panel); }
+  #agenda-card.agm > .ag-bar, #agenda-card.agm .mt-tip, #agenda-card.agm .calw > p.note, #agenda-card.agm .wkw > p.note { display: none !important; }
+  #view-reuniones.agm-on #plaud-card, #view-reuniones.agm-on #meet-notes-card { display: none !important; }
+  #view-reuniones.agm-on { gap: 12px; }
+  .app:has(> #view-reuniones.agm-on:not([hidden])) { padding-top: 0 !important; }
+  .agm .agm-h { display: flex; align-items: center; gap: 2px; padding: 4px 6px 0 14px; }
+  .agm-mes { border: 0; background: transparent; font: inherit; font-size: 20px; font-weight: 800; color: var(--ink); padding: 6px 0; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  .agm-mes small { font-size: 12px; color: var(--muted); }
+  .agm-sp { flex: 1 1 auto; }
+  .agm-ib { width: 40px; height: 40px; border: 0; background: transparent; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink); cursor: pointer; position: relative; padding: 0; font: inherit; }
+  .agm-ib:hover, .agm-ib[aria-expanded="true"] { background: var(--accent-soft); }
+  .agm-hoy b { width: 24px; height: 24px; border: 2px solid currentColor; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; box-sizing: border-box; }
+  .agm-vw { position: relative; }
+  .agm-vbtn { width: auto; padding: 0 8px; gap: 5px; font-size: 13.5px; font-weight: 700; }
+  .agm-vmenu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; width: 190px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(15,27,45,.2); padding: 6px 0; }
+  .agm-vmenu button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); padding: 11px 14px; text-align: left; cursor: pointer; }
+  .agm-vmenu button:hover { background: var(--accent-soft); }
+  .agm-vmenu button i { width: 16px; font-style: normal; color: var(--accent); font-weight: 800; }
+  .agm .ag-pend:not([hidden]) { display: inline-flex; }
+  .agm .ag-pend-btn { width: 40px; min-width: 40px; height: 40px; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--ink) !important; justify-content: center; position: relative; box-shadow: none; }
+  .agm .ag-pend-btn[aria-expanded="true"] { background: var(--accent-soft) !important; }
+  .agm .ag-pend-btn .apl, .agm .ag-pend-btn .apc { display: none; }
+  .agm .ag-pend-btn .api { display: inline-flex; }
+  .agm .ag-pend-btn .n { position: absolute; top: 3px; right: 2px; margin: 0; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; }
+  .agm .agm-h { position: relative; }
+  .agm .agm-h .ag-pend, .agm .agm-vw { position: static; }
+  .agm .ag-pmenu, .agm .agm-vmenu { top: calc(100% + 2px); right: 8px; }
+  .agm .ag-pmenu { left: auto; width: min(400px, calc(100% - 16px)); }
+  .agm .wk-head { display: none; }
+  .agm .wk-allday { border-top: 0; }
+  .agm .agm-strip { display: block; padding: 0 6px; touch-action: pan-y; user-select: none; }
+  .agm-dw, .agm-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
+  .agm-dw { font-size: 11.5px; font-weight: 700; color: var(--muted); padding: 0 0 2px; }
+  .agm-dw span:nth-child(n+6) { opacity: .65; }
+  .agm-wk { padding: 1px 0; }
+  .agm-d { border: 0; background: transparent; font: inherit; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 1px 0; cursor: pointer; color: var(--ink); width: 100%; }
+  .agm-d b { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+  .agm-d i { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+  .agm-d.ev i { background: #9aa6c4; }
+  .agm-d.pn i { background: #c98a00; }
+  .agm-d.out { color: var(--muted); opacity: .6; }
+  .agm-d.today b { box-shadow: inset 0 0 0 2px var(--ink); }
+  .agm-d.sel b { background: var(--ink); color: var(--panel); box-shadow: none; }
+  .agm-grip { display: flex; justify-content: center; align-items: center; gap: 18px; padding: 3px 0 7px; }
+  .agm-grip > button.g { width: 44px; height: 14px; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .agm-grip > button.g::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+  .agm-grip > button.mv { border: 0; background: transparent; color: var(--muted); font-size: 18px; width: 34px; height: 24px; cursor: pointer; border-radius: 7px; }
+  .agm .calw, .agm .wkw { gap: 0; }
+  #agenda-card.agm .free-sum, #agenda-card.agm .free-sum.empty { display: block !important; font-size: 12px; padding: 4px 12px; background: color-mix(in srgb, var(--line) 35%, var(--panel)); border-top: 1px solid var(--line); }
+  .agm .free-sum .fs-day { display: inline !important; color: var(--ink); }
+  .agm .free-sum:not(.empty) .fs-day::after { content: " · "; }
+  .agm .cal-allday { padding: 4px 10px; border-top: 1px solid var(--line); }
+  .agm .cal-scroll { border: 0; border-top: 1px solid var(--line); border-radius: 0; max-height: none; }
+  .agm .cal { margin-right: 6px; --cal-g: 48px; }
+  .agm .wk-head, .agm .wk-allday { border-left: 0; border-right: 0; border-radius: 0; }
+  .agm .wk-head .wk-dh b { font-size: 15px; }
+  .agm .wkw .cal-scroll { border-radius: 0; }
+  .agm .ag-lay { display: block; }
+  .agm .ag-flash { padding: 2px 14px; margin: 0; }
+  .agm .agm-fab { display: inline-flex; align-items: center; justify-content: center; position: fixed; right: 16px; bottom: calc(var(--sq-tabbar, 0px) + 16px + env(safe-area-inset-bottom, 0px)); z-index: 35; width: 56px; height: 56px; border-radius: 16px; border: 0; background: var(--ink); color: var(--panel); box-shadow: 0 8px 20px rgba(15,27,45,.3); cursor: pointer; }
+  .agm .agm-fab svg { width: 26px; height: 26px; }
   .cal-now::after { content: attr(data-t); position: absolute; left: calc(-1 * var(--cal-g) + 2px); top: -9px; font-size: 11px; font-weight: 800; color: #fff; background: #e5484d; border-radius: 4px; padding: 1px 4px; }
   @media (prefers-color-scheme: dark) { .cal-ev { background: #1f2a4a; } .cal-ev.meal { background: #232838; } .cal-ev.pend { background: repeating-linear-gradient(135deg, #3a2f12 0 6px, #2e2610 6px 12px); } }
   .prep-ul { list-style: none; margin: 4px 0 2px; padding: 0; display: grid; gap: 2px; }
@@ -3046,7 +3110,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const c = $('#agenda-card'); if (!c) return;
     const old = c.querySelector('.ag-flash'); if (old) old.remove();
     const f = el('p', 'note ag-flash', txt); f.style.color = 'var(--ok)'; f.style.fontWeight = '700';
-    const tools = $('#ag-tools'); (tools || c.firstElementChild).after(f); setTimeout(() => f.remove(), 9000);
+    const tools = c.classList.contains('agm') ? c.querySelector('.agm-strip') : $('#ag-tools'); (tools || c.firstElementChild).after(f); setTimeout(() => f.remove(), 9000);
   }
   // minicalendario del mes (lateral, se pliega)
   function miniCal() {
@@ -3220,7 +3284,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     items.sort((a, b) => (a.fecha + a.inicio).localeCompare(b.fecha + b.inicio));
     w.hidden = !items.length && !state.pendMenu;
     const b = el('button', 'btn ag-pend-btn'); b.type = 'button'; b.setAttribute('aria-expanded', String(!!state.pendMenu));
-    b.append('Por responder'); b.appendChild(el('span', 'n', String(items.length))); b.append(' ▾');
+    const ic = el('span', 'api'); ic.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 8l9 6 9-6"></path></svg>';
+    b.append(el('span', 'apl', 'Por responder'), ic); b.appendChild(el('span', 'n', String(items.length))); b.appendChild(el('span', 'apc', ' ▾'));
+    b.setAttribute('aria-label', 'Por responder: ' + items.length); b.title = 'Convocatorias por responder';
     b.addEventListener('click', (k) => { k.stopPropagation(); state.pendMenu = !state.pendMenu; renderPendMenu(); });
     w.appendChild(b);
     if (!state.pendMenu) return;
@@ -3282,6 +3348,128 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     bar.append(lb, sp, br);
     const pd = $('#ag-pend'); if (pd) bar.appendChild(pd);
     const nm = $('#agenda-card .nm-open'); if (nm) bar.appendChild(nm);
+  }
+  // ===== Agenda en el móvil y el Z Fold, al estilo de Outlook (26/11/2026) =====
+  // Solo la agenda, a todo el ancho: mes (toca para desplegarlo), Hoy, Por responder y Día/Semana/Mes; la tira de días se desliza
+  // a los lados para cambiar de semana (o de mes, desplegado); deslizar el calendario cambia de día; ＋ flotante para crear.
+  const agmMQ = window.matchMedia('(max-width: 899px)');
+  const agmOn = () => agmMQ.matches;
+  agmMQ.addEventListener ? agmMQ.addEventListener('change', () => renderMeetings()) : agmMQ.addListener(() => renderMeetings());
+  const agmIco = (d, w) => '<svg width="' + (w || 20) + '" height="' + (w || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + d + '</svg>';
+  function agmGo(f) {
+    state.agendaDay = f; state.agendaFree = true; state.agendaWeek = mondayOf(f);
+    state.mtOpen = null; state.calPop = null; renderMeetRoom(true); renderMeetings();
+  }
+  function agmShift(n) { // ±n días (la vista semana va de 7 en 7)
+    if (state.agendaView === 'semana') { state.agendaWeek = addDays(state.agendaWeek, n); state.agendaDay = addDays(state.agendaDay || todayISO, n); state.agendaFree = true; state.calPop = null; renderMeetings(); }
+    else agmGo(addDays(state.agendaDay || todayISO, n));
+  }
+  function agmSwipe(node, fn) {
+    let x0 = null, y0 = 0, t0 = 0, bad = false;
+    node.addEventListener('touchstart', (k) => { if (k.touches.length !== 1) { x0 = null; return; } const t = k.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); bad = !!(k.target.closest && k.target.closest('.cal-ev, .cal-pop, .slot-ghost, input, textarea, select')); }, {passive: true});
+    node.addEventListener('touchend', (k) => {
+      if (x0 == null || bad) return; const t = k.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Date.now() - t0 > 700 || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      fn(dx < 0 ? 1 : -1);
+    }, {passive: true});
+  }
+  function renderAgMobile(card) {
+    const on = agmOn();
+    const view = $('#view-reuniones');
+    card.classList.toggle('agm', on); if (view) view.classList.toggle('agm-on', on);
+    const app = card.closest('.app');
+    if (!on) { card.style.marginLeft = card.style.marginRight = ''; return; }
+    if (app) { const cs = getComputedStyle(app); card.style.marginLeft = '-' + cs.paddingLeft; card.style.marginRight = '-' + cs.paddingRight; }
+    const ref = state.agendaDay || todayISO;
+    const mesOpen = !!state.agmMes;
+    const mref = mesOpen && state.agmMonth ? state.agmMonth : (state.agendaView === 'semana' && !(ref >= state.agendaWeek && ref <= addDays(state.agendaWeek, 6)) ? addDays(state.agendaWeek, 3) : ref);
+    const y = Number(mref.slice(0, 4)), m = Number(mref.slice(5, 7)) - 1;
+    // cabecera
+    let h = card.querySelector(':scope > .agm-h');
+    if (!h) { h = el('div', 'agm-h'); card.prepend(h); }
+    h.replaceChildren();
+    const mb = el('button', 'agm-mes'); mb.type = 'button'; mb.setAttribute('aria-expanded', String(mesOpen)); mb.title = mesOpen ? 'Plegar el mes' : 'Ver el mes entero';
+    mb.append(AG_MESES[m].replace(/^./, (c) => c.toUpperCase()) + (y !== Number(todayISO.slice(0, 4)) ? ' ' + y : ''));
+    mb.appendChild(el('small', null, mesOpen ? '▴' : '▾'));
+    mb.addEventListener('click', () => { state.agmMes = mesOpen ? false : 'temp'; state.agmMonth = null; state.agmMenu = false; renderMeetings(); });
+    h.append(mb, el('span', 'agm-sp'));
+    const hoy = el('button', 'agm-ib agm-hoy'); hoy.type = 'button'; hoy.title = 'Ir a hoy'; hoy.setAttribute('aria-label', 'Ir a hoy');
+    hoy.appendChild(el('b', null, String(Number(todayISO.slice(8)))));
+    hoy.addEventListener('click', () => { state.agmMonth = null; if (state.agmMes === 'temp') state.agmMes = false; agmGo(todayISO); });
+    h.appendChild(hoy);
+    const pd = $('#ag-pend'); if (pd) h.appendChild(pd);
+    const vw = el('div', 'agm-vw');
+    const vName = state.agmMes === 'mes' ? 'Mes' : state.agendaView === 'semana' ? 'Semana' : 'Día';
+    const vb = el('button', 'agm-ib agm-vbtn'); vb.type = 'button'; vb.setAttribute('aria-haspopup', 'menu'); vb.setAttribute('aria-expanded', String(!!state.agmMenu)); vb.title = 'Vista: día, semana o mes';
+    vb.innerHTML = agmIco('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path>');
+    vb.appendChild(el('span', null, vName));
+    vb.addEventListener('click', (k) => { k.stopPropagation(); state.agmMenu = !state.agmMenu; state.pendMenu = false; renderPendMenu(); renderMeetings(); });
+    vw.appendChild(vb);
+    if (state.agmMenu) {
+      const mn = el('div', 'agm-vmenu'); mn.setAttribute('role', 'menu');
+      [['Día', 'dia', false], ['Semana', 'semana', false], ['Mes', 'dia', 'mes']].forEach(([t, v, mes]) => {
+        const it = el('button'); it.type = 'button'; it.setAttribute('role', 'menuitemradio'); it.setAttribute('aria-checked', String(t === vName));
+        it.append(el('i', null, t === vName ? '✓' : ''), t);
+        it.addEventListener('click', (k) => { k.stopPropagation(); state.agmMenu = false; state.agmMes = mes; state.agmMonth = null; state.calPop = null; setAgView(v); if (v === 'semana') state.agendaWeek = mondayOf(state.agendaDay || todayISO); renderMeetings(); });
+        mn.appendChild(it);
+      });
+      vw.appendChild(mn);
+    }
+    h.appendChild(vw);
+    // tira de días (semana) o mes desplegado
+    let st = card.querySelector(':scope > .agm-strip');
+    if (!st) {
+      st = el('div', 'agm-strip'); h.after(st);
+      agmSwipe(st, (dir) => {
+        if (state.agmMes) { const r = state.agmMonth || state.agendaDay || todayISO; state.agmMonth = isoOf(new Date(Number(r.slice(0, 4)), Number(r.slice(5, 7)) - 1 + dir, 1, 12)); renderMeetings(); }
+        else agmShift(7 * dir);
+      });
+      document.addEventListener('click', (k) => { if (state.agmMenu && !k.target.closest('.agm-vw')) { state.agmMenu = false; renderMeetings(); } });
+    }
+    st.replaceChildren();
+    const dw = el('div', 'agm-dw'); ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach((d) => dw.appendChild(el('span', null, d))); st.appendChild(dw);
+    const pdm = pendDates();
+    const hasEv = (f) => { const ag = agendaOf(f); return !!(ag && (ag.eventos || []).some((e) => toMin(e.inicio) != null && !/ubicaci/i.test(e.estado || ''))); };
+    const selDay = state.agendaView === 'semana' ? (ref >= state.agendaWeek && ref <= addDays(state.agendaWeek, 6) ? ref : null) : ref;
+    const weeks = [];
+    if (mesOpen) { const d0 = mondayOf(isoOf(new Date(y, m, 1, 12))); for (let w = 0; w < 6; w++) { const mon = addDays(d0, w * 7); if (w > 3 && Number(mon.slice(5, 7)) - 1 !== m) break; weeks.push(mon); } }
+    else weeks.push(state.agendaView === 'semana' ? state.agendaWeek : mondayOf(ref));
+    weeks.forEach((mon) => {
+      const r = el('div', 'agm-wk');
+      for (let i = 0; i < 7; i++) {
+        const f = addDays(mon, i);
+        const pn = pdm.get(f) || 0;
+        const b = el('button', 'agm-d' + (f === selDay ? ' sel' : '') + (f === todayISO ? ' today' : '') + (mesOpen && Number(f.slice(5, 7)) - 1 !== m ? ' out' : '') + (pn ? ' pn' : hasEv(f) ? ' ev' : ''));
+        b.type = 'button'; b.setAttribute('aria-label', dayName(f) + (pn ? ' · ' + pn + ' por responder' : '')); b.setAttribute('aria-pressed', String(f === selDay));
+        b.append(el('b', null, String(Number(f.slice(8)))), el('i'));
+        b.addEventListener('click', () => { if (state.agmMes === 'temp') state.agmMes = false; state.agmMonth = null; if (state.agendaView === 'semana') setAgView('dia'); agmGo(f); }); // en la semana, tocar un día abre ese día
+        r.appendChild(b);
+      }
+      st.appendChild(r);
+    });
+    const g = el('div', 'agm-grip');
+    const mv = (txt, lbl, dir) => { const b = el('button', 'mv', txt); b.type = 'button'; b.setAttribute('aria-label', lbl); b.addEventListener('click', () => { if (mesOpen) { state.agmMonth = isoOf(new Date(y, m + dir, 1, 12)); renderMeetings(); } else agmShift(7 * dir); }); return b; };
+    const gb = el('button', 'g'); gb.type = 'button'; gb.setAttribute('aria-label', mesOpen ? 'Plegar el mes' : 'Ver el mes entero');
+    gb.addEventListener('click', () => { state.agmMes = mesOpen ? false : 'temp'; state.agmMonth = null; renderMeetings(); });
+    g.append(mv('‹', mesOpen ? 'Mes anterior' : 'Semana anterior', -1), gb, mv('›', mesOpen ? 'Mes siguiente' : 'Semana siguiente', 1));
+    st.appendChild(g);
+    // botón ＋ flotante (abre «Nueva reunión»)
+    if (!card.querySelector(':scope > .agm-fab')) {
+      const fab = el('button', 'agm-fab'); fab.type = 'button'; fab.setAttribute('aria-label', 'Nueva reunión'); fab.title = 'Nueva reunión';
+      fab.innerHTML = agmIco('<path d="M12 5v14M5 12h14"></path>', 26);
+      fab.addEventListener('click', () => { const nm = card.querySelector('.nm-open'); if (nm) nm.click(); });
+      card.appendChild(fab);
+    }
+  }
+  // tras pintar el calendario: ocupa el alto de la pantalla y se desliza de día en día
+  function agmFit(card) {
+    if (!card.classList.contains('agm')) return;
+    const sc = card.querySelector('#agenda-box .cal-scroll'); if (!sc) return;
+    if (!sc.dataset.sw) { sc.dataset.sw = '1'; agmSwipe(sc, (dir) => agmShift(state.agendaView === 'semana' ? 7 * dir : dir)); }
+    const nav = $('.tabs'); const nr = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect() : null;
+    const bottom = nr && nr.top > innerHeight / 2 ? nr.top : innerHeight;
+    const top = sc.getBoundingClientRect().top + window.scrollY;
+    sc.style.height = Math.max(320, Math.round(bottom - top)) + 'px';
   }
   function placeNow(nl) {
     const h0 = Number(nl.dataset.h0); const m = nowMin();
@@ -4644,6 +4832,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (!state.agendaWeek) state.agendaWeek = mondayOf(state.agendaDay || todayISO);
     renderAgTools(days); sel.hidden = state.agendaView === 'semana';
     if (!state.agendaDay || !days.includes(state.agendaDay)) state.agendaDay = days.includes(todayISO) ? todayISO : (days.find((d) => d >= todayISO) || days[days.length - 1] || todayISO);
+    renderAgMobile($('#agenda-card'));
     sel.replaceChildren();
     const shift = (n) => { const t = new Date(todayISO + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
     const tmw = shift(1), yst = shift(-1);
@@ -4665,13 +4854,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     state.agKeep = state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay);
     ag.replaceChildren();
     const lay = el('div', 'ag-lay');
-    if (state.agendaSide) lay.appendChild(miniCal());
+    if (state.agendaSide && !agmOn()) lay.appendChild(miniCal());
     const main = el('div', 'ag-main'); lay.appendChild(main); ag.appendChild(lay);
     if (state.agendaView === 'semana') main.appendChild(weekGrid(state.agendaWeek).wrap);
     else if (!days.length) main.appendChild(el('div', 'empty', 'Aún no he leído tu calendario.'));
     else main.appendChild(dayTimeline(state.agendaDay, null).wrap);
     if (keepTop != null) requestAnimationFrame(() => requestAnimationFrame(() => { const sc = ag.querySelector('.cal-scroll'); if (sc && !state.calPop) sc.scrollTop = keepTop; }));
     const tip = $('#agenda-card .mt-tip'); if (tip) tip.hidden = state.agendaView === 'semana';
+    if (agmOn()) requestAnimationFrame(() => agmFit($('#agenda-card')));
   }
 
   function renderHoy() {
