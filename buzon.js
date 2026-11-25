@@ -502,20 +502,60 @@
   }
   const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q, foco: usaFoco() ? st.foco : null });
 
+  /* ---------- rapidez (25/11): la lista sale al momento con lo último guardado y las conversaciones se precargan ---------- */
+  const LKEY = () => `sq-bz:${uid}:${st.carpeta}:${usaFoco() ? st.foco : '-'}:${st.filtro}`;
+  const saveLocal = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin sitio: no pasa nada */ } };
+  const readLocal = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const full = new Map(); // conversación → { mensajes, at } (con el texto, para abrir al instante)
+  const inflight = new Map();
+  const cola = [];
+  let activos = 0;
+  function fetchFull(conv) {
+    if (inflight.has(conv)) return inflight.get(conv);
+    const p = call('hilo', { conv, marcar: false }).then((r) => { const m = r.mensajes || []; full.set(conv, { mensajes: m, at: Date.now() }); if (full.size > 40) full.delete(full.keys().next().value); return m; })
+      .finally(() => inflight.delete(conv));
+    inflight.set(conv, p);
+    return p;
+  }
+  function prefetch(convs, urgente) {
+    for (const c of convs) {
+      if (!c || String(c).startsWith('p:') || full.has(c) || inflight.has(c) || cola.includes(c)) continue;
+      if (urgente) cola.unshift(c); else cola.push(c);
+    }
+    pump();
+  }
+  function pump() {
+    while (activos < 2 && cola.length) {
+      const c = cola.shift();
+      if (full.has(c)) continue;
+      activos++;
+      fetchFull(c).catch(() => null).finally(() => { activos--; setTimeout(pump, 150); });
+    }
+  }
+  // las primeras de la lista (lo que más probablemente vas a abrir)
+  const prefetchTop = () => { const ts = isPF() ? pendThreads(st.filtro) : threads(); prefetch(ts.slice(0, 10).map((t) => t.conv)); };
+  // al pasar el ratón por un correo, se adelanta su carga
+  list.addEventListener('pointerover', (e) => { const li = e.target.closest('.bz-item'); if (li && !mqNarrow.matches) prefetch([li.dataset.conv], true); });
+
   let reqN = 0;
   async function reload() {
     if (isPF()) { paintList(); return; }
     st.err = ''; st.items = []; st.next = null; st.exp.clear();
     if (st.sel) closeMsg(true);
     if (st.cuenta === 'gmail') { paintList(); return; }
-    const n = ++reqN; st.cargando = true; paintList();
+    const n = ++reqN; st.cargando = true;
+    const key = st.q ? null : LKEY();
+    const cached = key && readLocal(key);
+    if (cached?.items?.length) st.items = cached.items; // lo último que viste, mientras llega lo nuevo
+    paintList();
     try {
       const r = await call('lista', listArgs());
       if (n !== reqN) return;
-      st.items = r.items || []; st.next = r.next;
+      st.items = keepOpen(r.items || []); st.next = r.next;
       if (r.sinFoco) st.sinFoco = true; // Outlook no tiene activada la Bandeja Prioritarios: se ve todo
-    } catch (e) { if (n === reqN) st.err = 'No se pudo cargar el correo: ' + e.message; }
-    if (n === reqN) { st.cargando = false; paintList(); }
+      if (key) saveLocal(key, { items: (r.items || []).slice(0, 60), at: Date.now() });
+    } catch (e) { if (n === reqN && !st.items.length) st.err = 'No se pudo cargar el correo: ' + e.message; }
+    if (n === reqN) { st.cargando = false; cached?.items?.length ? paintListSoft() : paintList(); prefetchTop(); }
   }
   async function more() {
     if (!st.next || st.cargando) return;
@@ -534,6 +574,10 @@
         ? st.items.filter((x) => !fresh.some((y) => y.id === x.id)) // los ya leídos siguen en la lista
         : st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
       st.items = keepOpen([...fresh, ...extra].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))));
+      saveLocal(LKEY(), { items: fresh.slice(0, 60), at: Date.now() });
+      // lo que ha cambiado se vuelve a precargar
+      for (const m of fresh) { const c = full.get(m.conv); if (c && !c.mensajes.some((x) => x.id === m.id)) full.delete(m.conv); }
+      setTimeout(prefetchTop, 500);
       for (const c of st.exp) if (c !== st.sel) st.hcache.delete(c);
       st.exp.forEach((c) => { if (!st.hcache.has(c)) call('hilo', { conv: c, marcar: false, ligero: true }).then((x) => { st.hcache.set(c, x.mensajes || []); paintListSoft(); }).catch(() => null); });
       paintListSoft();
@@ -609,8 +653,20 @@
     reading(true);
     if (!st.hilo) pane.innerHTML = `<div class="bz-loading">Abriendo${t ? ' «' + esc(t.latest.asunto) + '»' : ''}…</div>`;
     const n = ++openN;
+    const pre = full.get(conv);
     try {
-      const r = await call('hilo', { conv });
+      let r;
+      if (pre && Date.now() - pre.at < 10 * 60000) {
+        r = { mensajes: pre.mensajes };
+        // marcar como leído en Outlook sin esperar, y comprobar en segundo plano si ha llegado algo nuevo
+        const unreadIds = [...st.items.filter((x) => x.conv === conv && !x.leido).map((x) => x.id), ...pre.mensajes.filter((x) => !x.leido).map((x) => x.id)];
+        if (unreadIds.length) call('leido', { ids: [...new Set(unreadIds)], valor: true }).then(refreshFolders).catch(() => null);
+        pre.mensajes.forEach((x) => { x.leido = true; });
+        fetchFull(conv).then((m) => { if (st.sel === conv && openN === n && !st.compose && m.length !== (st.hilo || []).length) { st.hilo = m; paintThread(); } }).catch(() => null);
+      } else {
+        r = await call('hilo', { conv });
+        full.set(conv, { mensajes: r.mensajes || [], at: Date.now() });
+      }
       if (n !== openN) return;
       st.hilo = r.mensajes || [];
       if (!st.hilo.length) throw new Error('Esta conversación ya no está en tu buzón.');
@@ -1019,7 +1075,7 @@
     try {
       await call('mover', { ids, destino });
       st.items = st.items.filter((x) => x.conv !== conv);
-      st.hcache.delete(conv);
+      st.hcache.delete(conv); full.delete(conv);
       toast(txt);
       closeMsg(true);
       paintListSoft();
@@ -1495,7 +1551,7 @@
         // contestado desde aquí: si estaba en Pendientes, queda gestionado (como en la vista de siempre)
         const c = st.sel, pm = pendOf(c);
         if (pm && isPend(pm) && o.tipo !== 'nuevo') { st.adv = c; P().gestionado(pm.id); if (PEND_F.includes(st.filtro)) { afterHandled('Enviado y gestionado ✓'); return; } }
-        st.hcache.delete(c);
+        st.hcache.delete(c); full.delete(c);
         if (c) setTimeout(() => { if (st.sel === c && !st.compose) openThread(c); }, 2500);
       }
     } catch (err) {
@@ -1516,16 +1572,19 @@
 
   /* ---------- arranque ---------- */
   async function start() {
-    st.cargando = true; paintList();
+    st.cargando = true;
     loadPins().then(repaint).catch(() => null);
-    try { const c = await call('carpetas'); st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; paintFolders(); }
-    catch (e) {
-      st.cargando = false;
-      st.err = /no está conectado/i.test(e.message) ? 'Conecta Microsoft 365 para ver aquí todo tu correo.' : 'No se pudo abrir el buzón: ' + e.message;
-      paintList(); return;
-    }
-    st.cargando = false;
+    // carpetas guardadas al momento; las de verdad llegan a la vez que la lista (antes se esperaba una y luego la otra)
+    const cf = readLocal(`sq-bz:${uid}:carpetas`);
+    if (cf?.carpetas?.length) { st.carpetas = cf.carpetas; st.outlook = cf.cuenta || ''; paintFolders(); }
+    const pc = call('carpetas').then((c) => { st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; paintFolders(); saveLocal(`sq-bz:${uid}:carpetas`, { carpetas: st.carpetas, cuenta: st.outlook }); })
+      .catch((e) => {
+        if (!/no está conectado/i.test(e.message)) return;
+        reqN++; st.cargando = false; st.items = [];
+        st.err = 'Conecta Microsoft 365 para ver aquí todo tu correo.'; paintList();
+      });
     reload();
+    await pc;
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshQuiet(); });
   setInterval(refreshQuiet, 90000);
