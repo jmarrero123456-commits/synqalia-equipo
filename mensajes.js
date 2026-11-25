@@ -279,6 +279,20 @@
   addEventListener('popstate', () => { if (st.open && !wide()) closeConv(true); });
   document.addEventListener('sq-graph', () => { if (st.open) paint(); });
 
+  // Hilo de Teams: se pide al abrir y cada vez que la lista trae un mensaje más nuevo que el último hilo descargado
+  const tms = (v) => { const t = v ? new Date(v).getTime() : 0; return isNaN(t) ? 0 : t; };
+  const pulling = new Map(); // id → fecha del último mensaje que ya se ha pedido
+  function pullThread(id, d, soloSiNuevo) {
+    if (!graphOn() || !d || !d.gid) return;
+    const ult = tms(d.fecha), hilo = tms(d.hilo_at);
+    const atrasado = ult && ult > hilo; // la lista tiene un mensaje que el hilo aún no
+    if (soloSiNuevo ? !atrasado : !(atrasado || !hilo || Date.now() - hilo > 60000)) return;
+    const k = String(d.fecha || '') + '|' + (soloSiNuevo ? '' : Date.now() - (Date.now() % 60000));
+    if (pulling.get(id) === k) return;
+    pulling.set(id, k);
+    window.__sqGraphCall({ action: 'teamsThread', id }).catch(() => { pulling.delete(id); });
+  }
+
   async function openConv(id) {
     if (!st.open) { const l = root.querySelector('.sqm-list'); if (l) listPos.top = l.scrollTop; listPos.win = window.scrollY; }
     st.open = id; st.keep.add(id);
@@ -291,7 +305,7 @@
         window.__sqGraphCall({ action: 'teamsRead', id }).then((r) => { if (r && r.permiso === false) teamsReadOff = true; }, () => {});
       }
       // con Microsoft 365 conectado: trae el hilo completo (llega por tiempo real)
-      if (graphOn() && d && d.gid && (!d.hilo_at || Date.now() - new Date(d.hilo_at).getTime() > 60000)) window.__sqGraphCall({ action: 'teamsThread', id }).catch(() => {});
+      pullThread(id, d, false);
     } else if (st.canal === 'synqalia') {
       if (!st.msgs.has(id)) { paint(); await loadMsgs(id); }
       markRead(id);
@@ -687,7 +701,17 @@ ${hist}`;
     const row = p.eventType === 'DELETE' ? p.old : p.new;
     if (!row) return;
     if (row.col === 'teams_visto') { if (p.eventType === 'DELETE') st.visto.delete(row.id); else st.visto.set(row.id, row.data || {}); }
-    else if (row.col === 'teams') { if (p.eventType === 'DELETE') st.teams.delete(row.id); else { st.teams.set(row.id, row.data || {}); st.teamsAt = row.data?.capturado || st.teamsAt; } }
+    else if (row.col === 'teams') {
+      if (p.eventType === 'DELETE') st.teams.delete(row.id);
+      else {
+        const d = row.data || {}; st.teams.set(row.id, d); st.teamsAt = d.capturado || st.teamsAt;
+        // chat abierto y llega un mensaje nuevo: se trae el hilo y, si lo estás viendo, queda leído
+        if (st.open === row.id && st.canal === 'teams') {
+          pullThread(row.id, d, true);
+          if (!document.hidden && teamsUnread(row.id, d)) setVisto(row.id, true);
+        }
+      }
+    }
     else if (row.col === 'tareas') { if (p.eventType === 'DELETE') st.tareas.delete(row.id); else if (row.data && row.data.chat) st.tareas.set(row.id, row.data); else return; if (st.open) paintConv(); return; }
     else return;
     if (!document.activeElement || document.activeElement.id !== 'sqm-in') paint(); else paintCounts();
