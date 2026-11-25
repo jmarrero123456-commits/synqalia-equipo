@@ -774,6 +774,81 @@
   };
   const hhmm2 = (mm) => Math.floor(mm / 60) + ':' + String(mm % 60).padStart(2, '0');
 
+
+  /* ---------- adjuntos: botón, arrastrar o pegar; las imágenes pegadas van dentro del texto (25/11) ---------- */
+  function attachBox(drop, zone, textarea, say) {
+    const items = []; // { file, inline, cid, url }
+    const fin = drop.querySelector('[data-files]'), flist = drop.querySelector('.bz-files');
+    const total = () => items.reduce((a, x) => a + x.file.size, 0);
+    const paint = () => {
+      flist.innerHTML = items.map((x, i) => `<li class="${x.inline ? 'inl' : ''}">${x.url ? `<img src="${x.url}" alt="">` : svg('clip', 13)}<span><b>${esc(x.file.name)}</b><small>${esc(tam(x.file.size))}${x.inline ? ' · en el texto' : ''}</small></span><button type="button" class="bz-ibtn" data-rm="${i}" aria-label="Quitar ${esc(x.file.name)}">✕</button></li>`).join('');
+      drop.classList.toggle('has', items.length > 0);
+    };
+    const add = (list, inline) => {
+      for (const x of list) {
+        if (!x || !x.size) continue;
+        if (total() + x.size > 25 * 1024 * 1024) { say(`«${x.name || 'imagen'}» no cabe: el correo pasaría de 25 MB.`, true); continue; }
+        const img = /^image\//.test(x.type || '');
+        const name = x.name && !/^image\.(png|jpe?g|gif)$/i.test(x.name) ? x.name : `imagen-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}-${items.length + 1}.${(x.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`;
+        const file = new File([x], name, { type: x.type || 'application/octet-stream' });
+        items.push({ file, inline: !!(inline && img), cid: 'img' + Date.now().toString(36) + items.length + '@synqalia', url: img ? URL.createObjectURL(file) : '' });
+      }
+      paint();
+    };
+    drop.querySelector('[data-pick]').addEventListener('click', () => fin.click());
+    fin.addEventListener('change', () => { add([...fin.files], false); fin.value = ''; });
+    flist.addEventListener('click', (e) => { const r = e.target.closest('[data-rm]'); if (r) { const [x] = items.splice(+r.dataset.rm, 1); if (x?.url) URL.revokeObjectURL(x.url); paint(); } });
+    ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); zone.classList.add('bz-dragging'); } }));
+    ['dragleave', 'dragend'].forEach((ev) => zone.addEventListener(ev, (e) => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('bz-dragging'); }));
+    zone.addEventListener('drop', (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); zone.classList.remove('bz-dragging'); add([...e.dataTransfer.files], false); });
+    // pegar (Ctrl+V o «Pegar» del móvil): imagen → dentro del texto; otros archivos → adjuntos
+    textarea.addEventListener('paste', (e) => {
+      const cd = e.clipboardData; if (!cd) return;
+      let fl = [...(cd.files || [])];
+      if (!fl.length) fl = [...(cd.items || [])].filter((it) => it.kind === 'file').map((it) => it.getAsFile()).filter(Boolean);
+      if (!fl.length) return;
+      e.preventDefault(); add(fl, true);
+      if (fl.some((x) => /^image\//.test(x.type))) say('Imagen pegada: irá dentro del correo, debajo del texto.');
+    });
+    paint();
+    return {
+      count: () => items.length,
+      inlineCids: () => items.filter((x) => x.inline).map((x) => x.cid),
+      async upload(draft) {
+        for (let i = 0; i < items.length; i++) {
+          const { file: x, inline, cid } = items[i];
+          say(`Subiendo ${inline ? 'imagen' : 'adjunto'} ${i + 1} de ${items.length}: ${x.name}…`);
+          const extra = inline ? { inline: true, cid } : {};
+          if (x.size <= 3 * 1024 * 1024) await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size, b64: await b64Of(x), ...extra });
+          else {
+            const { url } = await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size, ...extra });
+            const CH = 9 * 327680;
+            for (let s0 = 0; s0 < x.size; s0 += CH) {
+              say(`Subiendo ${x.name}: ${Math.round((s0 / x.size) * 100)} %…`);
+              await call('trozo', { url, start: s0, total: x.size, b64: await b64Of(x.slice(s0, s0 + CH)) });
+            }
+          }
+        }
+      },
+      clear() { items.splice(0).forEach((x) => x.url && URL.revokeObjectURL(x.url)); paint(); },
+    };
+  }
+  const ATTACH_HTML = () => `<div class="bz-drop" data-drop>
+        <input type="file" multiple hidden data-files>
+        <button type="button" class="bz-btn" data-pick>${svg('clip', 15)}<span>Adjuntar</span></button>
+        <span class="bz-drophint">o arrastra aquí archivos; las imágenes también se pueden pegar en el texto</span>
+        <ul class="bz-files" aria-label="Adjuntos"></ul>
+      </div>`;
+  // Pendientes: mismo cuadro de adjuntos debajo de su propuesta de correo
+  window.__sqAttach = (textarea, say) => {
+    const holder = document.createElement('div');
+    holder.innerHTML = ATTACH_HTML();
+    const drop = holder.firstElementChild;
+    const zone = textarea.parentElement || drop;
+    const api = attachBox(drop, zone, textarea, say);
+    return { node: drop, ...api };
+  };
+
   /* ---------- redactar: responder, a todos, reenviar, nuevo ---------- */
   const TIT = { responder: 'Responder', todos: 'Responder a todos', reenviar: 'Reenviar', nuevo: 'Correo nuevo' };
   function openCompose(o) {
@@ -811,12 +886,7 @@
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
       <label class="bz-ta"><span class="bz-sr">Texto del correo</span>
       <textarea name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea></label>
-      <div class="bz-drop" data-drop>
-        <input type="file" multiple hidden data-files>
-        <button type="button" class="bz-btn" data-pick>${svg('clip', 15)}<span>Adjuntar</span></button>
-        <span class="bz-drophint">o arrastra aquí archivos y fotos (también puedes pegarlos)</span>
-        <ul class="bz-files" aria-label="Adjuntos"></ul>
-      </div>
+      ${ATTACH_HTML()}
       <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
       <div class="bz-cacts">
         <button type="submit" class="bz-btn send">Enviar</button>
@@ -828,32 +898,9 @@
       ${fueraDeHora() ? `<p class="bz-offh">Es fuera de horario: <button type="button" class="bz-link" data-prog-quick>programarlo para ${esc(progLabel(nextWorkday(8)))}</button></p>` : ''}
     </form>`;
     const f = slot.querySelector('form');
-    o.files = o.files || [];
     const chipFields = [...f.querySelectorAll('[data-chips]')].map((box) => chipField(box, ini[box.dataset.chips] || [], say));
     o.commitChips = () => chipFields.every((c) => c.commit());
-    const drop = f.querySelector('[data-drop]'), fin = f.querySelector('[data-files]'), flist = f.querySelector('.bz-files');
-    const total = () => o.files.reduce((a, x) => a + x.size, 0);
-    const paintFiles = () => {
-      flist.innerHTML = o.files.map((x, i) => `<li><span>${svg('clip', 13)}<b>${esc(x.name)}</b><small>${esc(tam(x.size))}</small></span><button type="button" class="bz-ibtn" data-rm="${i}" aria-label="Quitar ${esc(x.name)}">✕</button></li>`).join('');
-      drop.classList.toggle('has', o.files.length > 0);
-    };
-    const addFiles = (list) => {
-      for (const x of list) {
-        if (!x || !x.size) continue;
-        if (total() + x.size > 25 * 1024 * 1024) { say(`«${x.name}» no cabe: el correo pasaría de 25 MB.`, true); continue; }
-        const name = x.name && x.name !== 'image.png' ? x.name : `imagen-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${(x.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`;
-        o.files.push(new File([x], name, { type: x.type || 'application/octet-stream' }));
-      }
-      paintFiles();
-    };
-    f.querySelector('[data-pick]').addEventListener('click', () => fin.click());
-    fin.addEventListener('change', () => { addFiles([...fin.files]); fin.value = ''; });
-    flist.addEventListener('click', (e) => { const r = e.target.closest('[data-rm]'); if (r) { o.files.splice(+r.dataset.rm, 1); paintFiles(); } });
-    ['dragenter', 'dragover'].forEach((ev) => f.addEventListener(ev, (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); f.classList.add('bz-dragging'); } }));
-    ['dragleave', 'dragend'].forEach((ev) => f.addEventListener(ev, (e) => { if (!f.contains(e.relatedTarget)) f.classList.remove('bz-dragging'); }));
-    f.addEventListener('drop', (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); f.classList.remove('bz-dragging'); addFiles([...e.dataTransfer.files]); });
-    f.querySelector('textarea').addEventListener('paste', (e) => { const fl = [...(e.clipboardData?.files || [])]; if (fl.length) { e.preventDefault(); addFiles(fl); } });
-    paintFiles();
+    o.att = attachBox(f.querySelector('[data-drop]'), f, f.querySelector('textarea'), say);
     f.addEventListener('submit', (e) => { e.preventDefault(); o.programar = null; send(f, o, true); });
     const progSlot = f.querySelector('.bz-prog-slot');
     f.querySelector('[data-prog]').addEventListener('click', () => {
@@ -884,22 +931,10 @@
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
     say(enviar ? (prog ? 'Programando…' : 'Enviando…') : 'Guardando en Borradores…');
     try {
-      if (o.files?.length) {
-        // 1) borrador preparado, 2) se suben los adjuntos, 3) se envía (o se queda en Borradores)
-        const { draft } = await call('redactar', { ...body, preparar: true });
-        for (let i = 0; i < o.files.length; i++) {
-          const x = o.files[i];
-          say(`Subiendo adjuntos ${i + 1} de ${o.files.length}: ${x.name}…`);
-          if (x.size <= 3 * 1024 * 1024) await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size, b64: await b64Of(x) });
-          else {
-            const { url } = await call('adjuntar', { draft, nombre: x.name, tipo: x.type, size: x.size });
-            const CH = 9 * 327680;
-            for (let s0 = 0; s0 < x.size; s0 += CH) {
-              say(`Subiendo ${x.name}: ${Math.round((s0 / x.size) * 100)} %…`);
-              await call('trozo', { url, start: s0, total: x.size, b64: await b64Of(x.slice(s0, s0 + CH)) });
-            }
-          }
-        }
+      if (o.att && o.att.count()) {
+        // 1) borrador preparado, 2) se suben los adjuntos (las imágenes pegadas van dentro del texto), 3) se envía
+        const { draft } = await call('redactar', { ...body, inline: o.att.inlineCids(), preparar: true });
+        await o.att.upload(draft);
         if (enviar) { say(prog ? 'Programando…' : 'Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo, programar: prog }); }
       } else await call('redactar', body);
       if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);

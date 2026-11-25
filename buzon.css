@@ -296,3 +296,9 @@
 .bz-dchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .bz-dchips p { width: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
 .bz-dchips .bz-chip { height: 30px; }
+
+/* imágenes pegadas */
+.bz-files li img { width: 34px; height: 34px; object-fit: cover; border-radius: 4px; flex: none; }
+.bz-files li { padding: 3px 2px 3px 4px; gap: 6px; }
+.bz-files li > span { display: grid; gap: 0; min-width: 0; }
+.bz-files li.inl { border-color: color-mix(in srgb, #5fe0cf 60%, var(--line)); }
