@@ -76,11 +76,46 @@
   const colorOf = (n) => { let h = 0; for (const c of String(n || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; };
   const avatar = (n) => `<span class="bz-av" style="background:${colorOf(n)}" aria-hidden="true">${esc(ini(n))}</span>`;
 
-  async function call(op, extra = {}) {
-    const { data, error } = await sb.functions.invoke('buzon', { body: { op, ...extra } });
+  async function raw(fn, op, extra = {}) {
+    const { data, error } = await sb.functions.invoke(fn, { body: { op, ...extra } });
     if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch {} throw new Error(t); }
     if (data?.error) throw new Error(data.error);
     return data;
+  }
+  /* ---------- Gmail (25/11): cada id de Gmail llega como «g~<cuenta>~<id>»; con eso se sabe a qué función va ---------- */
+  const GRE = /^g~[0-9a-f-]{36}~/i;
+  const isG = (v) => GRE.test(String(v || ''));
+  const gAcc = (v) => String(v || '').split('~')[1] || '';
+  const GALL = 'g~*~INBOX'; // «Todas las de Gmail»: Recibidos de todas las cuentas
+  const gInbox = (a) => `g~${a.id}~INBOX`;
+  const gCuenta = (ref) => st.gm.find((a) => a.id === gAcc(ref)) || null;
+  async function multiList(srcs) {
+    const rs = await Promise.allSettled(srcs.map((s) => raw(s.fn, 'lista', s.next ? { next: s.next } : s.args)));
+    const items = [], next = [], errs = [];
+    rs.forEach((r, i) => {
+      if (r.status === 'fulfilled') { items.push(...(r.value.items || [])); if (r.value.next) next.push({ ...srcs[i], next: r.value.next }); }
+      else errs.push(r.reason);
+    });
+    if (errs.length === rs.length && errs.length) throw errs[0];
+    items.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+    return { items, next: next.length ? { multi: next } : null };
+  }
+  async function call(op, extra = {}) {
+    if (op === 'lista') {
+      if (extra.next && typeof extra.next === 'object') return multiList(extra.next.multi || []);
+      if (typeof extra.next === 'string') return raw(isG(extra.next) ? 'gmail' : 'buzon', op, extra);
+      if (extra.carpeta === GALL) return multiList(st.gm.map((a) => ({ fn: 'gmail', args: { ...extra, carpeta: gInbox(a), foco: null } })));
+      if (isG(extra.carpeta)) return raw('gmail', op, { ...extra, foco: null });
+      // «Todas»: Bandeja de Outlook + Recibidos de cada Gmail, mezclados por fecha
+      if (st.cuenta === 'todas' && extra.carpeta === 'inbox' && st.gm.length) {
+        return multiList([{ fn: 'buzon', args: extra }, ...st.gm.map((a) => ({ fn: 'gmail', args: { ...extra, carpeta: gInbox(a), foco: null } }))]);
+      }
+      return raw('buzon', op, extra);
+    }
+    const refs = [extra.id, extra.conv, extra.draft, Array.isArray(extra.ids) ? extra.ids[0] : null, extra.cuenta];
+    if (refs.some(isG)) return raw('gmail', op, extra);
+    if (st.cuenta === 'gmail' && isG(st.gacc) && ['carpetas', 'carpetaNueva', 'personas'].includes(op)) return raw('gmail', op, { ...extra, cuenta: st.gacc });
+    return raw('buzon', op, extra);
   }
 
   /* ---------- capa de Synqalia (Pendientes de mi.html) ---------- */
@@ -133,6 +168,7 @@
     modo: 'bandeja', cuenta: 'todas', filtro: 'todos', q: '', carpeta: 'inbox',
     carpetas: [], items: [], next: null, sel: null, selMid: null, hilo: null, cargando: false, err: '', compose: null,
     exp: new Set(), hcache: new Map(), outlook: '',
+    gm: [], gacc: null, gmCarpetas: new Map(), oCarpetas: null, // cuentas de Gmail conectadas y la elegida (ref o GALL)
     // Prioritarios / Otros, como la Bandeja de entrada de Outlook (por defecto, Prioritarios; se recuerda)
     foco: (() => { try { return localStorage.getItem('sq-bz-foco') || 'prioritarios'; } catch { return 'prioritarios'; } })(),
   };
@@ -168,8 +204,9 @@
       <div class="bz-seg bz-acc" role="tablist" aria-label="Cuenta">
         <button type="button" role="tab" data-acc="todas" aria-selected="true">Todas</button>
         <button type="button" role="tab" data-acc="outlook" aria-selected="false">Outlook</button>
-        <button type="button" role="tab" data-acc="gmail" aria-selected="false">Gmail</button>
+        <button type="button" role="tab" data-acc="gmail" aria-selected="false" aria-haspopup="menu"><span class="bz-gml">Gmail</span><span class="bz-caret" aria-hidden="true">▾</span></button>
       </div>
+      <div class="bz-gmenu" role="menu" hidden></div>
       <button type="button" class="bz-new" id="bz-new" aria-label="Nuevo correo">${svg('pen', 15)}<span>Nuevo correo</span></button>
     </div>
   </div>
@@ -208,10 +245,84 @@
   /* ---------- filtros ---------- */
   $('.bz-acc').addEventListener('click', (e) => {
     const b = e.target.closest('[data-acc]'); if (!b) return;
-    st.cuenta = b.dataset.acc;
-    root.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-    reload();
+    const a = b.dataset.acc;
+    if (a === 'gmail') {
+      // sin cuentas: panel «Conectar Gmail»; con cuentas: la primera vez entra, y desde dentro abre el menú de cuentas
+      if (st.gm.length && (st.cuenta === 'gmail' || e.target.closest('.bz-caret'))) { gMenu(); return; }
+      setCuenta('gmail', st.gacc && (st.gacc === GALL || gCuenta(st.gacc)) ? st.gacc : (st.gm[0] ? st.gm[0].ref : null));
+      return;
+    }
+    setCuenta(a);
   });
+  const gmenu = $('.bz-gmenu');
+  function paintAcc() {
+    root.querySelectorAll('[data-acc]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.acc === st.cuenta)));
+    const g = gCuenta(st.gacc);
+    const lbl = $('.bz-gml');
+    lbl.textContent = st.cuenta === 'gmail' && st.gm.length > 1 ? (st.gacc === GALL ? 'Gmail · todas' : (g ? g.email.split('@')[0] : 'Gmail')) : 'Gmail';
+    lbl.title = g ? g.email : '';
+    root.classList.toggle('bz-hasgm', st.gm.length > 0);
+  }
+  function setCuenta(c, gref) {
+    gmenu.hidden = true;
+    if (st.sel) closeMsg(true);
+    st.cuenta = c; st.q = ''; $('#bz-q').value = '';
+    if (c === 'gmail') {
+      st.gacc = gref || null;
+      if (st.gacc === GALL) { st.carpeta = GALL; st.carpetas = [{ id: GALL, nombre: 'Recibidos · todas las cuentas', sys: true }]; }
+      else if (st.gacc) {
+        st.carpeta = `g~${gAcc(st.gacc)}~INBOX`;
+        st.carpetas = st.gmCarpetas.get(gAcc(st.gacc)) || [{ id: st.carpeta, nombre: 'Recibidos', sys: true }];
+        raw('gmail', 'carpetas', { cuenta: st.gacc }).then((r) => { st.gmCarpetas.set(gAcc(st.gacc), r.carpetas || []); if (st.cuenta === 'gmail' && gAcc(st.carpeta) === gAcc(st.gacc)) { st.carpetas = r.carpetas || []; paintFolders(); } }).catch(() => null);
+      } else { st.carpeta = 'g~none'; st.carpetas = []; }
+      if (isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); }
+    } else {
+      if (isG(st.carpeta) || st.carpeta === GALL || st.carpeta === 'g~none') st.carpeta = 'inbox';
+      if (st.oCarpetas) st.carpetas = st.oCarpetas;
+    }
+    paintAcc(); paintFolders(); reload();
+  }
+  function gMenu() {
+    if (!gmenu.hidden) { gmenu.hidden = true; return; }
+    const it = (ref, txt, sub, color) => `<button type="button" role="menuitemradio" data-gref="${esc(ref)}" aria-checked="${st.cuenta === 'gmail' && st.gacc === ref}">${color ? `<i class="bz-accdot" style="background:${esc(color)}"></i>` : '<i class="bz-accdot all"></i>'}<span><b>${esc(txt)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+    gmenu.innerHTML = st.gm.map((a) => it(a.ref, a.email, a.conectada ? (a.nombre || '') : 'Hay que volver a conectarla', a.color)).join('')
+      + (st.gm.length > 1 ? it(GALL, 'Todas las de Gmail', 'Recibidos de todas las cuentas') : '')
+      + `<hr><button type="button" role="menuitem" data-gnew>+ Conectar otra cuenta de Gmail</button>`
+      + (st.gm.length ? `<button type="button" role="menuitem" class="bz-gdel" data-gdel>Desconectar una cuenta…</button>` : '');
+    gmenu.hidden = false;
+    gmenu.querySelector('button')?.focus();
+  }
+  gmenu.addEventListener('click', (e) => {
+    const r = e.target.closest('[data-gref]');
+    if (r) { const g = gCuenta(r.dataset.gref); if (g && !g.conectada) { gConnect(g.email); return; } setCuenta('gmail', r.dataset.gref); return; }
+    if (e.target.closest('[data-gnew]')) { gmenu.hidden = true; gConnect(); return; }
+    if (e.target.closest('[data-gdel]')) { gmenu.hidden = true; gDisconnect(); }
+  });
+  gmenu.addEventListener('keydown', (e) => { if (e.key === 'Escape') { gmenu.hidden = true; $('[data-acc="gmail"]').focus(); } });
+  document.addEventListener('click', (e) => { if (!gmenu.hidden && !e.target.closest('.bz-gmenu') && !e.target.closest('[data-acc="gmail"]')) gmenu.hidden = true; });
+  async function loadGmail() {
+    try { const r = await raw('gmail', 'cuentas'); st.gm = r.cuentas || []; st.gmCfg = r.configurado !== false; }
+    catch { st.gm = []; }
+    paintAcc();
+    return st.gm;
+  }
+  // conectar: Google abre su pantalla para elegir cuenta y vuelve a Synqalia (mi.html?gmail=ok#correo)
+  async function gConnect(hint) {
+    try { toast('Abriendo Google…'); const { url } = await raw('gmail', 'conectar', hint ? { hint } : {}); location.href = url; }
+    catch (e) { toast(e.message); if (st.cuenta === 'gmail' && !st.gm.length) { st.err = e.message; paintList(); } }
+  }
+  async function gDisconnect() {
+    const opts = st.gm.map((a, i) => `${i + 1}. ${a.email}`).join('\n');
+    const pick = st.gm.length === 1 ? '1' : prompt(`¿Qué cuenta de Gmail desconectas?\n${opts}\n\nEscribe el número:`);
+    const a = st.gm[Number(pick) - 1]; if (!a) return;
+    if (!confirm(`¿Desconectar ${a.email} de Synqalia?\n\nSe quita el permiso en Google. Tus correos siguen en Gmail; solo dejan de verse aquí.`)) return;
+    try {
+      await raw('gmail', 'desconectar', { cuenta: a.ref });
+      toast(`${a.email} desconectada`);
+      await loadGmail();
+      if (st.cuenta === 'gmail') setCuenta('gmail', st.gm[0]?.ref || null); else reload();
+    } catch (e) { toast('No se pudo desconectar: ' + e.message); }
+  }
   $('.bz-filters').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fil]'); if (!b) return;
     // volver a pulsar «No leídos» la refresca (quita los ya leídos); en los demás filtros, volver a pulsar lo quita
@@ -261,13 +372,13 @@
   const WKN = { inbox: 'Bandeja', drafts: 'Borradores', sentitems: 'Enviados', archive: 'Archivo', deleteditems: 'Eliminados', junkemail: 'Correo no deseado', outbox: 'Programados y salida' };
   const fname = (f) => WKN[f.wk] || f.nombre;
   function paintFolders() {
-    const main = st.carpetas.filter((f) => f.wk), mine = st.carpetas.filter((f) => !f.wk);
+    const main = st.carpetas.filter((f) => f.wk || f.sys), mine = st.carpetas.filter((f) => !f.wk && !f.sys);
     const cur = isPF() ? null : (f) => (f.wk || f.id) === st.carpeta;
     const li = (f) => `<button type="button" data-f="${esc(f.wk || f.id)}" aria-current="${cur && cur(f) ? 'true' : 'false'}" class="${f.dentro ? 'in' : ''}"><span>${esc(fname(f))}</span>${f.noLeidos ? `<b>${f.noLeidos}</b>` : (f.wk === 'drafts' && f.total ? `<i>${f.total}</i>` : '')}</button>`;
     const fcol = root.classList.contains('bz-fcol');
     const curF = st.carpetas.find((f) => (f.wk || f.id) === st.carpeta);
     folders.innerHTML = `<button type="button" class="bz-fold" data-fold aria-expanded="${!fcol}" title="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}" aria-label="${fcol ? 'Mostrar carpetas' : 'Recoger carpetas'}">${fcol ? '»' : '«'}</button><span class="bz-fmini">${esc(curF ? fname(curF) : '')}</span>`
-      + main.map(li).join('') + `<div class="bz-flbl">Mis carpetas</div>` + mine.map(li).join('') + `<button type="button" class="bz-fnew" data-fnew>+ Nueva carpeta</button><button type="button" class="bz-fnew bz-fread" data-fread>✓ Marcar leídos hasta…</button>`;
+      + main.map(li).join('') + (st.carpeta === GALL ? '' : `<div class="bz-flbl">${st.cuenta === 'gmail' ? 'Etiquetas' : 'Mis carpetas'}</div>` + mine.map(li).join('') + `<button type="button" class="bz-fnew" data-fnew>+ ${st.cuenta === 'gmail' ? 'Nueva etiqueta' : 'Nueva carpeta'}</button>` + (st.cuenta === 'gmail' ? '' : `<button type="button" class="bz-fnew bz-fread" data-fread>✓ Marcar leídos hasta…</button>`));
     fsel.innerHTML = st.carpetas.map((f) => `<option value="${esc(f.wk || f.id)}"${(f.wk || f.id) === st.carpeta ? ' selected' : ''}>${esc(fname(f))}</option>`).join('');
     if (!st.carpetas.some((f) => (f.wk || f.id) === st.carpeta)) fsel.insertAdjacentHTML('afterbegin', `<option value="${esc(st.carpeta)}">${esc(WKN[st.carpeta] || 'Carpeta')}</option>`);
     fsel.value = st.carpeta;
@@ -286,7 +397,14 @@
     if (isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); }
     paintFolders(); reload();
   }
-  const refreshFolders = () => call('carpetas').then((c) => { st.carpetas = c.carpetas || []; paintFolders(); }).catch(() => null);
+  const refreshFolders = () => {
+    if (st.cuenta === 'gmail') {
+      if (!isG(st.gacc)) return Promise.resolve();
+      const ref = st.gacc;
+      return raw('gmail', 'carpetas', { cuenta: ref }).then((c) => { st.gmCarpetas.set(gAcc(ref), c.carpetas || []); if (st.gacc === ref && st.cuenta === 'gmail') { st.carpetas = c.carpetas || []; paintFolders(); } }).catch(() => null);
+    }
+    return raw('buzon', 'carpetas').then((c) => { st.oCarpetas = c.carpetas || []; if (st.cuenta !== 'gmail') { st.carpetas = st.oCarpetas; paintFolders(); } }).catch(() => null);
+  };
   const moveOptions = () => st.carpetas.filter((f) => f.wk !== 'drafts' && f.wk !== 'outbox' && (f.wk || f.id) !== st.carpeta).map((f) => `<option value="${esc(f.wk || f.id)}">${f.dentro ? '  ' : ''}${esc(fname(f))}</option>`).join('') + '<option value="__nueva">+ Nueva carpeta…</option>';
 
   /* ---------- carpeta nueva (25/11): se crea en Outlook; desde «Mover a…» se crea y se mueve ahí ---------- */
@@ -448,7 +566,7 @@
     </span>`;
   function rowHtml(t) {
     const m = t.latest;
-    const enviados = st.carpeta === 'sentitems' || st.carpeta === 'drafts';
+    const enviados = st.carpeta === 'sentitems' || st.carpeta === 'drafts' || /~(SENT|DRAFT)$/.test(st.carpeta);
     const quien = enviados && !isPF() ? ('Para: ' + (nombres(m.para) || '—'))
       : (t.msgs ? [...new Set(t.msgs.map((x) => x.de?.nombre || x.de?.mail).filter(Boolean))].slice(0, 3).join('; ') : (m.de?.nombre || m.de?.mail || '')) || '—';
     const pinned = t.pinned || pins.has(t.conv);
@@ -463,7 +581,7 @@
         <button type="button" class="bz-rowbtn" aria-expanded="${st.sel === t.conv}">
           ${avatar(quien.replace(/^Para: /, '').split(';')[0])}
           <span class="bz-rc">
-            <span class="r1"><b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.adj ? svg('clip', 13) : ''}${verb}${t.bandera ? `<span class="fl">${svg('flag', 13)}</span>` : ''}${pinned ? `<span class="pn">${svg('pin', 13)}</span>` : ''}${!String(t.conv).startsWith('p:') && mailTasks(t.conv).length ? `<span class="tk" title="Ya está en Tareas">${svg('task', 13)}</span>` : ''}</span></span>
+            <span class="r1">${st.cuenta === 'todas' && st.gm.length ? `<i class="bz-accdot" style="background:${esc(m.cuentaColor || '#0078d4')}" title="${esc(m.cuentaMail || st.outlook || 'Outlook')}"></i>` : ''}<b class="from">${esc(quien)}</b>${t.n > 1 ? `<span class="bz-n" title="${t.n} mensajes">${t.n}</span>` : ''}<span class="ics">${t.adj ? svg('clip', 13) : ''}${verb}${t.bandera ? `<span class="fl">${svg('flag', 13)}</span>` : ''}${pinned ? `<span class="pn">${svg('pin', 13)}</span>` : ''}${!String(t.conv).startsWith('p:') && mailTasks(t.conv).length ? `<span class="tk" title="Ya está en Tareas">${svg('task', 13)}</span>` : ''}</span></span>
             <span class="r2">${tagOf(t)}<span class="subj">${esc(m.asunto)}</span><span class="when">${esc(corto(m.fecha))}</span></span>
             <span class="r3">${esc(m.prev)}</span>
           </span>
@@ -486,9 +604,12 @@
     if (st.modo !== 'bandeja') return;
     root.classList.toggle('bz-pf', isPF());
     paintCounts();
-    if (st.cuenta === 'gmail' && !isPF()) {
+    if (st.cuenta === 'gmail' && !st.gm.length && !isPF()) {
       list.innerHTML = '';
-      statusEl.innerHTML = `<div class="bz-empty"><b>Gmail todavía no está conectado.</b><br>Lo conectamos en el siguiente paso; de momento aquí ves Outlook.</div>`;
+      statusEl.innerHTML = `<div class="bz-empty bz-gconnect"><b>Conecta tu Gmail</b><span>Vale para Gmail y para cuentas de Google Workspace. Podrás conectar más de una.</span>
+        <button type="button" class="bz-btn gest" data-gconnect>Conectar Gmail</button>${st.err ? `<small class="bad">${esc(st.err)}</small>` : ''}
+        <small>Google te pedirá elegir la cuenta y dar permiso a Synqalia para leer, ordenar y enviar tu correo.</small></div>`;
+      statusEl.querySelector('[data-gconnect]').addEventListener('click', () => { st.err = ''; gConnect(); });
       foot.innerHTML = '';
       return;
     }
@@ -610,7 +731,7 @@
   const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q, foco: usaFoco() ? st.foco : null });
 
   /* ---------- rapidez (25/11): la lista sale al momento con lo último guardado y las conversaciones se precargan ---------- */
-  const LKEY = () => `sq-bz:${uid}:${st.carpeta}:${usaFoco() ? st.foco : '-'}:${st.filtro}`;
+  const LKEY = () => `sq-bz:${uid}:${st.cuenta === 'todas' && st.gm.length ? 'todas:' : ''}${st.carpeta}:${usaFoco() ? st.foco : '-'}:${st.filtro}`;
   const saveLocal = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin sitio: no pasa nada */ } };
   const readLocal = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
   const full = new Map(); // conversación → { mensajes, at } (con el texto, para abrir al instante)
@@ -649,7 +770,7 @@
     if (isPF()) { paintList(); return; }
     st.err = ''; st.items = []; st.next = null; st.exp.clear();
     if (st.sel) closeMsg(true);
-    if (st.cuenta === 'gmail') { paintList(); return; }
+    if (st.cuenta === 'gmail' && !st.gm.length) { paintList(); return; }
     const n = ++reqN; st.cargando = true;
     const key = st.q ? null : LKEY();
     const cached = key && readLocal(key);
@@ -673,7 +794,7 @@
   }
   // actualización silenciosa (sin perder lo abierto)
   async function refreshQuiet() {
-    if (st.modo !== 'bandeja' || view.hidden || document.hidden || st.cargando || st.q || st.cuenta === 'gmail' || st.compose || isPF()) return;
+    if (st.modo !== 'bandeja' || view.hidden || document.hidden || st.cargando || st.q || (st.cuenta === 'gmail' && !st.gm.length) || st.compose || isPF()) return;
     try {
       const r = await call('lista', listArgs());
       const fresh = r.items || [];
@@ -1612,6 +1733,9 @@
     paint();
     return {
       count: () => items.length,
+      total: () => items.reduce((s, x) => s + x.file.size, 0),
+      // Gmail: todo en la misma petición (b64), las imágenes pegadas como «inline»
+      async payload() { const out = []; for (const x of items) out.push({ nombre: x.file.name, tipo: x.file.type, b64: await b64Of(x.file), inline: x.inline, cid: x.cid }); return out; },
       inlineCids: () => items.filter((x) => x.inline).map((x) => x.cid),
       async upload(draft) {
         for (let i = 0; i < items.length; i++) {
@@ -1668,7 +1792,7 @@
       pane.innerHTML = `<div class="bz-phead"><div class="bz-ptools"><button type="button" class="bz-back" data-cl>${svg('back', 20)}<span>Volver</span></button></div><h3>Correo nuevo</h3></div><p class="bz-msgst" aria-live="polite"></p><div class="bz-compose-slot"></div>`;
       slot = pane.querySelector('.bz-compose-slot');
     }
-    const yo = String(st.outlook || '').toLowerCase();
+    const yo = String((isG(o.target) ? gCuenta(o.target)?.email : st.outlook) || '').toLowerCase();
     const notMe = (l) => (l || []).filter((p) => p && p.mail && String(p.mail).toLowerCase() !== yo);
     // destinatarios de partida: se pueden quitar (✕) o añadir
     const ini = o.tipo === 'responder' ? { para: notMe([m.de]), cc: [] }
@@ -1677,9 +1801,9 @@
     slot.innerHTML = `<form class="bz-compose" novalidate>
       <div class="bz-ctit"><b>${o.sugerida ? 'Respuesta sugerida' : TIT[o.tipo]}</b></div>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>De</span><select name="cuenta" required>
-        ${st.cuenta === 'todas' ? '<option value="" selected disabled>¿Desde qué cuenta?</option>' : ''}
+        ${st.cuenta === 'todas' || (st.cuenta === 'gmail' && !st.gm.length) ? '<option value="" selected disabled>¿Desde qué cuenta?</option>' : ''}
         <option value="outlook"${st.cuenta === 'outlook' ? ' selected' : ''}>Outlook · ${esc(st.outlook || 'cuenta de trabajo')}</option>
-        <option value="gmail" disabled>Gmail · todavía sin conectar</option>
+        ${st.gm.length ? st.gm.filter((a) => a.conectada).map((a) => `<option value="${esc(a.ref)}"${st.cuenta === 'gmail' && (gAcc(st.gacc) === a.id || (st.gacc === GALL && a === st.gm[0])) ? ' selected' : ''}>Gmail · ${esc(a.email)}</option>`).join('') : '<option value="gmail" disabled>Gmail · sin conectar</option>'}
       </select></label>` : ''}
       <div class="bz-f"><span>Para</span><div class="bz-chips" data-chips="para"><input type="text" inputmode="email" aria-label="Para" placeholder="Escribe un nombre o correo"></div><input type="hidden" name="para"></div>
       <div class="bz-f"><span>CC</span><div class="bz-chips" data-chips="cc"><input type="text" inputmode="email" aria-label="CC" placeholder="Añadir en copia"></div><input type="hidden" name="cc"></div>
@@ -1688,7 +1812,7 @@
       <textarea name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe o dicta el correo y pulsa «Perfeccionar»' : 'Escribe o dicta tu respuesta (aunque sea a lo bruto) y pulsa «Perfeccionar»'}">${esc(o.texto || '')}</textarea></label>
       <div class="bz-aibar"><span class="bz-aimic"></span><button type="button" class="bz-btn bz-aibtn" data-ai>✨ <span>Perfeccionar</span></button><button type="button" class="bz-link" data-undo hidden>Deshacer</button><span class="bz-aist" aria-live="polite"></span></div>
       ${ATTACH_HTML()}
-      <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
+      <p class="bz-note">${isG(o.target) || st.cuenta === 'gmail' ? 'Tu firma de Gmail' : 'Tu firma de Outlook'} se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
       <div class="bz-cacts">
         <button type="submit" class="bz-btn send">Enviar</button>
         <button type="button" class="bz-btn" data-prog title="Elegir cuándo se envía">⏱ Programar</button>
@@ -1757,14 +1881,19 @@
     f.querySelectorAll('button').forEach((x) => { x.disabled = true; });
     say(enviar ? (prog ? 'Programando…' : 'Enviando…') : 'Guardando en Borradores…');
     try {
-      if (o.att && o.att.count()) {
+      const esG = isG(body.cuenta) || isG(body.id);
+      if (esG && o.att && o.att.count()) {
+        if (o.att.total() > 18 * 1024 * 1024) throw new Error('Desde Synqalia, con Gmail, los adjuntos pueden sumar hasta 18 MB. Para más, envíalo desde Gmail.');
+        say(`Subiendo ${o.att.count()} adjunto(s)…`);
+        await call('redactar', { ...body, adjuntos: await o.att.payload() });
+      } else if (o.att && o.att.count()) {
         // 1) borrador preparado, 2) se suben los adjuntos (las imágenes pegadas van dentro del texto), 3) se envía
         const { draft } = await call('redactar', { ...body, inline: o.att.inlineCids(), preparar: true });
         await o.att.upload(draft);
         if (enviar) { say(prog ? 'Programando…' : 'Enviando…'); await call('enviarBorrador', { draft, tipo: o.tipo, programar: prog }); }
       } else await call('redactar', body);
       if (body.cc && typeof window.__sqRememberCc === 'function') window.__sqRememberCc(body.cc);
-      const okTxt = enviar ? (prog ? `Programado: sale ${progLabel(o.programar)} ✓` : 'Enviado ✓') : 'Guardado en Borradores de Outlook';
+      const okTxt = enviar ? (prog ? `Programado: sale ${progLabel(o.programar)} ✓` : 'Enviado ✓') : (esG ? 'Guardado en Borradores de Gmail' : 'Guardado en Borradores de Outlook');
       toast(okTxt);
       if (o.ext) { o.ext.slot.innerHTML = ''; o.ext.onDone?.(enviar, prog ? okTxt : null); return; }
       st.compose = null;
@@ -1800,13 +1929,25 @@
     loadPins().then(repaint).catch(() => null);
     // carpetas guardadas al momento; las de verdad llegan a la vez que la lista (antes se esperaba una y luego la otra)
     const cf = readLocal(`sq-bz:${uid}:carpetas`);
-    if (cf?.carpetas?.length) { st.carpetas = cf.carpetas; st.outlook = cf.cuenta || ''; paintFolders(); }
-    const pc = call('carpetas').then((c) => { st.carpetas = c.carpetas || []; st.outlook = c.cuenta || ''; paintFolders(); saveLocal(`sq-bz:${uid}:carpetas`, { carpetas: st.carpetas, cuenta: st.outlook }); })
+    if (cf?.carpetas?.length) { st.carpetas = st.oCarpetas = cf.carpetas; st.outlook = cf.cuenta || ''; paintFolders(); }
+    const pc = raw('buzon', 'carpetas').then((c) => { st.oCarpetas = c.carpetas || []; st.outlook = c.cuenta || ''; if (st.cuenta !== 'gmail') { st.carpetas = st.oCarpetas; paintFolders(); } saveLocal(`sq-bz:${uid}:carpetas`, { carpetas: st.oCarpetas, cuenta: st.outlook }); })
       .catch((e) => {
-        if (!/no está conectado/i.test(e.message)) return;
+        if (!/no está conectado/i.test(e.message) || st.gm.length || st.cuenta === 'gmail') return;
         reqN++; st.cargando = false; st.items = [];
         st.err = 'Conecta Microsoft 365 para ver aquí todo tu correo.'; paintList();
       });
+    // Gmail: cuentas conectadas y, si vienes de Google, directo a la cuenta recién conectada
+    const vuelta = new URLSearchParams(location.search);
+    const gq = vuelta.get('gmail');
+    if (gq) history.replaceState(null, '', location.pathname + location.hash);
+    loadGmail().then((gm) => {
+      if (gq === 'ok') { const ref = vuelta.get('cuenta'); const a = gCuenta(ref) || gm[gm.length - 1]; if (a) { toast(`Gmail conectado: ${a.email} ✓`); setCuenta('gmail', a.ref); return; } }
+      if (gq === 'error') {
+        const why = { cancelado: 'Has cancelado la conexión con Google.', caducado: 'La conexión tardó demasiado; vuelve a intentarlo.', permisos: 'Hay que marcar el permiso de Gmail en la pantalla de Google para que funcione.' }[vuelta.get('motivo')] || 'No se pudo conectar Gmail; vuelve a intentarlo.';
+        setCuenta('gmail', gm[0]?.ref || null); st.err = why; paintList(); toast(why); return;
+      }
+      if (gm.length && st.cuenta === 'todas' && !st.sel) reload();
+    });
     reload();
     await pc;
   }
