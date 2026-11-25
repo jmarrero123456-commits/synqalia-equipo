@@ -5087,6 +5087,41 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
   const mtRecord = (ev) => state.catchups.find((c) => c.evento && c.evento.fecha === ev.fecha && c.evento.inicio === ev.inicio && normTxt(cleanTitle(c.evento.titulo)) === normTxt(cleanTitle(ev.titulo)));
   window.__sqOpenMeet = (ev) => openMeetRoom(ev);
+  // Plaud (plaud.js): añade o quita la grabación del Plaud en las notas de una reunión de la agenda (ev con fecha)
+  const PLAUD_FIN = '— fin de la grabación del Plaud —';
+  const plaudHead = (g) => '— Grabación del Plaud ' + g.hIni + '–' + g.hFin + ' —';
+  const notesOf = (id) => { const ta = state.mtOpen && state.mtOpen.id === id ? document.getElementById('mt-notes') : null; const d = state.cuDraft[id]; const ex = state.catchups.find((c) => c.id === id); return {ta, txt: ta ? ta.value : (d && d.notas) || (ex && ex.notas) || ''}; };
+  async function putNotes(id, p, fecha, ta, next) {
+    const d = state.cuDraft[id]; if (d) d.notas = next;
+    if (ta) { ta.value = next; ta.dispatchEvent(new Event('input', {bubbles: true})); return true; }
+    return saveCu(id, {persona: p.nombre, equipoId: p.id, fecha, notas: next});
+  }
+  window.__sqMeet = {
+    agenda: () => state.agenda, catchups: () => state.catchups, open: (ev) => openMeetRoom(ev), cleanTitle,
+    async attach(ev, g) {
+      const {p, team} = mtEntity(ev);
+      const ex = mtRecord(ev);
+      const id = ex ? ex.id : ((state.mtOpen && state.mtOpen.ev.fecha === ev.fecha && state.mtOpen.ev.inicio === ev.inicio) ? state.mtOpen.id : newCuId());
+      const d = state.cuDraft[id] || (state.cuDraft[id] = {persona: p.nombre, equipoId: p.id, fecha: ev.fecha, notas: ex ? (ex.notas || '') : ''});
+      d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: ev.inicio, fin: ev.fin || null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: (ex && ex.miembros) || p.miembros});
+      const {ta, txt} = notesOf(id);
+      if (txt.includes(plaudHead(g))) return id; // ya estaba
+      const body = (g.resumenPlaud ? '## Resumen de Plaud\n' + String(g.resumenPlaud).trim() + '\n\n## Transcripción\n' : '') + String(g.transcripcion || '').trim();
+      const block = plaudHead(g) + '\n' + body + '\n' + PLAUD_FIN;
+      const cur = txt.replace(/\s+$/, '');
+      const ok = await putNotes(id, p, ev.fecha, ta, (cur ? cur + '\n\n' : '') + block);
+      return ok === false ? null : id;
+    },
+    async detach(id, g) {
+      const ex = state.catchups.find((c) => c.id === id); if (!ex && !state.cuDraft[id]) return false;
+      const {ta, txt} = notesOf(id);
+      const a = txt.indexOf(plaudHead(g)); if (a < 0) return true;
+      let b = txt.indexOf(PLAUD_FIN, a); b = b < 0 ? txt.length : b + PLAUD_FIN.length;
+      const next = (txt.slice(0, a).replace(/\s+$/, '') + (txt.slice(b).trim() ? '\n\n' + txt.slice(b).replace(/^\s+/, '') : '')).trim();
+      const p = {nombre: (ex && ex.persona) || state.cuDraft[id].persona, id: (ex && ex.equipoId) || state.cuDraft[id].equipoId};
+      return (await putNotes(id, p, (ex && ex.fecha) || state.cuDraft[id].fecha, ta, next)) !== false;
+    },
+  };
   window.__sqGoDay = (d) => { state.agendaDay = d; state.mtOpen = null; show('reuniones'); renderMeetRoom(true); renderMeetings(); setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); };
   function openMeetRoom(ev) {
     const {p, team} = mtEntity(ev);
@@ -5636,6 +5671,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="graph-live.js?v=20261124a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
 <script src="nueva-reunion.js?v=20261124a" defer></script>
+<script src="plaud.js?v=20261125a" defer></script>
 <script src="mensajes.js?v=20261125a" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261124j" defer></script>
