@@ -65,6 +65,7 @@
     task: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
     spark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" fill="currentColor" stroke="none"/></svg>',
     cal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+    video: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10.5 5-3v9l-5-3"/></svg>',
     q: '<svg viewBox="0 0 48 48" aria-hidden="true" class="q"><circle cx="21" cy="20" r="9.5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30.5 20v16" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="30.5" cy="44" r="3.6" class="dot"/></svg>',
   };
   const CANALES = {
@@ -136,7 +137,7 @@
     }));
   }
   async function loadMsgs(id) {
-    const { data, error } = await sb.from('chat_messages').select('id,chat_id,from_email,body,ref,created_at').eq('chat_id', id).order('created_at', { ascending: false }).limit(300);
+    const { data, error } = await sb.from('chat_messages').select('id,chat_id,from_email,body,ref,kind,created_at').eq('chat_id', id).order('created_at', { ascending: false }).limit(300);
     if (error) { console.warn(error); return; }
     st.msgs.set(id, (data || []).reverse());
   }
@@ -400,19 +401,23 @@
         }
         st.view.push({ de: mine ? 'Tú' : personName(m.from_email), texto: m.body || '', fecha: m.created_at });
         const mi = st.view.length - 1;
-        html += `<div class="sqm-b ${mine ? 'me' : ''}" data-mi="${mi}">${mtask(mi)}${!mine && c.kind !== 'directo' && m.from_email !== lastFrom ? `<span class="sqm-bwho">${esc(personName(m.from_email))}</span>` : ''}<p>${esc(m.body)}</p><span class="sqm-bt">${hhmm(m.created_at)}${seen}</span></div>`;
+        const who = !mine && c.kind !== 'directo' && m.from_email !== lastFrom ? `<span class="sqm-bwho">${esc(personName(m.from_email))}</span>` : '';
+        // videollamada (llamada.js): burbuja con «Unirse» mientras está en curso
+        if (m.kind === 'llamada') html += `<div class="sqm-b sqm-bcall ${mine ? 'me' : ''}" data-mi="${mi}">${who}${window.__sqLlamada ? window.__sqLlamada.bubble(m, mine) : `<p>${esc(m.body)}</p>`}<span class="sqm-bt">${hhmm(m.created_at)}</span></div>`;
+        else html += `<div class="sqm-b ${mine ? 'me' : ''}" data-mi="${mi}">${mtask(mi)}${who}<p>${esc(m.body)}</p><span class="sqm-bt">${hhmm(m.created_at)}${seen}</span></div>`;
         lastFrom = m.from_email;
       });
     }
     const prevIn = host.querySelector('#sqm-in')?.value || '';
     host.innerHTML = `<div class="sqm-conv">
-      ${convHead(chatTitle(c), sub, 'synqalia')}
+      ${convHead(chatTitle(c), sub, 'synqalia', `<button type="button" class="sqm-ib" data-act="llamar" aria-label="Videollamada" title="Videollamada" aria-haspopup="menu">${ICON.video}</button>`)}
       <div class="sqm-thread">${html}</div>
       <div class="sqm-foot"><form class="sqm-compose" data-act="synq-send"><label class="sr" for="sqm-in">Mensaje</label>
         <textarea id="sqm-in" rows="1" placeholder="${c.kind === 'directo' ? 'Escribe un mensaje…' : 'Escribe al grupo…'}"></textarea>
         <button type="submit" class="sqm-send" aria-label="Enviar">${ICON.send}</button></form></div></div>`;
     const ta = host.querySelector('#sqm-in'); if (prevIn) { ta.value = prevIn; grow(ta); }
     const th = host.querySelector('.sqm-thread'); th.scrollTop = th.scrollHeight;
+    if (window.__sqLlamada) window.__sqLlamada.hydrate(th);
   }
 
   function grow(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; }
@@ -621,6 +626,11 @@ ${hist}`;
     if (act === 'nuevo') { nuevoChat(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
     if (act === 'tarea') { openTask(null); return; }
+    if (act === 'llamar') {
+      const c = st.chats.find((x) => x.id === st.open); if (!c || !window.__sqLlamada) return;
+      window.__sqLlamada.menu(c.id, t.closest('[data-act]'), { graph: graphOn(), titulo: chatTitle(c), grupo: c.kind !== 'directo' });
+      return;
+    }
     if (act === 'ver-tareas') { verTareas(); return; }
     const mt = t.closest('[data-mtask]'); if (mt) { openTask(Number(mt.dataset.mtask)); return; }
     const ti = t.closest('.sqm-timg');
@@ -701,6 +711,8 @@ ${hist}`;
     .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_members' }, reloadChats)
     .subscribe();
 
+  // llamada.js llega después: repintar la conversación abierta para que salgan el botón y las burbujas de llamada
+  document.addEventListener('sq-llamada-lista', () => { if (st.open && st.canal === 'synqalia') paintConv(); });
   await Promise.all([loadTeams(), loadChats(), loadTareas().catch(() => {})]);
   paint();
   document.addEventListener('visibilitychange', async () => {

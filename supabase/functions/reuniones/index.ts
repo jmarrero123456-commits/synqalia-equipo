@@ -3,6 +3,8 @@
 // moverReunion {enlace, fecha, inicio, fin, lugar?} (24/11/2026: solo reuniones que convoca el usuario o citas suyas; Microsoft avisa a los asistentes).
 // 25/11/2026 (asistente por voz): huecos {emails, duracion, desde?, dias?, franjaDesde?, franjaHasta?, max?} = primeros huecos comunes en varios días;
 // cancelarReunion {id, comentario?} = anula una reunión que convoca el usuario (Microsoft avisa a los asistentes).
+// 25/11/2026 (videollamadas del chat): teamsAhora {titulo?, minutos?} = reunión de Teams que empieza ya, solo en el calendario
+// del usuario y SIN convocar a nadie (el enlace se deja en el chat de Synqalia). Devuelve { unirse }.
 // Usa el mismo token de Microsoft que la función «graph» (permisos ya aprobados: Mail.ReadWrite y Calendars.ReadWrite).
 // Tras crear una reunión pide a «graph» una sincronización rápida de la agenda para que salga al momento en synqalia.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -237,6 +239,25 @@ async function cancelarReunion(ctx: Ctx, b: any) {
   return { cancelada: true };
 }
 
+// Reunión de Teams «al momento» para una videollamada del chat: sin asistentes (nadie recibe convocatoria por correo).
+async function teamsAhora(ctx: Ctx, b: any) {
+  const min = Math.max(15, Math.min(240, Number(b.minutos) || 30));
+  const ini = new Date(), fin = new Date(ini.getTime() + min * 60000);
+  const titulo = String(b.titulo || "Videollamada").trim().slice(0, 200) || "Videollamada";
+  const ev: any = {
+    subject: titulo,
+    start: { dateTime: ini.toISOString().slice(0, 19), timeZone: "UTC" },
+    end: { dateTime: fin.toISOString().slice(0, 19), timeZone: "UTC" },
+    isOnlineMeeting: true, onlineMeetingProvider: "teamsForBusiness",
+    body: { contentType: "HTML", content: toHtml("Videollamada iniciada desde el chat de Synqalia.") },
+    showAs: "busy",
+  };
+  const e: any = await g(ctx, "/me/events", { method: "POST", body: JSON.stringify(ev) });
+  const unirse = e.onlineMeeting?.joinUrl || null;
+  if (!unirse) throw new Error("Microsoft no ha devuelto el enlace de Teams");
+  return { unirse, id: e.id };
+}
+
 const syncAgenda = (auth: string) => fetch(`${SB_URL}/functions/v1/graph`, { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ action: "respond" }) }).catch(() => null);
 
 Deno.serve(async (req) => {
@@ -270,6 +291,7 @@ Deno.serve(async (req) => {
       await syncAgenda(auth);
       return json(r);
     }
+    if (body.action === "teamsAhora") return json(await teamsAhora(ctx, body));
     if (body.action === "cancelarReunion") {
       const r = await cancelarReunion(ctx, body);
       await syncAgenda(auth);
