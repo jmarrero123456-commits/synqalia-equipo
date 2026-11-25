@@ -11,7 +11,7 @@
 // agenda (24/11): ocupado de tu calendario entre dos días, para rellenar fechas libres en las respuestas.
 // inline (25/11): imágenes pegadas dentro del texto (cid). pendiente admite preparar para adjuntos.
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
-// lista (25/11): trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
+// lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
 // adjuntar / trozo / enviarBorrador (24/11): adjuntos al redactar (hasta 25 MB; los grandes en trozos por sesión de subida).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -172,11 +172,15 @@ async function boxList(ctx: Ctx, b: any) {
     if (b.ver === "leidos") f.push("isRead eq true");
     if (b.bandera) f.push("flag/flagStatus eq 'flagged'");
     if (b.adjuntos) f.push("hasAttachments eq true");
-    const url = `/me/mailFolders/${okFolder(b.carpeta || "inbox")}/messages?$filter=${encodeURIComponent(f.join(" and "))}&$orderby=receivedDateTime desc&$top=60&$select=${MSG_SEL}`;
+    // Prioritarios / Otros de Outlook (bandeja de entrada con prioridad), solo en la Bandeja de entrada
+    const foco = (b.carpeta || "inbox") === "inbox" && (b.foco === "prioritarios" || b.foco === "otros") ? `inferenceClassification eq '${b.foco === "otros" ? "other" : "focused"}'` : "";
+    const mk = (ff: string[]) => `/me/mailFolders/${okFolder(b.carpeta || "inbox")}/messages?$filter=${encodeURIComponent(ff.join(" and "))}&$orderby=receivedDateTime desc&$top=60&$select=${MSG_SEL}`;
+    const url = mk(foco ? [...f, foco] : f);
     // con el «verbo» (icono respondido / reenviado); si Graph no lo acepta, la lista sale igual sin él
-    j = await g(ctx, url + XVERB()).catch((e) => { if (e.status === 400) return g(ctx, url); throw e; });
+    j = await g(ctx, url + XVERB()).catch((e) => { if (e.status === 400) return g(ctx, url); throw e; })
+      .catch((e) => { if (e.status === 400 && foco) return g(ctx, mk(f)).then((x: any) => ({ ...x, sinFoco: true })); throw e; });
   }
-  return { items: (j?.value || []).map(slim), next: j?.["@odata.nextLink"] || null };
+  return { items: (j?.value || []).map(slim), next: j?.["@odata.nextLink"] || null, ...(j?.sinFoco ? { sinFoco: true } : {}) };
 }
 async function boxGet(ctx: Ctx, b: any) {
   const id = okId(b.id);
