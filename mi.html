@@ -4571,6 +4571,36 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     }
     section('p', 'Personas', people, 'Buscar persona…');
     section('g', 'Grupos', groups, 'Buscar grupo…');
+    // Otras reuniones: las de la agenda (o grabadas con el Plaud) que no son con una persona o grupo del equipo
+    const mts = state.catchups.filter((c) => c.evento && c.evento.inicio && !cuTeamOf(c)).sort((a, b) => String((b.evento.fecha || b.fecha)).localeCompare(String(a.evento.fecha || a.fecha)) || String(b.evento.inicio).localeCompare(String(a.evento.inicio)));
+    if (mts.length) {
+      const sec = el('div', 'cu-sec'); sec.appendChild(el('span', null, 'Otras reuniones')); sec.appendChild(el('span', 'cu-sec-n', String(mts.length))); box.appendChild(sec);
+      const ph = 'Buscar reunión…';
+      if (mts.length > 3) {
+        const sw = el('label', 'cu-srch'); sw.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="m10.5 10.5 3.2 3.2"/></svg>';
+        const inp = document.createElement('input'); inp.type = 'search'; inp.id = 'cu-q-m'; inp.autocomplete = 'off'; inp.placeholder = ph; inp.setAttribute('aria-label', ph); inp.value = state.cuQ.m || '';
+        inp.addEventListener('input', () => { state.cuQ.m = inp.value; renderCatchups(); const n = document.getElementById(inp.id); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } });
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Escape') { state.cuQ.m = ''; renderCatchups(); } });
+        sw.appendChild(inp); box.appendChild(sw);
+      }
+      const q = normTxt(state.cuQ.m || '');
+      const hit = q ? mts.filter((c) => normTxt(cleanTitle(c.evento.titulo) + ' ' + (c.persona || '') + ' ' + (c.evento.organiza || '') + ' ' + (c.miembros || []).join(' ') + ' ' + String(c.notas || '').slice(0, 4000)).includes(q)) : mts;
+      const show = q || state.cuAll.m ? hit : hit.slice(0, 4);
+      const lw = el('div', 'cu-list-m');
+      show.forEach((c) => {
+        const f = c.evento.fecha || c.fecha; const t = cleanTitle(c.evento.titulo || c.persona);
+        const r = el('button', 'cu-row'); r.type = 'button'; r.title = 'Abrir la reunión «' + t + '»';
+        r.appendChild(el('span', 'cu-av grp', (t.match(/[A-Za-zÁÉÍÓÚÑ]/g) || ['·']).slice(0, 2).join('').toUpperCase()));
+        const m = el('span', 'cu-main'); m.appendChild(el('span', 'cu-name', t));
+        m.appendChild(el('span', 'cu-sub', dayName(f).replace(/^./, (x) => x.toUpperCase()) + ' · ' + c.evento.inicio + (c.evento.fin ? '–' + c.evento.fin : '') + (/— Grabación del Plaud/.test(c.notas || '') ? ' · 🎙️ grabada' : '')));
+        r.appendChild(m);
+        r.addEventListener('click', () => openMeetRoom(Object.assign({}, c.evento, {fecha: f})));
+        lw.appendChild(r);
+      });
+      if (q && !show.length) lw.appendChild(el('div', 'cu-none', 'Ninguna reunión coincide con «' + state.cuQ.m + '»'));
+      box.appendChild(lw);
+      if (!q && mts.length > 4) { const mb = el('button', 'cu-more', state.cuAll.m ? 'Ver solo las últimas' : 'Ver todas las reuniones (' + mts.length + ')'); mb.type = 'button'; mb.addEventListener('click', () => { state.cuAll.m = !state.cuAll.m; renderCatchups(); }); box.appendChild(mb); }
+    }
     // sugerencias
     const sg = $('#cu-sugg'); sg.replaceChildren();
     const counts = new Map();
@@ -5075,7 +5105,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const n = normTxt(cleanTitle(title));
     return state.team.find((p) => {
       const pn = normTxt(p.nombre); if (pn.length > 3 && n.includes(pn)) return true;
-      if (!isGroup(p) && /catch/.test(n)) { const fn = normTxt(firstName(p.nombre)); return fn.length > 2 && new RegExp('(^|[^a-z])' + fn + '([^a-z]|$)').test(n); }
+      if (!isGroup(p) && /catch|reunion con|^con /.test(n)) { const fn = normTxt(firstName(p.nombre)); return fn.length > 2 && new RegExp('(^|[^a-z])' + fn + '([^a-z]|$)').test(n); }
       return false;
     }) || null;
   }
