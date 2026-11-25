@@ -299,6 +299,48 @@
   .pl-audio .m{font-size:12.5px;color:var(--muted,#6b7280)}
   .pl-audio .m.err{color:#b42318}
   .pl-turn .pl-t{cursor:pointer}.pl-turn .pl-t:hover{color:var(--accent,#0f766e);text-decoration:underline}
+  .pl-fi{--r:#fdecea;--rb:#f3c9c4;--rt:#a3291f;--a:#fdf3e1;--ab:#efd9ad;--at:#9a5b00;--v:#e8f5ec;--vb:#c3e3cd;--vt:#137a4b;--z:#eaf2fd;--zb:#c9dcf5;--zt:#2350a8;--q:#e6f6f5;--qb:#bfe5e1;--qt:#0f766e;--l:#f1ecfb;--lb:#d9cdf2;--lt:#6b3fb8;--n:#f5f4f1;--nb:#e3e0d8;--nt:#4b4a45;color:#1d1d1b}
+  .pl-fi .cat{display:inline-block;font-size:12px;font-weight:650;padding:4px 10px;border-radius:999px;background:#efe8d8;color:#4a4130}
+  .pl-fi h2{font-size:clamp(19px,2.6vw,26px);line-height:1.15;margin:8px 0 4px;letter-spacing:-.01em}
+  .pl-fi .sub{font-size:13.5px;color:#4b4a45;font-weight:600;margin:0 0 14px}
+  .pl-fi .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .pl-fi .b{border-radius:14px;border:1px solid var(--nb);background:var(--n);padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+  .pl-fi .b.w2{grid-column:span 2}.pl-fi .b.w3{grid-column:span 3}
+  .pl-fi .b.t-rojo{background:var(--r);border-color:var(--rb)}.pl-fi .b.t-ambar{background:var(--a);border-color:var(--ab)}.pl-fi .b.t-verde{background:var(--v);border-color:var(--vb)}.pl-fi .b.t-azul{background:var(--z);border-color:var(--zb)}.pl-fi .b.t-turquesa{background:var(--q);border-color:var(--qb)}.pl-fi .b.t-violeta{background:var(--l);border-color:var(--lb)}
+  .pl-fi .bh{display:flex;align-items:center;gap:8px}.pl-fi .bh svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+  .pl-fi .bh b{font-size:15.5px;line-height:1.2}
+  .pl-fi .est{justify-self:start;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;padding:3px 10px;border-radius:999px;border:1px solid currentColor;background:#fff8}
+  .pl-fi .est::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .pl-fi .c-rojo{color:var(--rt)}.pl-fi .c-ambar{color:var(--at)}.pl-fi .c-verde{color:var(--vt)}.pl-fi .c-azul{color:var(--zt)}.pl-fi .c-turquesa{color:var(--qt)}.pl-fi .c-violeta{color:var(--lt)}.pl-fi .c-neutro{color:var(--nt)}
+  .pl-fi .tx{font-size:13.5px;line-height:1.5;color:#33322e;margin:0}
+  .pl-fi .cifs{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+  .pl-fi .cif{background:#fff;border:1px solid #0000000f;border-radius:10px;padding:10px;text-align:center}
+  .pl-fi .cif .v{font-size:clamp(20px,2.4vw,26px);font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+  .pl-fi .cif .l{font-size:12px;color:#55534d;margin-top:4px}
+  .pl-fi .pro .t{display:flex;justify-content:space-between;font-size:12.5px;color:#4b4a45;margin-bottom:5px}
+  .pl-fi .pro .bar{height:7px;border-radius:9px;background:#fff;border:1px solid #0000000f;overflow:hidden}.pl-fi .pro .bar i{display:block;height:100%;background:#5b8fd4;border-radius:9px}
+  .pl-fi .caja{background:#fff;border:1px solid #0000000f;border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+  .pl-fi .caja .h{font-size:12.5px;color:#55534d;font-weight:650}.pl-fi .caja .p{font-size:13.5px;line-height:1.45}
+  .pl-fi .caja .tag{justify-self:start;font-size:11.5px;padding:2px 8px;border:1px dashed #0003;border-radius:999px;margin-top:2px}
+  .pl-fi .subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+  .pl-fi .st{background:#fff;border:1px solid #0000000f;border-radius:10px;padding:10px 12px;display:grid;gap:5px;align-content:start}
+  .pl-fi .st .h{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap}.pl-fi .st .h b{font-size:14px}
+  .pl-fi .st .big{font-size:clamp(22px,3vw,32px);font-weight:800;line-height:1.05}
+  .pl-fi .cro{display:grid;gap:0;margin:0;padding:0;list-style:none}
+  .pl-fi .cro li{display:grid;grid-template-columns:14px 1fr;gap:10px;padding-bottom:10px;position:relative}
+  .pl-fi .cro li::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--qt);margin-top:4px;opacity:.8}
+  .pl-fi .cro li:not(:last-child)::after{content:"";position:absolute;left:4.5px;top:16px;bottom:0;width:1px;background:#0002}
+  .pl-fi .cro .w{font-weight:700;font-size:13.5px;color:var(--qt)}.pl-fi .cro .q{font-size:13.5px}
+  .pl-fi .chips{display:flex;gap:6px;flex-wrap:wrap}.pl-fi .chips span{font-size:12px;background:#fff;border:1px solid #0000001a;border-radius:7px;padding:3px 8px}
+  .pl-fi .pie{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid #0000001a;padding-top:8px;font-size:13px}.pl-fi .pie .d{font-weight:650}
+  .pl-fi .tar{margin-top:12px;border-radius:14px;border:1px solid var(--zb);background:var(--z);padding:14px}
+  .pl-fi .tar .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:10px}
+  .pl-fi .per{display:grid;grid-template-columns:34px 1fr;gap:10px}
+  .pl-fi .per .av{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--zb);display:grid;place-items:center;font-weight:700;font-size:14px;color:var(--zt)}
+  .pl-fi .per b{font-size:14px}.pl-fi .per ul{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:5px}
+  .pl-fi .per li{font-size:13.5px;display:grid;grid-template-columns:16px 1fr;gap:6px}.pl-fi .per li::before{content:"○";color:var(--zt)}
+  .pl-fi .pf{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:#6b6a63}
+  @media (max-width:760px){.pl-fi .grid{grid-template-columns:1fr}.pl-fi .b.w2,.pl-fi .b.w3{grid-column:auto}}
   .pl-sp0{color:#0f766e}.pl-sp1{color:#7c3aed}.pl-sp2{color:#c2410c}.pl-sp3{color:#2563eb}.pl-sp4{color:#be185d}`;
   document.head.appendChild(css2);
   const mmss = (ms) => { const s = Math.floor((Number(ms) || 0) / 1000); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(x); };
@@ -318,6 +360,29 @@
     });
     close(); return out.join('');
   }
+  const ICO = {alerta:'<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>',tendencia:'<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',personas:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.5c2 .6 3 2.6 3 5"/>',edificio:'<rect x="4" y="3" width="11" height="18" rx="1"/><path d="M15 9h5v12h-5M8 7h3M8 11h3M8 15h3"/>',calendario:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',tareas:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',euro:'<path d="M17 6a7 7 0 1 0 0 12"/><path d="M4 10h9M4 14h9"/>',idea:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',objetivo:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',documento:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',tienda:'<path d="M4 9h16l-1-5H5z"/><path d="M5 9v11h14V9M10 20v-5h4v5"/>',camion:'<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>'};
+  const TONOS = ['rojo', 'ambar', 'verde', 'azul', 'turquesa', 'violeta', 'neutro'];
+  const tono = (t) => (TONOS.includes(t) ? t : 'neutro');
+  const estH = (e) => e && e.texto ? `<span class="est c-${tono(e.tono)}">${esc(e.texto)}</span>` : '';
+  function fichaHtml(f) {
+    const bl = (Array.isArray(f.bloques) ? f.bloques : []).map((b) => {
+      const w = Math.max(1, Math.min(3, Number(b.ancho) || 1));
+      let h = `<div class="b t-${tono(b.tono)}${w > 1 ? ' w' + w : ''}"><div class="bh c-${tono(b.tono)}"><svg viewBox="0 0 24 24">${ICO[b.icono] || ICO.documento}</svg><b style="color:#1d1d1b">${esc(b.titulo)}</b></div>`;
+      if (b.estado) h += estH(b.estado);
+      if (b.texto) h += `<p class="tx">${esc(b.texto)}</p>`;
+      if (Array.isArray(b.cifras) && b.cifras.length) h += '<div class="cifs">' + b.cifras.slice(0, 3).map((c) => `<div class="cif"><div class="v c-${tono(c.tono || b.tono)}">${esc(c.valor)}</div><div class="l">${esc(c.texto)}</div></div>`).join('') + '</div>';
+      if (b.progreso && b.progreso.texto) h += `<div class="pro"><div class="t"><span>${esc(b.progreso.texto)}</span><span>${esc(b.progreso.derecha || '')}</span></div><div class="bar"><i style="width:${Math.max(2, Math.min(100, Number(b.progreso.valor) || 0))}%"></i></div></div>`;
+      if (b.caja && (b.caja.titulo || b.caja.texto)) h += `<div class="caja">${b.caja.titulo ? '<span class="h">' + esc(b.caja.titulo) + '</span>' : ''}${b.caja.texto ? '<span class="p">' + esc(b.caja.texto) + '</span>' : ''}${b.caja.estado ? '<span class="tag">' + esc(b.caja.estado) + '</span>' : ''}</div>`;
+      if (Array.isArray(b.subtarjetas) && b.subtarjetas.length) h += '<div class="subs">' + b.subtarjetas.slice(0, 3).map((x) => `<div class="st"><div class="h"><b>${esc(x.titulo)}</b>${estH(x.estado)}</div>${x.cifra ? `<div class="big c-${tono((x.estado && x.estado.tono) || b.tono)}">${esc(x.cifra)}</div>` : ''}${x.texto ? '<p class="tx">' + esc(x.texto) + '</p>' : ''}</div>`).join('') + '</div>';
+      if (Array.isArray(b.cronologia) && b.cronologia.length) h += '<ul class="cro">' + b.cronologia.slice(0, 6).map((x) => `<li><div><div class="w">${esc(x.cuando)}</div><div class="q">${esc(x.que)}</div></div></li>`).join('') + '</ul>';
+      if (Array.isArray(b.chips) && b.chips.length) h += '<div class="chips">' + b.chips.slice(0, 5).map((x) => '<span>' + esc(x) + '</span>').join('') + '</div>';
+      if (b.pie && (b.pie.izq || b.pie.der)) h += `<div class="pie"><span>${esc(b.pie.izq || '')}</span><span class="d">${esc(b.pie.der || '')}</span></div>`;
+      return h + '</div>';
+    }).join('');
+    const ta = (Array.isArray(f.tareas) ? f.tareas : []).filter((t) => t && Array.isArray(t.items) && t.items.length);
+    const tar = ta.length ? `<div class="tar"><div class="bh c-azul"><svg viewBox="0 0 24 24">${ICO.tareas}</svg><b style="color:#1d1d1b">Plan de acción y tareas pendientes</b></div><div class="cols">` + ta.map((t) => `<div class="per"><span class="av">${esc(String(t.quien || '?').trim().charAt(0).toUpperCase())}</span><div><b>${esc(t.quien)}</b><ul>${t.items.slice(0, 6).map((i) => '<li><span>' + esc(i) + '</span></li>').join('')}</ul></div></div>`).join('') + '</div></div>' : '';
+    return `<div class="pl-fi">${f.categoria ? '<span class="cat">' + esc(f.categoria) + '</span>' : ''}<h2>${esc(f.titulo || '')}</h2>${f.subtitulo ? '<p class="sub">' + esc(f.subtitulo) + '</p>' : ''}<div class="grid">${bl}</div>${tar}</div>`;
+  }
   const nombreDe = (g, w) => (g.nombres && g.nombres[w]) || w || 'Sin nombre';
   const recsDe = (cu) => [...recs.values()].filter((g) => g.asignado && g.asignado.cu === cu).sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
   // texto para la IA (🔎 y «Terminar reunión»): resumen, índice y transcripción de Plaud
@@ -330,7 +395,7 @@
   };
   const panelState = {}; // por reunión: pestaña y búsqueda
   function panel(g) {
-    const ps = panelState[g.id] || (panelState[g.id] = { tab: g.resumenPlaud ? 'res' : 'tx', q: '', open: true });
+    const ps = panelState[g.id] || (panelState[g.id] = { tab: g.ficha ? 'fi' : g.resumenPlaud ? 'res' : 'tx', q: '', open: true });
     const d = document.createElement('details'); d.className = 'pl-pan'; d.open = ps.open;
     d.addEventListener('toggle', () => { ps.open = d.open; });
     const sm = document.createElement('summary');
@@ -362,18 +427,32 @@
     const tabs = document.createElement('div'); tabs.className = 'pl-tabs';
     const body = document.createElement('div'); body.className = 'pl-body';
     const turns = Array.isArray(g.turnos) ? g.turnos : [];
-    const T = [['res', 'Resumen'], ['ix', 'Índice'], ['tx', 'Transcripción']].filter(([k]) => k !== 'res' || g.resumenPlaud).filter(([k]) => k !== 'ix' || (g.indice && g.indice.length));
+    const T = [['fi', 'Ficha'], ['res', 'Resumen'], ['ix', 'Índice'], ['tx', 'Transcripción']].filter(([k]) => k !== 'fi' || g.ficha || g.resumenPlaud).filter(([k]) => k !== 'res' || g.resumenPlaud).filter(([k]) => k !== 'ix' || (g.indice && g.indice.length));
     const spk = [...new Set(turns.map((x) => x[1]))];
     const draw = (jump) => {
       tabs.replaceChildren();
       T.forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; if (ps.tab === k) b.className = 'on'; b.onclick = () => { ps.tab = k; draw(); }; tabs.appendChild(b); });
       const sp = document.createElement('span'); sp.className = 'sp'; tabs.appendChild(sp);
       const cp = document.createElement('button'); cp.type = 'button'; cp.textContent = 'Copiar';
-      cp.title = ps.tab === 'res' ? 'Copiar el resumen' : 'Copiar la transcripción';
-      cp.onclick = async () => { const txt = ps.tab === 'res' ? g.resumenPlaud : turns.length ? turns.map((x) => '[' + mmss(x[0]) + '] ' + nombreDe(g, x[1]) + ': ' + x[2]).join('\n') : g.transcripcion; try { await navigator.clipboard.writeText(txt || ''); cp.textContent = 'Copiado ✓'; } catch (_) { cp.textContent = 'No se pudo copiar'; } setTimeout(() => { cp.textContent = 'Copiar'; }, 1800); };
+      cp.title = ps.tab === 'tx' || ps.tab === 'ix' ? 'Copiar la transcripción' : 'Copiar el resumen';
+      cp.onclick = async () => { const txt = ps.tab === 'res' || ps.tab === 'fi' ? g.resumenPlaud : turns.length ? turns.map((x) => '[' + mmss(x[0]) + '] ' + nombreDe(g, x[1]) + ': ' + x[2]).join('\n') : g.transcripcion; try { await navigator.clipboard.writeText(txt || ''); cp.textContent = 'Copiado ✓'; } catch (_) { cp.textContent = 'No se pudo copiar'; } setTimeout(() => { cp.textContent = 'Copiar'; }, 1800); };
       tabs.appendChild(cp);
       body.replaceChildren();
-      if (ps.tab === 'res') { const m = document.createElement('div'); m.className = 'pl-md'; m.innerHTML = mdHtml(g.resumenPlaud); body.appendChild(m); }
+      if (ps.tab === 'fi') {
+        if (g.ficha) {
+          const w = document.createElement('div'); w.innerHTML = fichaHtml(g.ficha); body.appendChild(w);
+          const pf = document.createElement('div'); pf.className = 'pl-fi'; pf.innerHTML = '<div class="pf"><span>Ficha hecha por Claude a partir del resumen de Plaud</span></div>';
+          const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'pl-btn lnk'; rb.textContent = 'Rehacer ficha';
+          rb.onclick = async () => { rb.disabled = true; rb.textContent = 'Rehaciendo… (unos segundos)'; try { const r = await call('ficha', { fileId: g.id }); if (r && r.ficha) { g.ficha = r.ficha; recs.set(g.id, Object.assign({}, recs.get(g.id), { ficha: r.ficha })); draw(); } } catch (err) { rb.textContent = 'No se ha podido: ' + err.message; } };
+          pf.firstChild.appendChild(rb); body.appendChild(pf);
+        } else {
+          const p = document.createElement('div'); p.className = 'pl-st';
+          p.textContent = g.fichaError ? 'No se pudo hacer la ficha: ' + g.fichaError : 'La ficha se está preparando a partir del resumen de Plaud (tarda unos minutos).';
+          const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'pl-btn'; rb.textContent = 'Hacer la ficha ahora';
+          rb.onclick = async () => { rb.disabled = true; rb.textContent = 'Preparando… (unos segundos)'; try { const r = await call('ficha', { fileId: g.id }); if (r && r.ficha) { g.ficha = r.ficha; draw(); } } catch (err) { rb.disabled = false; rb.textContent = 'Reintentar'; p.textContent = 'No se pudo: ' + err.message; } };
+          body.append(p, rb);
+        }
+      } else if (ps.tab === 'res') { const m = document.createElement('div'); m.className = 'pl-md'; m.innerHTML = mdHtml(g.resumenPlaud); body.appendChild(m); }
       else if (ps.tab === 'ix') {
         const ix = document.createElement('div'); ix.className = 'pl-ix';
         g.indice.forEach((o) => { const b = document.createElement('button'); b.innerHTML = `<span class="pl-t">${mmss(o.t)}</span><span>${esc(o.tema)}</span>`; b.onclick = () => { ps.tab = 'tx'; ps.q = ''; draw(o.t); }; ix.appendChild(b); });
@@ -417,7 +496,7 @@
   function llenarSlots() {
     document.querySelectorAll('.pl-slot').forEach((s) => {
       const gs = recsDe(s.dataset.cu);
-      const firma = gs.map((g) => g.id + ':' + (g.actualizado || '') + ':' + JSON.stringify(g.nombres || {})).join('|');
+      const firma = gs.map((g) => g.id + ':' + (g.actualizado || '') + ':' + (g.ficha ? g.ficha.creada : '') + ':' + JSON.stringify(g.nombres || {})).join('|');
       if (s.dataset.firma === firma) return;
       s.dataset.firma = firma; s.replaceChildren(...gs.map(panel));
     });
