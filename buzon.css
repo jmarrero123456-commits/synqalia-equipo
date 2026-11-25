@@ -49,7 +49,7 @@
 .bz-only-s, .bz-fsel { display: none; }
 
 /* tres columnas */
-.bz-body { display: grid; grid-template-columns: 180px minmax(280px, 360px) minmax(0, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); height: calc(100dvh - var(--sq-bar, 54px) - 210px); min-height: 460px; }
+.bz-body { --bz-fw: 180px; display: grid; grid-template-columns: var(--bz-fw) minmax(280px, 360px) minmax(0, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); height: calc(100dvh - var(--sq-bar, 54px) - 210px); min-height: 460px; }
 .bz-folders { background: color-mix(in srgb, var(--ink) 3%, var(--panel)); border-right: 1px solid var(--line); padding: 10px 6px; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
 .bz-folders button { display: flex; justify-content: space-between; gap: 6px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 6px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .bz-folders button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -140,7 +140,7 @@
 
 /* Z Fold abierto (opción A): carpetas · lista · correo, más estrecho */
 @media (max-width: 1099px) {
-  .bz-body { grid-template-columns: 120px minmax(220px, 280px) minmax(0, 1fr); height: calc(100dvh - var(--sq-bar, 54px) - 250px); }
+  .bz-body { --bz-fw: 120px; grid-template-columns: var(--bz-fw) minmax(220px, 280px) minmax(0, 1fr); height: calc(100dvh - var(--sq-bar, 54px) - 250px); }
   .bz-folders button { padding: 7px 8px; font-size: 13px; }
   .bz-pane { padding: 12px 14px 20px; }
   .bz-phead h3 { font-size: 16.5px; }
@@ -220,7 +220,7 @@
 
 /* Z Fold abierto (600–899 px): correo más compacto en la columna de la derecha */
 @media (min-width: 600px) and (max-width: 899px) {
-  .bz-body { grid-template-columns: 112px minmax(210px, 260px) minmax(0, 1fr); }
+  .bz-body { --bz-fw: 112px; grid-template-columns: var(--bz-fw) minmax(210px, 260px) minmax(0, 1fr); }
   .bz-tools { flex-wrap: nowrap; }
   .bz-tools .bz-ibtn { width: 30px; }
   .bz-reply { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -302,3 +302,14 @@
 .bz-files li { padding: 3px 2px 3px 4px; gap: 6px; }
 .bz-files li > span { display: grid; gap: 0; min-width: 0; }
 .bz-files li.inl { border-color: color-mix(in srgb, #5fe0cf 60%, var(--line)); }
+
+/* columna de carpetas plegable (25/11) */
+.bz-fold { display: flex; align-items: center; justify-content: center; width: 100%; height: 30px; margin: -4px 0 4px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
+.bz-fold:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.bz.bz-fcol .bz-body { --bz-fw: 40px !important; }
+.bz.bz-fcol .bz-folders { padding: 10px 4px; align-items: center; }
+.bz.bz-fcol .bz-folders > :not(.bz-fold):not(.bz-fmini) { display: none; }
+.bz-fmini { display: none; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+.bz.bz-fcol .bz-fmini { display: block; }
+@media (min-width: 600px) { .bz.bz-fcol .bz-fsel { display: inline-flex; flex: 0 1 150px; min-width: 0; } .bz.bz-fcol .bz-fsel select { width: 100%; } }
+@media (max-width: 599px) { .bz-fold, .bz-fmini { display: none !important; } }
