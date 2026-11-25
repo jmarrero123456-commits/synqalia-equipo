@@ -1676,7 +1676,8 @@
       <div class="bz-f"><span>CC</span><div class="bz-chips" data-chips="cc"><input type="text" inputmode="email" aria-label="CC" placeholder="Añadir en copia"></div><input type="hidden" name="cc"></div>
       ${o.tipo === 'nuevo' ? `<label class="bz-f"><span>Asunto</span><input name="asunto" type="text"></label>` : ''}
       <label class="bz-ta"><span class="bz-sr">Texto del correo</span>
-      <textarea name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe el correo' : 'Escribe tu respuesta'}">${esc(o.texto || '')}</textarea></label>
+      <textarea name="texto" rows="${o.tipo === 'nuevo' ? 12 : 8}" placeholder="${o.tipo === 'reenviar' ? 'Añade un comentario (opcional)' : o.tipo === 'nuevo' ? 'Escribe o dicta el correo y pulsa «Perfeccionar»' : 'Escribe o dicta tu respuesta (aunque sea a lo bruto) y pulsa «Perfeccionar»'}">${esc(o.texto || '')}</textarea></label>
+      <div class="bz-aibar"><span class="bz-aimic"></span><button type="button" class="bz-btn bz-aibtn" data-ai>✨ <span>Perfeccionar</span></button><button type="button" class="bz-link" data-undo hidden>Deshacer</button><span class="bz-aist" aria-live="polite"></span></div>
       ${ATTACH_HTML()}
       <p class="bz-note">Tu firma de Outlook se añade sola al enviar${o.tipo !== 'nuevo' ? '; debajo va el correo original' : ''}. Hasta 25 MB en total.</p>
       <div class="bz-cacts">
@@ -1692,6 +1693,31 @@
     const chipFields = [...f.querySelectorAll('[data-chips]')].map((box) => chipField(box, ini[box.dataset.chips] || [], say));
     o.commitChips = () => chipFields.every((c) => c.commit());
     o.att = attachBox(f.querySelector('[data-drop]'), f, f.querySelector('textarea'), say);
+    // dictar y perfeccionar con IA (25/11): escribes o dictas a lo bruto y Synqalia lo deja listo; luego se envía tal cual
+    {
+      const AI = window.__sqAI, ta = f.querySelector('textarea'), bar = f.querySelector('.bz-aibar'), aiSt = bar.querySelector('.bz-aist'), aiBtn = bar.querySelector('[data-ai]'), undo = bar.querySelector('[data-undo]');
+      if (!AI) bar.hidden = true;
+      else {
+        try { const mic = AI.mic(ta, () => { ta.dispatchEvent(new Event('input', { bubbles: true })); }); mic.classList.add('bz-btn'); bar.querySelector('.bz-aimic').appendChild(mic); } catch { /* sin micro */ }
+        const paint = () => { aiBtn.querySelector('span').textContent = ta.value.trim() ? 'Perfeccionar' : (o.tipo === 'nuevo' ? 'Redactar' : 'Proponer respuesta'); };
+        ta.addEventListener('input', paint); paint();
+        let antes = null;
+        aiBtn.addEventListener('click', async () => {
+          const borrador = ta.value.trim();
+          if (o.tipo === 'nuevo' && !borrador) { aiSt.textContent = 'Dicta o escribe primero qué quieres decir.'; ta.focus(); return; }
+          antes = ta.value; aiBtn.disabled = true; undo.hidden = true; aiSt.textContent = 'Synqalia está redactando…';
+          const fd = new FormData(f);
+          try {
+            const txt = await AI.redactar({ tipo: o.tipo, de: m ? (m.de?.nombre || m.de?.mail || '') : '', asunto: m ? m.asunto : String(fd.get('asunto') || ''), texto: m ? (m.citado || m.cuerpo || m.prev || '') : '', para: String(fd.get('para') || ''), borrador }, (t) => { ta.value = t; });
+            if (txt) ta.value = txt;
+            aiSt.textContent = /\[[^\]]+\]/.test(ta.value) ? 'Listo. Completa lo que está entre [corchetes] y envía.' : 'Listo. Cámbialo si quieres y envía.';
+            undo.hidden = false; paint(); ta.focus();
+          } catch (err) { ta.value = antes; aiSt.textContent = 'No se pudo: ' + err.message; }
+          aiBtn.disabled = false;
+        });
+        undo.addEventListener('click', () => { if (antes != null) { ta.value = antes; antes = null; undo.hidden = true; aiSt.textContent = ''; paint(); } });
+      }
+    }
     f.addEventListener('submit', (e) => { e.preventDefault(); o.programar = null; send(f, o, true); });
     const progSlot = f.querySelector('.bz-prog-slot');
     f.querySelector('[data-prog]').addEventListener('click', () => {
