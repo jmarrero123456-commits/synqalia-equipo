@@ -1126,6 +1126,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .att-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(15,27,45,.7); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
   .att-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   textarea.drop { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .att-drag { position: relative; outline: 3px dashed var(--accent); outline-offset: -3px; }
+  .att-drag::after { content: "Suelta aquí para guardarlo en la reunión"; position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; color: var(--accent); background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: inherit; pointer-events: none; }
+  .att-bar .note.err { color: #c0392b; }
   .att-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .att-mini img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
   .att-ov { position: fixed; inset: 0; z-index: 1000; background: rgba(10,16,28,.72); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -5752,7 +5755,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const baseRec = () => ({persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas});
     const curAtt = () => ((state.catchups.find((c) => c.id === id) || {}).adjuntos || []);
     const setAtt = (list) => { const r = state.catchups.find((c) => c.id === id); if (r) r.adjuntos = list; else state.catchups.push(Object.assign({id}, baseRec(), {adjuntos: list})); };
-    const drawAtt = (msg) => {
+    const drawAtt = (msg, keep) => {
+      if (keep) state.attMsg = {id, msg, t: Date.now()};
+      else if (msg === undefined && state.attMsg && state.attMsg.id === id && Date.now() - state.attMsg.t < 20000) msg = state.attMsg.msg;
       attBox.replaceChildren();
       const list = curAtt();
       if (list.length) {
@@ -5774,12 +5779,12 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       }
       const bar = el('div', 'att-bar');
       if (assets) {
-        const fi = document.createElement('input'); fi.type = 'file'; fi.multiple = true; fi.hidden = true; fi.accept = 'image/*,application/pdf,text/plain,text/csv,text/markdown,application/json,.csv,.md,.txt';
-        const b = el('button', 'btn small', '📎 Adjuntar imagen o archivo'); b.type = 'button';
+        const fi = document.createElement('input'); fi.type = 'file'; fi.multiple = true; fi.hidden = true;
+        const b = el('button', 'btn small', '📎 Adjuntar archivo'); b.type = 'button';
         b.addEventListener('click', () => fi.click());
         fi.addEventListener('change', () => { uploadFiles([...fi.files]); fi.value = ''; });
         bar.appendChild(b); bar.appendChild(fi);
-        bar.appendChild(el('span', 'note', msg || 'También puedes pegar una captura (Ctrl+V) o arrastrar una imagen sobre las notas.'));
+        bar.appendChild(el('span', 'note' + (/^No se|no se ha|demasiado/i.test(msg || '') ? ' err' : ''), msg || 'O arrastra el archivo a esta reunión, o pégalo con Ctrl+V (capturas, PDF, Word, Excel, correos…).'));
       } else bar.appendChild(el('span', 'note', 'Los adjuntos no están disponibles en este momento.'));
       attBox.appendChild(bar);
     };
@@ -5789,34 +5794,51 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       img.onload = () => { const k = Math.min(1, 2000 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob((b) => res(b ? new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', {type: 'image/jpeg'}) : file), 'image/jpeg', 0.85); };
       img.onerror = () => res(file); img.src = u;
     });
-    const OK_TYPE = /^(image\/|application\/pdf|text\/|application\/json)/;
+    // cualquier archivo (26/11): imágenes, PDF, Word, Excel, PowerPoint, correos… hasta 25 MB, el límite del almacén
+    const MAX_ATT = 25 * 1024 * 1024;
     const uploadFiles = async (files) => {
-      if (!assets) { drawAtt('Los adjuntos no están disponibles aquí.'); return; }
-      const bad = files.filter((f) => !OK_TYPE.test(f.type || ''));
-      files = files.filter((f) => OK_TYPE.test(f.type || ''));
-      if (!files.length) { drawAtt(bad.length ? 'Word y Excel no se pueden adjuntar aquí: guárdalo como PDF o haz una captura.' : ''); return; }
-      drawAtt('Subiendo ' + files.length + (files.length === 1 ? ' archivo…' : ' archivos…'));
-      if (!state.catchups.find((c) => c.id === id)) await saveCu(id, baseRec());
-      const added = [];
+      if (!assets) { drawAtt('Los adjuntos no están disponibles aquí.', true); return; }
+      files = files.filter((f) => f && f.size > 0);
+      const big = files.filter((f) => f.size > MAX_ATT).map((f) => f.name);
+      files = files.filter((f) => f.size <= MAX_ATT);
+      if (!files.length) { drawAtt(big.length ? 'Demasiado grande (máximo 25 MB): ' + big.join(', ') : 'No se ha podido leer el archivo.', true); return; }
+      drawAtt('Subiendo ' + files.length + (files.length === 1 ? ' archivo…' : ' archivos…'), true);
+      try { if (!state.catchups.find((c) => c.id === id)) await saveCu(id, baseRec()); } catch (e) { /* lo intenta igual */ }
+      const added = [], fail = [];
       for (const f0 of files) {
         try {
           const f = await shrink(f0);
-          if (f.size > 20 * 1024 * 1024) continue;
           const r = await assets.upload(f);
-          added.push({id: r.id, nombre: f0.name && f0.name !== 'image.png' ? f0.name : 'Captura ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}) + '.png', tipo: r.contentType || f.type, size: r.sizeBytes || f.size, fecha: new Date().toISOString()});
-        } catch (e) { /* sigue con el resto */ }
+          const auto = !f0.name || /^image\.(png|jpe?g|gif|webp)$/i.test(f0.name);
+          added.push({id: r.id, nombre: auto ? 'Captura ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}) + '.' + ((f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')) : f0.name, tipo: r.contentType || f.type || 'application/octet-stream', size: r.sizeBytes || f.size, fecha: new Date().toISOString()});
+        } catch (e) { fail.push(f0.name + (e && e.message ? ' (' + e.message + ')' : '')); }
       }
       if (added.length) { const next = curAtt().concat(added); await saveCu(id, {adjuntos: next}); setAtt(next); }
-      setTimeout(() => drawAtt(added.length ? (added.length === 1 ? 'Adjunto guardado.' : added.length + ' adjuntos guardados.') + (bad.length ? ' Word/Excel no se pueden adjuntar: pásalos a PDF.' : '') : 'No se ha podido subir. Inténtalo otra vez.'), 400);
+      const msg = (added.length ? (added.length === 1 ? '«' + added[0].nombre + '» guardado en la reunión.' : added.length + ' archivos guardados en la reunión.') : '')
+        + (fail.length ? ' No se ha podido subir: ' + fail.join(', ') + '.' : '') + (big.length ? ' Demasiado grande (máximo 25 MB): ' + big.join(', ') + '.' : '');
+      setTimeout(() => { state.attMsg = {id, msg: msg.trim(), t: Date.now()}; const h = window.__sqAttDraw; if (h && h.id === id && h.box.isConnected) h.fn(); else if (attBox.isConnected) drawAtt(); }, 300);
     };
-    ta.addEventListener('paste', (e) => {
+    // pegar (Ctrl+V) en cualquier sitio de la reunión, o arrastrar el archivo encima de ella
+    card.addEventListener('paste', (e) => {
+      const files = [...((e.clipboardData && e.clipboardData.files) || [])];
+      if (files.length) { e.preventDefault(); e.stopPropagation(); uploadFiles(files); }
+    });
+    const onDocPaste = (e) => { // con la reunión abierta y sin estar escribiendo en otro sitio: el Ctrl+V también va a la reunión
+      if (!card.isConnected) { document.removeEventListener('paste', onDocPaste); return; }
+      if (!card.offsetParent || e.defaultPrevented) return;
+      const ae = document.activeElement; if (ae && ae !== document.body && !card.contains(ae) && (ae.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) return;
       const files = [...((e.clipboardData && e.clipboardData.files) || [])];
       if (files.length) { e.preventDefault(); uploadFiles(files); }
-    });
-    ta.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); ta.classList.add('drop'); } });
-    ta.addEventListener('dragleave', () => ta.classList.remove('drop'));
-    ta.addEventListener('drop', (e) => { const files = [...((e.dataTransfer && e.dataTransfer.files) || [])]; ta.classList.remove('drop'); if (files.length) { e.preventDefault(); uploadFiles(files); } });
-    drawAtt();
+    };
+    if (document.__sqAttPaste) document.removeEventListener('paste', document.__sqAttPaste);
+    document.__sqAttPaste = onDocPaste; document.addEventListener('paste', onDocPaste);
+    const hasFiles = (e) => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+    let dragN = 0;
+    card.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragN++; card.classList.add('att-drag'); });
+    card.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    card.addEventListener('dragleave', () => { dragN = Math.max(0, dragN - 1); if (!dragN) card.classList.remove('att-drag'); });
+    card.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragN = 0; card.classList.remove('att-drag'); const files = [...(e.dataTransfer.files || [])]; if (files.length) uploadFiles(files); });
+    drawAtt(); window.__sqAttDraw = {id, fn: drawAtt, box: attBox};
     let tmr = null;
     const persist = () => { clearTimeout(tmr); tmr = setTimeout(async () => { if (!d.notas.trim() && !cu && !state.catchups.find((c) => c.id === id)) return; saved.textContent = 'Guardando…'; const ok = await saveCu(id, {persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas}); saved.textContent = ok ? 'Guardado ' + fmtStamp.format(new Date()).split(', ').pop() : 'No se ha podido guardar'; }, 900); };
     ta.addEventListener('input', () => { d.notas = ta.value; persist(); });
@@ -6358,14 +6380,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       body.replaceChildren();
       if (/^image\//.test(a.tipo || blob.type)) { const im = document.createElement('img'); im.src = objUrl; im.alt = a.nombre || ''; body.appendChild(im); }
       else if (/pdf/.test(a.tipo || blob.type)) { const fr = document.createElement('iframe'); fr.src = objUrl; fr.title = a.nombre || 'PDF'; body.appendChild(fr); body.appendChild(el('p', 'note att-ov-hint', 'Si el PDF no se ve aquí, pulsa «Descargar».')); }
-      else { const pre = el('pre', 'att-ov-txt'); pre.textContent = (await blob.text()).slice(0, 200000); body.appendChild(pre); }
+      else if (/^(text\/|application\/(json|xml))/.test(a.tipo || blob.type) || /\.(txt|csv|md|json)$/i.test(a.nombre || '')) { const pre = el('pre', 'att-ov-txt'); pre.textContent = (await blob.text()).slice(0, 200000); body.appendChild(pre); }
+      else body.appendChild(el('div', 'note', '«' + (a.nombre || 'Archivo') + '» no se puede ver aquí: pulsa «Descargar» para abrirlo con su programa (Word, Excel, Outlook…).'));
     } catch (e) { body.replaceChildren(el('div', 'note', 'No se ha podido abrir el adjunto.')); }
   }
   function attLink(a, mini) {
     const l = document.createElement('a'); l.href = '#'; l.title = a.nombre || '';
     if (/^image\//.test(a.tipo)) { const im = document.createElement('img'); im.src = blobUrl(a.id); im.alt = a.nombre || ''; im.loading = 'lazy'; l.appendChild(im); }
     else if (mini) l.textContent = '📎 ' + a.nombre;
-    else l.appendChild(el('span', 'att-file', (/pdf/.test(a.tipo) ? '📄 ' : '📎 ') + a.nombre));
+    else l.appendChild(el('span', 'att-file', (/pdf/.test(a.tipo) ? '📄 ' : /\.(xlsx?|csv)$/i.test(a.nombre || '') ? '📊 ' : /\.(docx?)$/i.test(a.nombre || '') ? '📝 ' : /\.(msg|eml)$/i.test(a.nombre || '') ? '✉️ ' : '📎 ') + a.nombre));
     l.addEventListener('click', (e) => { e.preventDefault(); openAtt(a); });
     return l;
   }
