@@ -66,6 +66,10 @@
   .nm-slots button{border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 9%,var(--panel));color:var(--ink);border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
   .nm-slots button.on{background:var(--ok);color:#fff;border-color:var(--ok)}
   .nm-msg{font-size:13px}
+  .nm-ask{border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));background:color-mix(in srgb,var(--accent) 6%,var(--panel));border-radius:12px;padding:12px 14px;display:grid;gap:10px}
+  .nm-ask[hidden]{display:none}
+  .nm-ask p{margin:0;white-space:pre-line;font-size:13.5px;line-height:1.45}
+  .nm-ask .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   .nm-msg.err{color:var(--bad)} .nm-msg.ok{color:var(--ok);font-weight:600}
   .nm-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
@@ -94,6 +98,7 @@
     </div>
     <div class="field"><label for="nm-txt">Mensaje para los asistentes (opcional)</label><textarea id="nm-txt" rows="3" placeholder="Orden del día, documentos a traer…"></textarea></div>
     <p class="nm-msg" id="nm-msg" hidden></p>
+    <div class="nm-ask" id="nm-ask" hidden role="alertdialog" aria-live="polite"><p></p><div class="acts"><button type="button" class="btn ghost" data-a="no">Volver</button><button type="button" class="btn primary" data-a="si">Sí</button></div></div>
     <div class="nm-acts"><button type="button" class="btn ghost" id="nm-cancel">Cancelar</button><button type="button" class="btn primary" id="nm-go">Convocar</button></div>`;
   if (agendaCard) agendaCard.before(card); else view.prepend(card);
   const $ = (s) => card.querySelector(s);
@@ -223,6 +228,17 @@
 
   /* ---------- abrir / cerrar / convocar ---------- */
   const msg = $('#nm-msg');
+  // confirmación dentro de la propia ficha (26/11): window.confirm puede estar bloqueado en el navegador
+  // («impedir que esta página cree más diálogos») y entonces no convocaba nada sin avisar
+  const ask = (texto, si) => new Promise((res) => {
+    const box = $('#nm-ask'); box.querySelector('p').textContent = texto;
+    const bSi = box.querySelector('[data-a="si"]'), bNo = box.querySelector('[data-a="no"]');
+    bSi.textContent = si || 'Sí';
+    box.hidden = false; $('#nm-go').hidden = true;
+    const fin = (v) => { box.hidden = true; $('#nm-go').hidden = false; bSi.onclick = bNo.onclick = null; res(v); };
+    bSi.onclick = () => fin(true); bNo.onclick = () => fin(false);
+    setTimeout(() => { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); bSi.focus(); }, 30);
+  });
   const say = (t, kind) => { msg.hidden = !t; msg.textContent = t || ''; msg.className = 'nm-msg' + (kind ? ' ' + kind : ''); };
   function reset() {
     people.length = 0; paintChips(); q.value = ''; $('#nm-tit').value = ''; $('#nm-txt').value = ''; $('#nm-lugar').value = ''; teamsTouched = false; syncGo(); $('#nm-dur').value = '30'; $('#nm-hora').value = '';
@@ -257,19 +273,24 @@
     if (!fecha || !hora) { say('Elige la fecha y la hora (o toca uno de los huecos libres).', 'err'); return; }
     const a = toMin(hora), b = a + dur;
     if (b > 24 * 60) { say('La reunión termina después de medianoche: revisa la hora.', 'err'); return; }
-    if (new Date(fecha + 'T' + hora) < new Date()) { if (!confirm('Esa hora ya ha pasado. ¿Convocar igualmente?')) return; }
+    if (new Date(fecha + 'T' + hora) < new Date()) { if (!(await ask('Esa hora ya ha pasado. ¿Seguir igualmente?', 'Seguir'))) return; }
     const fechaTxt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
     const lista = people.map((p) => '• ' + nice(p) + ' <' + p.email + '>').join('\n');
     const bloqueo = !people.length;
-    if (bloqueo && !confirm(`¿Bloquear este tiempo en tu calendario?\n\n«${titulo}»\n${fechaTxt}, ${hora}–${hm(b)}${$('#nm-teams').checked ? ' · Teams' : ''}${$('#nm-lugar').value.trim() ? ' · ' + $('#nm-lugar').value.trim() : ''}\n\nNo se invita a nadie: solo aparece como ocupado en tu calendario.`)) return;
-    if (!bloqueo && !confirm(`¿Enviar la convocatoria?\n\n«${titulo}»\n${fechaTxt}, ${hora}–${hm(b)}${$('#nm-teams').checked ? ' · Teams' : ''}${$('#nm-lugar').value.trim() ? ' · ' + $('#nm-lugar').value.trim() : ''}\n\nA ${people.length} ${people.length === 1 ? 'persona' : 'personas'}:\n${lista}`)) return;
+    const teams = $('#nm-teams').checked, lugar = $('#nm-lugar').value.trim();
+    const donde = teams ? ' · Teams' : lugar ? ' · ' + lugar : ' · presencial, sin Teams';
+    if (bloqueo && !(await ask(`¿Bloquear este tiempo en tu calendario?\n«${titulo}» · ${fechaTxt}, ${hora}–${hm(b)}${teams ? ' · Teams' : lugar ? ' · ' + lugar : ''}\nNo se invita a nadie: solo aparece como ocupado.`, 'Bloquear tiempo'))) return;
+    if (!bloqueo && !(await ask(`¿Enviar la convocatoria?\n«${titulo}» · ${fechaTxt}, ${hora}–${hm(b)}${donde}\nA ${people.length} ${people.length === 1 ? 'persona' : 'personas'}:\n${lista}`, 'Enviar convocatoria'))) return;
     const go = $('#nm-go'); go.disabled = true; go.textContent = bloqueo ? 'Guardando…' : 'Convocando…'; say('');
     try {
-      const r = await call({ action: 'crearReunion', titulo, fecha, inicio: hora, fin: hm(b), asistentes: people.map((p) => ({ email: p.email, nombre: p.nombre })), teams: $('#nm-teams').checked, lugar: $('#nm-lugar').value.trim(), texto: $('#nm-txt').value.trim() });
+      const r = await call({ action: 'crearReunion', titulo, fecha, inicio: hora, fin: hm(b), asistentes: people.map((p) => ({ email: p.email, nombre: p.nombre })), teams, lugar, texto: $('#nm-txt').value.trim() });
+      if (!r || !r.creada) throw new Error('Outlook no ha confirmado la reunión. Revisa tu calendario antes de repetirla.');
       close();
       if (typeof window.__sqGoDay === 'function') window.__sqGoDay(fecha);
-      const t = document.createElement('p'); t.className = 'nm-msg ok'; t.textContent = bloqueo ? `✓ Tiempo bloqueado en tu calendario: «${titulo}», ${fechaTxt} de ${hora} a ${hm(b)}.` : `✓ Convocatoria enviada a ${r.asistentes} ${r.asistentes === 1 ? 'persona' : 'personas'}: «${titulo}», ${fechaTxt} a las ${hora}.`;
-      agendaCard?.querySelector('.row-between')?.after(t); setTimeout(() => t.remove(), 12000);
+      // que salga ya en la agenda, sin esperar a la sincronización con Outlook
+      if (typeof window.__sqAddEvent === 'function') window.__sqAddEvent(fecha, Object.assign({ inicio: hora, fin: hm(b), titulo }, r.enlace ? { enlace: r.enlace } : {}, r.unirse ? { unirse: r.unirse, lugar: 'Teams' } : lugar ? { lugar } : {}));
+      const okTxt = bloqueo ? `✓ Tiempo bloqueado: «${titulo}», ${fechaTxt} de ${hora} a ${hm(b)}.` : `✓ Convocatoria enviada a ${r.asistentes} ${r.asistentes === 1 ? 'persona' : 'personas'}: «${titulo}», ${fechaTxt} a las ${hora}${r.unirse ? ' (Teams)' : ' (sin Teams)'}.`;
+      if (typeof window.__sqAgFlash === 'function') window.__sqAgFlash(okTxt);
     } catch (e) { say((bloqueo ? 'No se pudo guardar: ' : 'No se pudo convocar: ') + e.message, 'err'); }
     go.disabled = false; syncGo();
   });
