@@ -1129,6 +1129,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .att-drag { position: relative; outline: 3px dashed var(--accent); outline-offset: -3px; }
   .att-drag::after { content: "Suelta aquí para guardarlo en la reunión"; position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; color: var(--accent); background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: inherit; pointer-events: none; }
   .att-bar .note.err { color: #c0392b; }
+  .cu-del { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .cu-del-q { font-size: 13px; font-weight: 700; color: var(--bad); }
+  .cu-del-y { background: var(--bad) !important; color: #fff !important; border-color: var(--bad) !important; }
   .mt-ppl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .mt-pp { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px 4px 6px; font-size: 13px; font-weight: 600; background: var(--panel); max-width: 100%; }
   .mt-pp > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5491,6 +5494,34 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   });
 
   const newCuId = () => 'cu' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  // Eliminar un catch-up o las notas de una reunión (26/11/2026). Confirmación en el propio botón: «¿Eliminar? Sí · No».
+  // Borra el registro y sus adjuntos; las tareas que salieron de él se quedan (se avisa).
+  function delCuButton(c, label, after) {
+    const w = el('span', 'cu-del');
+    const paint = (ask) => {
+      w.replaceChildren();
+      if (!ask) { const b = el('button', 'btn ghost cu-del-b', label || '🗑 Eliminar'); b.type = 'button'; b.title = 'Eliminar este catch-up (notas, resumen y adjuntos)'; b.addEventListener('click', (e) => { e.stopPropagation(); paint(true); }); w.appendChild(b); return; }
+      const nt = state.tasks.filter((t) => t.ref === c.id && t.estado !== 'hecha').length;
+      w.appendChild(el('span', 'cu-del-q', '¿Eliminarlo' + (nt ? ' (las ' + nt + ' tareas se quedan)' : '') + '?'));
+      const y = el('button', 'btn cu-del-y', 'Sí, eliminar'); y.type = 'button';
+      const n = el('button', 'btn ghost', 'No'); n.type = 'button';
+      y.addEventListener('click', async (e) => {
+        e.stopPropagation(); y.disabled = true; y.textContent = 'Eliminando…';
+        const adj = Array.isArray(c.adjuntos) ? c.adjuntos : [];
+        const ok = await write(() => db.collection('catchups').doc(c.id).delete(), 'Eliminado');
+        if (ok === false) { paint(false); return; }
+        if (assets) adj.forEach((a) => assets.delete(a.id).catch(() => {}));
+        state.catchups = state.catchups.filter((x) => x.id !== c.id); delete state.cuDraft[c.id];
+        if (state.cuOpen === c.id) state.cuOpen = null;
+        if (state.mtOpen && state.mtOpen.id === c.id) state.mtOpen = null;
+        if (after) after(); else { renderCatchups(); renderMeetRoom(true); renderMeetNotes(); }
+      });
+      n.addEventListener('click', (e) => { e.stopPropagation(); paint(false); });
+      w.append(y, n);
+    };
+    paint(false);
+    return w;
+  }
   async function saveCu(id, data) {
     const ex = state.catchups.find((c) => c.id === id);
     const body = Object.assign({actualizado: new Date().toISOString()}, (state.cuDraft[id] || {}).extra || {}, data);
@@ -5577,7 +5608,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       hd.appendChild(el('span', 'note', relDay(c.fecha)));
       const eb = el('button', 'btn ghost', c.cerrado ? '✎ Reabrir' : '✎ Seguir'); eb.title = c.cerrado ? 'Reabrir para anotar algo nuevo' : 'Seguir anotando (aún no está terminado)'; eb.type = 'button'; eb.addEventListener('click', () => { state.cuOpen = c.id; state.cuDraft[c.id] = {persona: c.persona, fecha: c.fecha, notas: c.notas || ''}; renderCuDetail(); setTimeout(() => { const t = document.getElementById('cu-notes'); if (t) t.scrollIntoView({block: 'center', behavior: 'smooth'}); }, 30); });
       const mb = el('button', 'btn ghost', '✉️ Correo'); mb.type = 'button'; mb.title = 'Resumen de este catch-up para enviar por correo'; mb.addEventListener('click', () => openMailSummary(c.id, p));
-      hd.appendChild(mb); hd.appendChild(eb); it.appendChild(hd);
+      hd.appendChild(mb); hd.appendChild(eb); hd.appendChild(delCuButton(c, '🗑')); it.appendChild(hd);
       state.cuHx = state.cuHx || {};
       const isOpen = !!state.cuHx[c.id];
       if (!isOpen) it.classList.add('closed');
@@ -5744,7 +5775,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const qm = el('button', 'cu-qmail', ''); qm.type = 'button'; qm.innerHTML = '<span aria-hidden="true">✨</span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M2.5 4.5 8 8.8l5.5-4.3"/></svg><span class="t">Resumir y enviar</span>';
     qm.title = 'Resumir con IA y preparar el correo para ' + (isGroup(p) ? 'los asistentes' : firstName(p.nombre)); qm.setAttribute('aria-label', qm.title);
     qm.addEventListener('click', () => em.click());
-    rr.appendChild(recButton(id, pre)); rr.appendChild(qm); r.appendChild(rr); card.appendChild(r);
+    rr.appendChild(recButton(id, pre)); rr.appendChild(qm); if (cu) rr.appendChild(delCuButton(cu, '🗑 Eliminar')); r.appendChild(rr); card.appendChild(r);
     const row = el('div', 'cu-erow');
     const fd = el('div', 'field'); const fl = el('label', null, 'Fecha'); const fi = document.createElement('input'); fi.type = 'date'; fi.id = pre + '-date'; fl.htmlFor = fi.id; fi.value = d.fecha; fd.appendChild(fl); fd.appendChild(fi); row.appendChild(fd);
     card.appendChild(row);
