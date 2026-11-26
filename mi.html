@@ -2902,11 +2902,32 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     });
     return Object.assign({}, ag || {}, {eventos: evs, desdeNotas: !ag});
   }
+  // Días fuera de lo que sincroniza «graph» (hoy + 3 semanas): se leen de Outlook al momento, de semana en semana (26/11/2026)
+  const agFetchState = {};
+  function agFetch(fecha) {
+    const mon = mondayOf(fecha);
+    const st = agFetchState[mon];
+    if (st && (st.s === 'pend' || (st.s === 'ok' && Date.now() - st.t < 60000) || (st.s === 'err' && Date.now() - st.t < 15000))) return st;
+    if (!window.__sb) return {s: 'err', msg: 'sin conexión'};
+    const me = agFetchState[mon] = {s: 'pend', t: Date.now()};
+    window.__sb.functions.invoke('agenda-dia', {body: {desde: mon, hasta: addDays(mon, 6)}}).then(async ({data, error}) => {
+      let msg = data && data.error; if (error) { msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (x) { /* sin detalle */ } }
+      if (msg) throw new Error(msg);
+      Object.entries((data && data.dias) || {}).forEach(([f, eventos]) => { state.agenda[f] = {fecha: f, capturado: data.capturado, eventos, fuente: 'graph-dia'}; });
+      me.s = 'ok'; me.t = Date.now();
+    }).catch((e) => { me.s = 'err'; me.t = Date.now(); me.msg = e.message; }).finally(() => renderMeetings());
+    return me;
+  }
+  function agMissing(fecha) {
+    const st = agFetch(fecha);
+    if (st.s === 'err') return 'No he podido leer este día de Outlook (' + (st.msg || 'error') + '). Vuelve a intentarlo en unos segundos.';
+    return 'Leyendo tu agenda de Outlook…';
+  }
   const daysWithNotes = () => new Set(state.catchups.filter((c) => c.evento && c.evento.inicio).map((c) => c.evento.fecha || c.fecha));
   function dayGrid(fecha) {
     const wrap = el('div', 'calw');
     const ag = agendaOf(fecha);
-    if (!ag) { wrap.appendChild(el('div', 'empty', 'Aún no tengo tu agenda de este día. En el próximo barrido la leo de Outlook.')); return {wrap}; }
+    if (!ag) { wrap.appendChild(el('div', 'empty', agMissing(fecha))); return {wrap}; }
     const all = (Array.isArray(ag.eventos) ? ag.eventos : []).filter((e) => toMin(e.inicio) != null && toMin(e.fin) != null);
     const isBlock = (e) => /ubicaci/i.test(e.estado || '') || (toMin(e.fin) - toMin(e.inicio)) >= 7 * 60;
     const blocks = all.filter(isBlock); const evs = all.filter((e) => !isBlock(e)).sort((a, b) => toMin(a.inicio) - toMin(b.inicio) || toMin(b.fin) - toMin(a.fin));
@@ -3161,7 +3182,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       const all = (ag && Array.isArray(ag.eventos) ? ag.eventos : []).filter((e) => toMin(e.inicio) != null && toMin(e.fin) != null);
       return {f, ag, blocks: all.filter(isBlock), evs: all.filter((e) => !isBlock(e)).sort((a, b) => toMin(a.inicio) - toMin(b.inicio) || toMin(b.fin) - toMin(a.fin))};
     });
-    if (!per.some((p) => p.ag)) wrap.appendChild(el('p', 'note', 'No tengo guardada la agenda de esta semana (Synqalia guarda la de las próximas 3 semanas y la de los días pasados desde el 5 de noviembre).'));
+    if (per.some((p) => !p.ag)) { const m = agMissing(mon); if (!per.some((p) => p.ag)) wrap.appendChild(el('p', 'note', m)); }
     let h0 = 8, h1 = 20;
     per.forEach((p) => p.evs.forEach((e) => { h0 = Math.min(h0, Math.floor(toMin(e.inicio) / 60)); h1 = Math.max(h1, Math.ceil(toMin(e.fin) / 60)); }));
     const PX = CAL_PX, y = (m) => (m - h0 * 60) / 60 * PX;
@@ -3488,7 +3509,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const self = highlight ? evs.find((e) => e.inicio === highlight.inicio && e.fin === highlight.fin) : null;
     const others = self ? evs.filter((e) => e !== self) : evs;
     const all = highlight ? (self ? evs.map((e) => e === self ? {...e, titulo: highlight.titulo, propuesta: true} : e) : evs.concat([{...highlight, propuesta: true}])).sort((a, b) => (toMin(a.inicio) ?? 0) - (toMin(b.inicio) ?? 0)) : evs;
-    if (!ag) { wrap.appendChild(el('div', 'empty', 'Aún no tengo tu agenda de este día. En el próximo barrido la leo de Outlook.')); return {wrap, evs: others, conflicts: []}; }
+    if (!ag) { wrap.appendChild(el('div', 'empty', agMissing(fecha))); return {wrap, evs: others, conflicts: []}; }
     const conflicts = highlight ? others.filter((e) => overlaps(e, highlight)) : [];
     // huecos libres en la jornada (09:00–19:00), solo en la vista normal del día
     const gaps = [];
