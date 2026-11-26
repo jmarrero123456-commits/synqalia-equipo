@@ -233,6 +233,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     .prog-add label { white-space: normal; }
   }
   .te-mail { margin: 0 0 4px; height: 44px; font-size: 14px; }
+  .tf-when { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tf-when .chip[aria-pressed="true"] { background: color-mix(in srgb, #5fe0cf 26%, transparent); border-color: #2bb3a3; color: #0b5f55; font-weight: 700; }
   .task-edit .bar .te-del { color: #c0392b; }
   .prog .te-mail { margin-bottom: 10px; }
   #task-list .item .detail, #task-list .item .last-prog, .prog, .task-edit { overflow-wrap: anywhere; }
@@ -271,10 +273,24 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .mega-n { margin-left: auto; min-width: 20px; padding: 2px 7px; border-radius: 999px; background: #d93636; color: #fff; font-weight: 800; text-align: center; letter-spacing: 0; }
   .mega-list { display: grid; gap: 6px; }
   .mega-row { display: flex; align-items: baseline; gap: 10px; width: 100%; min-width: 0; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, #d93636 28%, var(--line)); border-left: 4px solid #d93636; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+  /* 25/11: Mega más compacto y menos aire arriba en Tareas (móvil y Fold abierto) */
+  .mega-box { padding: 7px 9px 8px; gap: 5px; border-radius: 12px; }
+  .mega-head { font-size: 11px; gap: 6px; }
+  .mega-head .mega-bolt { width: 16px; height: 16px; font-size: 10px; }
+  .mega-head .mega-n { padding: 0 6px; font-size: 11px; }
+  .mega-list { gap: 4px; }
+  .mega-row { padding: 6px 10px; border-radius: 8px; border-left-width: 3px; }
+  @media (max-width: 699px) {
+    .app:has(#view-tareas:not([hidden])) { padding-top: 6px !important; }
+    #view-tareas { margin-top: 0 !important; gap: 8px !important; }
+    #view-tareas .tk-card { gap: 4px !important; }
+    #view-tareas .tk-tiles { margin-bottom: 2px !important; }
+    #task-list .group-head { margin-top: 0 !important; }
+  }
   .mega-row:hover { border-color: #d93636; }
   .mega-row:focus-visible { outline: 2px solid #d93636; outline-offset: 2px; }
-  .mega-row .mega-title { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mega-row .mega-meta { flex: 0 0 auto; max-width: 45%; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mega-row .mega-title { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mega-row .mega-meta { flex: 0 0 auto; max-width: 45%; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mega-sheet { width: 100%; max-width: none; margin: auto auto 0; padding: 0; border: 0; border-radius: 18px 18px 0 0; background: var(--panel); color: var(--ink); box-shadow: 0 -10px 40px rgba(13,27,51,.25); }
   .mega-sheet::backdrop { background: rgba(13,27,51,.45); }
   .mega-sheet[open] { animation: msUp .18s ease-out; }
@@ -288,6 +304,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .ms-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--muted); font-size: 15px; cursor: pointer; }
   .ms-done { width: 100%; height: 48px; border: 0; border-radius: 12px; background: #1f9d55; color: #fff; font: 700 16px/1 var(--font-body); cursor: pointer; }
   .ms-done:hover { filter: brightness(1.08); }
+  .ms-edit { width: 100%; height: 44px; margin-top: 2px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 700 15px/1 var(--font-body); cursor: pointer; }
+  .ms-edit:hover { border-color: var(--accent); color: var(--accent); }
   .ms-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
   .ms-prio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .ms-p { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 15px/1 var(--font-body); cursor: pointer; }
@@ -864,6 +882,58 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-now { position: absolute; left: calc(var(--cal-g) - 6px); right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
   .cal-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
   /* Agenda: vista semana, minicalendario, convocatorias en el calendario, mover arrastrando (24/11/2026) */
+  .ag-date { position: relative; cursor: pointer; }
+  .ag-date-in { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: 0; padding: 0; pointer-events: none; }
+  .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  /* barra compacta de la Agenda (una fila en pantallas anchas, dos en el móvil) */
+  #agenda-card { padding: 10px 12px; }
+  #agenda-card > .row-between { display: none; }
+  .ag-bar .btn, .ag-bar .chip, .ag-bar .seg button { min-height: 34px; height: 34px; padding-top: 0; padding-bottom: 0; font-size: 13px; box-sizing: border-box; }
+  .ag-bar .seg button { padding: 0 12px; }
+  .ag-bar .ag-ico, .ag-bar .day-nav { width: 34px; min-width: 34px; padding: 0 !important; justify-content: center; }
+  .ag-bar .ag-tools { gap: 6px; }
+  .ag-bar #agenda-day { gap: 6px; }
+  .ag-dlbl { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; margin-left: 2px; }
+  .ag-sp { flex: 1 1 0; }
+  .ag-brk { display: none; }
+  #agenda-card .free-sum { font-size: 12px; padding: 4px 0 6px; border-bottom: 0; }
+  #agenda-card .free-sum .fs-day { display: none; }
+  #agenda-card .free-sum.empty { display: none; }
+  .ag-dlbl .l-short, .nm-open .nm-s { display: none; }
+  .ag-bar #ag-tools, .ag-bar #agenda-day { flex-wrap: nowrap; }
+  @media (max-width: 1100px) {
+    #agenda-day .chip:not(.day-nav):not([aria-pressed="true"]) { display: none; }
+    .ag-dlbl .l-long, .nm-open .nm-l { display: none; }
+    .ag-dlbl .l-short, .nm-open .nm-s { display: inline; }
+  }
+  @media (max-width: 760px) { .ag-dlbl { display: none; } }
+  @media (max-width: 600px) {
+    .ag-sp { display: none; }
+    .ag-bar { gap: 6px 4px; }
+    .ag-bar .ag-tools, .ag-bar #agenda-day { gap: 4px; }
+    .ag-bar .seg button { padding: 0 9px; }
+    .ag-bar .ag-ico, .ag-bar .day-nav { width: 32px; min-width: 32px; }
+    .ag-bar #agenda-day { margin-left: auto; }
+    .ag-brk { display: block; flex-basis: 100%; height: 0; }
+    #ag-pend, #agenda-card .ag-bar .nm-open { flex: 1 1 0; min-width: 0; justify-content: center; }
+    #ag-pend .ag-pend-btn { width: 100%; justify-content: center; }
+    #agenda-card .ag-bar .nm-open .nm-l { display: inline; } #agenda-card .ag-bar .nm-open .nm-s { display: none; }
+    #agenda-card .free-sum, #agenda-card .free-sum.empty { display: block; }
+    #agenda-card .free-sum .fs-day { display: inline; color: var(--muted); }
+    #agenda-card .free-sum:not(.empty) .fs-day::after { content: " · "; }
+  }
+  @media (max-width: 420px) {
+    #agenda-card { padding: 8px; }
+    .ag-bar #ag-tools > .ag-ico:first-child { display: none; } /* el panel del mes: en el móvil basta con el botón de elegir fecha */
+    .ag-bar .seg button { padding: 0 8px; font-size: 12.5px; }
+    .ag-bar .ag-ico, .ag-bar .day-nav { width: 30px; min-width: 30px; }
+    .ag-bar #agenda-day > .chip[aria-pressed="true"] { padding: 0 10px; }
+    #ag-pend .ag-pend-btn, #agenda-card .ag-bar .nm-open { padding: 0 8px; font-size: 12.5px; }
+  }
+  .ag-bar > .chips { margin: 0; }
+  @media (max-width: 700px) {
+    .ag-tools .wk-lbl { font-size: 14px; flex-basis: 100%; order: 9; margin: 0; }
+  }
   .ag-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .ag-tools .wk-lbl { font-size: 16px; font-weight: 800; margin: 0 6px; }
   .ag-tools .btn { min-height: 34px; }
@@ -922,8 +992,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-ev.mv { cursor: grab; user-select: none; -webkit-user-select: none; }
   .cal-ev.drag { cursor: grabbing; box-shadow: 0 10px 24px rgba(15,27,45,.28); z-index: 15; opacity: .96; }
   .cal-ev.drag::after { content: attr(data-drag); position: absolute; right: 4px; top: 2px; background: var(--ink); color: var(--panel); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
+  .slot-ghost { position: absolute; z-index: 4; pointer-events: none; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1.5px dashed var(--accent); color: var(--accent); font-size: 11.5px; font-weight: 800; padding: 2px 6px; box-sizing: border-box; overflow: hidden; white-space: nowrap; }
+  .cal.slots, .wk-col.slots { cursor: copy; }
   .ev-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; z-index: 2; }
-  .ev-rs.top { top: 0; bottom: auto; }
+  .ev-rs.ev-rs-top { top: 0; bottom: auto; } /* ojo: no usar la clase «top», es la de la cabecera de la app */
   .cal-ev.mv:hover .ev-rs { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .cal-pop { position: absolute; z-index: 20; width: min(400px, 94%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15,27,45,.24); padding: 4px 4px 8px; }
   .cal-pop .item { border: 0; box-shadow: none; background: transparent; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 6px; }
@@ -944,6 +1016,70 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .mv-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
   .mv-form .field { margin: 0; }
   @media (prefers-color-scheme: dark) { .ag-pend-btn { background: #3a2f12 !important; color: var(--ink) !important; } }
+  /* Agenda en el móvil y el Z Fold, al estilo de Outlook (26/11/2026): solo la agenda, a todo el ancho.
+     Cabecera con el mes (se despliega), Hoy, Por responder y Día/Semana/Mes; tira de días que se desliza; botón ＋ flotante. */
+  .ag-pend-btn .api, .agm-h, .agm-strip, .agm-fab { display: none; }
+  #agenda-card.agm { border: 0; border-radius: 0; box-shadow: none; padding: 0; background: var(--panel); }
+  #agenda-card.agm > .ag-bar, #agenda-card.agm .mt-tip, #agenda-card.agm .calw > p.note, #agenda-card.agm .wkw > p.note { display: none !important; }
+  #view-reuniones.agm-on #plaud-card, #view-reuniones.agm-on #meet-notes-card { display: none !important; }
+  #view-reuniones.agm-on { gap: 12px; }
+  .app:has(> #view-reuniones.agm-on:not([hidden])) { padding-top: 0 !important; }
+  .agm .agm-h { display: flex; align-items: center; gap: 2px; padding: 4px 6px 0 14px; }
+  .agm-mes { border: 0; background: transparent; font: inherit; font-size: 20px; font-weight: 800; color: var(--ink); padding: 6px 0; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  .agm-mes small { font-size: 12px; color: var(--muted); }
+  .agm-sp { flex: 1 1 auto; }
+  .agm-ib { width: 40px; height: 40px; border: 0; background: transparent; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink); cursor: pointer; position: relative; padding: 0; font: inherit; }
+  .agm-ib:hover, .agm-ib[aria-expanded="true"] { background: var(--accent-soft); }
+  .agm-hoy b { width: 24px; height: 24px; border: 2px solid currentColor; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; box-sizing: border-box; }
+  .agm-vw { position: relative; }
+  .agm-vbtn { width: auto; padding: 0 8px; gap: 5px; font-size: 13.5px; font-weight: 700; }
+  .agm-vmenu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; width: 190px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(15,27,45,.2); padding: 6px 0; }
+  .agm-vmenu button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); padding: 11px 14px; text-align: left; cursor: pointer; }
+  .agm-vmenu button:hover { background: var(--accent-soft); }
+  .agm-vmenu button i { width: 16px; font-style: normal; color: var(--accent); font-weight: 800; }
+  .agm .ag-pend:not([hidden]) { display: inline-flex; }
+  .agm .ag-pend-btn { width: 40px; min-width: 40px; height: 40px; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--ink) !important; justify-content: center; position: relative; box-shadow: none; }
+  .agm .ag-pend-btn[aria-expanded="true"] { background: var(--accent-soft) !important; }
+  .agm .ag-pend-btn .apl, .agm .ag-pend-btn .apc { display: none; }
+  .agm .ag-pend-btn .api { display: inline-flex; }
+  .agm .ag-pend-btn .n { position: absolute; top: 3px; right: 2px; margin: 0; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; }
+  .agm .agm-h { position: relative; }
+  .agm .agm-h .ag-pend, .agm .agm-vw { position: static; }
+  .agm .ag-pmenu, .agm .agm-vmenu { top: calc(100% + 2px); right: 8px; }
+  .agm .ag-pmenu { left: auto; width: min(400px, calc(100% - 16px)); }
+  .agm .wk-head { display: none; }
+  .agm .wk-allday { border-top: 0; }
+  .agm .agm-strip { display: block; padding: 0 6px; touch-action: pan-y; user-select: none; }
+  .agm-dw, .agm-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
+  .agm-dw { font-size: 11.5px; font-weight: 700; color: var(--muted); padding: 0 0 2px; }
+  .agm-dw span:nth-child(n+6) { opacity: .65; }
+  .agm-wk { padding: 1px 0; }
+  .agm-d { border: 0; background: transparent; font: inherit; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 1px 0; cursor: pointer; color: var(--ink); width: 100%; }
+  .agm-d b { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+  .agm-d i { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+  .agm-d.ev i { background: #9aa6c4; }
+  .agm-d.pn i { background: #c98a00; }
+  .agm-d.out { color: var(--muted); opacity: .6; }
+  .agm-d.today b { box-shadow: inset 0 0 0 2px var(--ink); }
+  .agm-d.sel b { background: var(--ink); color: var(--panel); box-shadow: none; }
+  .agm-grip { display: flex; justify-content: center; align-items: center; gap: 18px; padding: 3px 0 7px; }
+  .agm-grip > button.g { width: 44px; height: 14px; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .agm-grip > button.g::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+  .agm-grip > button.mv { border: 0; background: transparent; color: var(--muted); font-size: 18px; width: 34px; height: 24px; cursor: pointer; border-radius: 7px; }
+  .agm .calw, .agm .wkw { gap: 0; }
+  #agenda-card.agm .free-sum, #agenda-card.agm .free-sum.empty { display: block !important; font-size: 12px; padding: 4px 12px; background: color-mix(in srgb, var(--line) 35%, var(--panel)); border-top: 1px solid var(--line); }
+  .agm .free-sum .fs-day { display: inline !important; color: var(--ink); }
+  .agm .free-sum:not(.empty) .fs-day::after { content: " · "; }
+  .agm .cal-allday { padding: 4px 10px; border-top: 1px solid var(--line); }
+  .agm .cal-scroll { border: 0; border-top: 1px solid var(--line); border-radius: 0; max-height: none; }
+  .agm .cal { margin-right: 6px; --cal-g: 48px; }
+  .agm .wk-head, .agm .wk-allday { border-left: 0; border-right: 0; border-radius: 0; }
+  .agm .wk-head .wk-dh b { font-size: 15px; }
+  .agm .wkw .cal-scroll { border-radius: 0; }
+  .agm .ag-lay { display: block; }
+  .agm .ag-flash { padding: 2px 14px; margin: 0; }
+  .agm .agm-fab { display: inline-flex; align-items: center; justify-content: center; position: fixed; right: 16px; bottom: calc(var(--sq-tabbar, 0px) + 16px + env(safe-area-inset-bottom, 0px)); z-index: 35; width: 56px; height: 56px; border-radius: 16px; border: 0; background: var(--ink); color: var(--panel); box-shadow: 0 8px 20px rgba(15,27,45,.3); cursor: pointer; }
+  .agm .agm-fab svg { width: 26px; height: 26px; }
   .cal-now::after { content: attr(data-t); position: absolute; left: calc(-1 * var(--cal-g) + 2px); top: -9px; font-size: 11px; font-weight: 800; color: #fff; background: #e5484d; border-radius: 4px; padding: 1px 4px; }
   @media (prefers-color-scheme: dark) { .cal-ev { background: #1f2a4a; } .cal-ev.meal { background: #232838; } .cal-ev.pend { background: repeating-linear-gradient(135deg, #3a2f12 0 6px, #2e2610 6px 12px); } }
   .prep-ul { list-style: none; margin: 4px 0 2px; padding: 0; display: grid; gap: 2px; }
@@ -990,6 +1126,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .att-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(15,27,45,.7); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
   .att-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   textarea.drop { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .att-drag { position: relative; outline: 3px dashed var(--accent); outline-offset: -3px; }
+  .att-drag::after { content: "Suelta aquí para guardarlo en la reunión"; position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; color: var(--accent); background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: inherit; pointer-events: none; }
+  .att-bar .note.err { color: #c0392b; }
   .att-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .att-mini img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
   .att-ov { position: fixed; inset: 0; z-index: 1000; background: rgba(10,16,28,.72); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -1229,11 +1368,11 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 </style>
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
-<link rel="stylesheet" href="synqalia.css?v=20261124y">
-<link rel="stylesheet" href="mensajes.css?v=20261124t">
-<link rel="stylesheet" href="buzon.css?v=20261125a">
+<link rel="stylesheet" href="synqalia.css?v=20261126a">
+<link rel="stylesheet" href="mensajes.css?v=20261125in">
+<link rel="stylesheet" href="buzon.css?v=20261125gm3">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
-<link rel="stylesheet" href="inicio.css?v=20261125c">
+<link rel="stylesheet" href="inicio.css?v=20261125m3">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#121821">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -1254,6 +1393,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     <button role="tab" id="tab-reuniones" data-view="reuniones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tlab">Agenda</span><span class="count" id="count-reuniones"></span></button>
     <button role="tab" id="tab-tareas" data-view="tareas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8 12.3 2.8 2.8L16.5 9"/></svg></span><span class="tlab">Tareas</span><span class="count" id="count-tareas"></span></button>
     <button role="tab" id="tab-catchups" data-view="catchups" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.8 14.7c1.7.7 2.9 2.4 3.2 4.8"/></svg></span><span class="tlab">Reuniones</span><span class="odot" id="dot-catchups" hidden></span><span class="count" id="count-catchups"></span></button>
+    <button role="tab" id="tab-grabaciones" data-view="grabaciones" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg></span><span class="tlab">Grabaciones</span></button>
     <button role="tab" id="tab-notas" data-view="notas" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="tlab">Notas</span></button>
     <button role="tab" id="tab-lista" data-view="lista" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2.2l2.2 11h10.4l2-8H6.3"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg></span><span class="tlab">Listas</span></button>
     <button role="tab" id="tab-asistente" data-view="asistente" aria-selected="false"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><span class="tlab">Asistente</span></button>
@@ -1266,6 +1406,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     <div class="sq-more-panel" role="menu" aria-label="Más secciones">
       <button type="button" role="menuitem" data-go="reuniones">Agenda <span class="count" id="more-c-reuniones"></span></button>
       <button type="button" role="menuitem" data-go="catchups">Reuniones <span class="odot" id="more-dot-catchups" hidden></span></button>
+      <button type="button" role="menuitem" data-go="grabaciones">Grabaciones</button>
       <button type="button" role="menuitem" data-go="notas">Notas</button>
       <button type="button" role="menuitem" data-go="lista">Listas</button>
       <button type="button" role="menuitem" data-go="asistente">Asistente</button>
@@ -1378,7 +1519,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         <div class="field"><label for="tf-persona">Persona</label><input id="tf-persona" list="tf-personas" placeholder="La detecto sola"><datalist id="tf-personas"></datalist></div>
         <div class="field"><label for="tf-empresa">Empresa</label><select id="tf-empresa"><option value="">La detecto sola</option><option>Provalliance</option><option>NEUPAREDIS</option><option>MSH</option><option>MIG</option><option>Personal</option></select></div>
         <div class="field"><label for="tf-prio">Prioridad</label><select id="tf-prio"><option value="">La detecto sola</option><option value="Mega">Mega ⚡</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
-        <div class="field"><label for="tf-vence">Fecha límite</label><input id="tf-vence" type="date"></div>
+        <div class="field"><label for="tf-vence">Para cuándo</label><input id="tf-vence" type="date"><div class="tf-when" role="group" aria-label="Para cuándo"><button type="button" class="chip" data-w="hoy">Hoy</button><button type="button" class="chip" data-w="man">Mañana</button><button type="button" class="chip" data-w="none" title="Sin fecha: la verás en Mis tareas y en el próximo catch-up">Sin fecha</button></div></div>
         <div class="field" style="grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px;"><span class="status" id="tf-status">Rellena solo la primera línea; persona, empresa, prioridad y fecha las saco yo. Para encargársela a alguien, di «asigna a…» o elige en «Asignar a».</span><button class="btn primary" type="submit" id="tf-add">Añadir tarea</button></div>
       </form>
       </div>
@@ -1463,6 +1604,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   <main id="view-mensajes" class="view" hidden><p class="note">Cargando mensajes…</p></main>
   <main id="view-notas" class="view" hidden></main>
   <main id="view-lista" class="view" hidden></main>
+  <main id="view-grabaciones" class="view" hidden></main>
   <main id="view-asistente" class="view" hidden></main>
 </div>
 
@@ -1735,7 +1877,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   let db = null, sample = null, assets = null;
 
   // ---------- vistas ----------
-  const VIEWS = ['hoy', 'correo', 'mensajes', 'reuniones', 'tareas', 'catchups', 'notas', 'lista', 'asistente'];
+  const VIEWS = ['hoy', 'correo', 'mensajes', 'reuniones', 'tareas', 'catchups', 'grabaciones', 'notas', 'lista', 'asistente'];
   function show(view) {
     if (view === 'captura') view = 'catchups';
     if (!VIEWS.includes(view)) view = 'hoy';
@@ -1745,16 +1887,24 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (view === 'tareas' && prevView !== 'tareas' && !(state.backTo && state.backTo.view === 'tareas')) { try { applyQuick(QUICK.find((q) => q.k === 'hoymia')); } catch (e) { /* al arrancar aún no están los filtros */ } }
     VIEWS.forEach((v) => { const m = $('#view-' + v); m.hidden = v !== view; });
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Inicio', correo: 'Correo', reuniones: 'Agenda', tareas: 'Tareas', catchups: 'Reuniones', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
-    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'notas', 'lista', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
+    const vt = $('#view-title'); if (vt) vt.textContent = {hoy: 'Inicio', correo: 'Correo', reuniones: 'Agenda', tareas: 'Tareas', catchups: 'Reuniones', grabaciones: 'Grabaciones', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'}[view];
+    { const mb = $('#tab-mas'); if (mb) mb.classList.toggle('on', ['reuniones', 'catchups', 'grabaciones', 'notas', 'lista', 'asistente'].includes(view)); const sh = $('#sq-more'); if (sh) { sh.hidden = true; mb && mb.setAttribute('aria-expanded', 'false'); } }
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
     window.scrollTo(0, 0);
     const bk = state.backTo;
     if (bk && view === bk.view) { state.backTo = null; restoreBack(bk); }
     else if (bk && view !== 'correo' && view !== 'reuniones') state.backTo = null;
     paintBack();
+    // Correo único (v4): lo que se abre desde Inicio, Tareas o Agenda se ve aquí; la vista clásica solo si se pide desde «más»
+    if (view === 'correo' && typeof window.__sqBuzonOpenMail === 'function') {
+      const unified = !!document.querySelector('#view-correo .card.bz-on');
+      if (state.openReply && unified) {
+        const om = state.mails.find((x) => x.id === state.openReply);
+        if (om && window.__sqBuzonOpenMail(om, !!state.autoDraft[om.id])) state.openReply = null;
+      } else if (!state.openReply && !unified && prevView !== 'correo' && window.__sqBzModo) window.__sqBzModo('bandeja');
+    }
   }
-  const VIEW_NAME = {hoy: 'Inicio', tareas: 'Tareas', catchups: 'Reuniones', reuniones: 'Agenda', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'};
+  const VIEW_NAME = {hoy: 'Inicio', tareas: 'Tareas', catchups: 'Reuniones', reuniones: 'Agenda', grabaciones: 'Grabaciones', notas: 'Notas', lista: 'Listas', mensajes: 'Mensajes', asistente: 'Asistente'};
   function paintBack() {
     $$('.sq-backbar').forEach((b) => b.remove());
     const bk = state.backTo;
@@ -1841,6 +1991,21 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   }
 
   window.__sqAddTask = addTask;
+  // Correo único (25/11): «Pasar a tarea» en una ventanita; las tareas ya creadas de un correo no se duplican
+  window.__sqTasks = {
+    forMail: (conv, pid) => state.tasks.filter((t) => t.origen === 'correo' && ((conv && t.conv === conv) || (pid && t.ref === pid))),
+    // personas o grupos de catch-up que salen en el correo, con su próxima reunión
+    catchups: (names) => {
+      const fake = {de: (names || []).join(';'), para: ''};
+      try { return cuCandidates(fake).map((p) => { const nx = nextMeetingFor(p); return {nombre: p.nombre, corto: isGroup(p) ? p.nombre : firstName(p.nombre), fecha: nx ? nx.fecha : null}; }); } catch (e) { return []; }
+    },
+    hoy: () => todayISO, manana: () => tomorrowISO,
+    add: (t) => addTask(t),
+    update: (id, patch) => write(() => db.collection('tareas').doc(id).update(patch), 'Tarea actualizada'),
+    done: (id) => write(() => db.collection('tareas').doc(id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Tarea hecha'),
+    open: (id) => { const t = state.tasks.find((x) => x.id === id); if (!t) return; show('tareas'); try { applyQuick(null); } catch (e) {} openTaskEdit(t); },
+    esMio: (n) => isMe(n),
+  };
 
   // ---------- render tareas ----------
   function taskItem(t, compact) {
@@ -2470,6 +2635,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   function ntOpen(open, noFocus) { const f = $('#nt-panel'); f.hidden = !open; $('#nt-toggle').setAttribute('aria-expanded', String(open)); $('#nt-toggle').title = open ? 'Cerrar el formulario' : 'Nueva tarea'; if (open) { $('#nt-saved').textContent = ''; if (!noFocus) setTimeout(() => $('#tf-titulo').focus(), 20); } }
   // Nueva tarea desde Hoy o desde el micro de la franja: va a Tareas, abre el formulario y (micro) empieza a escuchar
   function ntQuick(mic) { if (state.view !== 'tareas') show('tareas'); ntOpen(true, !!mic); try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); } if (mic && !tfMic.want && (window.SpeechRecognition || window.webkitSpeechRecognition)) tfMicStart(); }
+  // «Para cuándo» en Nueva tarea: Hoy · Mañana · Sin fecha (Sin fecha manda aunque la nota hable de un día)
+  function tfWhenPaint() { const v = $('#tf-vence').value; $$('.tf-when .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.w === 'none' ? !!state.tfNoDate : (!state.tfNoDate && !!v && v === (c.dataset.w === 'hoy' ? todayISO : tomorrowISO))))); }
+  $$('.tf-when .chip').forEach((c) => c.addEventListener('click', () => {
+    if (c.dataset.w === 'none') { state.tfNoDate = !state.tfNoDate; if (state.tfNoDate) $('#tf-vence').value = ''; }
+    else { state.tfNoDate = false; $('#tf-vence').value = c.dataset.w === 'hoy' ? todayISO : tomorrowISO; }
+    tfWhenPaint();
+  }));
+  $('#tf-vence').addEventListener('change', () => { if ($('#tf-vence').value) state.tfNoDate = false; tfWhenPaint(); });
   $('#hoy-nt').addEventListener('click', () => ntQuick(false));
   const openFilters = () => { if (state.view !== 'tareas') show('tareas'); const adv = $('#tk-adv'); if (adv.hidden) $('#tk-more').click(); setTimeout(() => { adv.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }, 30); };
   $('#hoy-nt-flt').addEventListener('click', openFilters);
@@ -2576,7 +2749,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (!to) aviso = firstName(persona) + ' aún no tiene Synqalia: la guardo en tu lista con ' + firstName(persona) + ' (no se le ha enviado).';
     }
     if (to) persona = to.name;
-    const data = {titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: $('#tf-vence').value || p.vence || null, origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''};
+    const data = {titulo: p.titulo, persona, empresa: $('#tf-empresa').value || p.empresa || 'Provalliance', prioridad: $('#tf-prio').value || p.prioridad || 'Media', vence: state.tfNoDate ? null : ($('#tf-vence').value || p.vence || null), origen: 'manual', detalle: p.titulo !== raw ? 'Nota original: ' + raw : ''};
     if (to) { data.espera = 'tercero'; data.extra = {esperaA: to.name, asignadaA: {email: to.email, nombre: to.name, fecha: new Date().toISOString()}}; }
     const ok = await addTask(data);
     if (ok && to) {
@@ -2586,7 +2759,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       else aviso = res.pendiente ? firstName(to.name) + ' la verá en su Synqalia la primera vez que entre.' : '';
     }
     btn.disabled = false;
-    if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
+    if (ok) { st.textContent = TF_HELP; ntOpen(false); $('#nt-saved').textContent = (to && !aviso.startsWith('No se') ? 'Asignada a ' + to.name + ': «' + p.titulo + '».' : 'Guardada: «' + p.titulo + '»' + (persona ? ' · ' + persona : '') + '.') + (aviso ? ' ' + aviso : ''); ['#tf-titulo', '#tf-vence', '#tf-persona'].forEach((q) => { $(q).value = ''; }); state.tfNoDate = false; tfWhenPaint(); $('#tf-empresa').value = ''; $('#tf-prio').value = ''; $('#tf-asig').value = ''; }
   });
 
   // ---------- prioridad Mega: recuadro parpadeante arriba en Hoy y en Tareas (no existe si no hay ninguna) ----------
@@ -2649,6 +2822,19 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       pr.appendChild(b);
     }
     wrap.appendChild(pr);
+    // Editar: abre la ficha de la tarea en Tareas (quita filtros si la dejaban fuera)
+    const ed = el('button', 'ms-edit', 'Editar tarea'); ed.type = 'button';
+    ed.addEventListener('click', () => {
+      dlg.close();
+      if (state.view !== 'tareas') show('tareas');
+      if (espOf(t) !== 'mia') state.tkOthersOpen = true;
+      openTaskEdit(t);
+      setTimeout(() => {
+        if (!document.getElementById('te-titulo-' + t.id)) { state.taskQ = ''; state.taskP = ''; state.taskW = ''; state.taskPr = ''; state.empF = ''; state.taskF = 'abiertas'; state.tkOthersOpen = true; ['#tk-q', '#tk-who', '#tk-prio', '#tk-emp', '#tk-person'].forEach((q) => { const x = $(q); if (x) x.value = ''; }); const es = $('#tk-estado'); if (es) es.value = 'abiertas'; openTaskEdit(t); }
+        setTimeout(() => { const f = document.getElementById('te-titulo-' + t.id); if (f) { f.closest('.item, .task-edit')?.scrollIntoView({block: 'center', behavior: 'smooth'}); f.focus({preventScroll: true}); } }, 60);
+      }, 60);
+    });
+    wrap.appendChild(ed);
     dlg.replaceChildren(wrap);
     if (!dlg.open) dlg.showModal();
   }
@@ -2729,7 +2915,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const sum = el('div', 'free-sum' + (gaps.length ? '' : ' none'));
     if (gaps.length) { sum.appendChild(el('b', null, fecha === todayISO ? 'Hoy tienes libre: ' : 'Libre: ')); sum.appendChild(document.createTextNode(gaps.map(([a, b]) => hmOf(a) + '–' + hmOf(b)).join(' · '))); }
     else sum.textContent = fecha === todayISO ? 'No te quedan huecos libres hoy (9–19 h).' : 'Sin huecos libres entre 9 y 19 h.';
-    if (fecha >= todayISO) wrap.appendChild(sum);
+    if (fecha < todayISO) { sum.replaceChildren(); sum.classList.add('empty'); }
+    sum.prepend(el('b', 'fs-day', agDayLbl(fecha, true)));
+    wrap.appendChild(sum);
     if (blocks.length) { const bl = el('div', 'cal-allday'); blocks.forEach((e) => bl.appendChild(el('span', 'cal-chip', e.titulo + ' · ' + e.inicio + '–' + e.fin))); wrap.appendChild(bl); }
     // rango de horas
     let h0 = 8, h1 = 20;
@@ -2741,6 +2929,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (h < h1) { const hl = el('div', 'cal-half'); hl.style.top = y(h * 60 + 30) + 'px'; cal.appendChild(hl); }
     }
     gaps.forEach(([a, b]) => { const g = el('div', 'cal-free'); g.style.top = y(a) + 'px'; g.style.height = Math.max(0, y(b) - y(a) - 2) + 'px'; if (b - a >= 30) g.appendChild(el('span', null, 'Libre · ' + durOf(b - a))); cal.appendChild(g); });
+    enableSlotCreate(cal, fecha, h0, h1, CAL_PX / 60, 'var(--cal-g)');
     // columnas para solapes
     const clusters = []; let cl = null, clEnd = -1;
     evs.forEach((e) => { const a = toMin(e.inicio), b = toMin(e.fin); if (!cl || a >= clEnd) { cl = []; clusters.push(cl); clEnd = b; } else clEnd = Math.max(clEnd, b); cl.push(e); });
@@ -2846,7 +3035,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     box.classList.add('mv');
     box.title = (box.title ? box.title + ' · ' : '') + 'Arrastra para moverla' + (o.cols ? ' (también a otro día)' : '');
     const rs = el('div', 'ev-rs'); rs.title = 'Arrastra para cambiar la hora de fin'; box.appendChild(rs);
-    const rt = el('div', 'ev-rs top'); rt.title = 'Arrastra para cambiar la hora de inicio'; box.appendChild(rt);
+    const rt = el('div', 'ev-rs ev-rs-top'); rt.title = 'Arrastra para cambiar la hora de inicio'; box.appendChild(rt);
     box.addEventListener('touchmove', (k) => { if (box.classList.contains('drag')) k.preventDefault(); }, {passive: false});
     box.addEventListener('click', (k) => { if (Date.now() - dragEndedAt < 450) { k.stopImmediatePropagation(); k.preventDefault(); } }, true);
     box.addEventListener('pointerdown', (p0) => {
@@ -2924,7 +3113,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const c = $('#agenda-card'); if (!c) return;
     const old = c.querySelector('.ag-flash'); if (old) old.remove();
     const f = el('p', 'note ag-flash', txt); f.style.color = 'var(--ok)'; f.style.fontWeight = '700';
-    const tools = $('#ag-tools'); (tools || c.firstElementChild).after(f); setTimeout(() => f.remove(), 9000);
+    const tools = c.classList.contains('agm') ? c.querySelector('.agm-strip') : $('#ag-tools'); (tools || c.firstElementChild).after(f); setTimeout(() => f.remove(), 9000);
   }
   // minicalendario del mes (lateral, se pliega)
   function miniCal() {
@@ -3002,6 +3191,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (h < h1) { const hl = el('div', 'wk-line half'); hl.style.top = y(h * 60 + 30) + 'px'; body.appendChild(hl); }
     }
     const cols = per.map((p) => { const c = el('div', 'wk-col' + (p.f === todayISO ? ' today' : p.f < todayISO ? ' past' : '')); body.appendChild(c); return c; });
+    cols.forEach((c, i) => enableSlotCreate(c, per[i].f, h0, h1, PX / 60, '2px'));
     let popAt = null;
     per.forEach((p, i) => {
       const col = cols[i];
@@ -3031,7 +3221,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (p.f === todayISO) { const nl = el('div', 'wk-now'); nl.style.top = y(nowMin()) + 'px'; if (nowMin() >= h0 * 60 && nowMin() <= h1 * 60) col.appendChild(nl); }
     });
     scroller.appendChild(body); wrap.appendChild(scroller);
-    wrap.appendChild(el('p', 'note', 'Toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día); tirando del borde de arriba o de abajo cambias la hora de inicio o de fin.'));
+    wrap.appendChild(el('p', 'note', 'Toca un hueco (o arrastra en él) para crear una reunión; toca una reunión para abrir sus notas. Las rayadas están por responder: tócalas para aceptar. Las tuyas se mueven arrastrándolas (también a otro día); tirando del borde de arriba o de abajo cambias la hora de inicio o de fin.'));
     const focus = per.some((p) => p.f === todayISO) ? nowMin() - 90 : 8 * 60 + 30;
     requestAnimationFrame(() => {
       scroller.scrollTop = Math.max(0, y(focus));
@@ -3047,6 +3237,39 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     });
     return {wrap};
   }
+  // Crear una reunión tocando un hueco del calendario (como en Outlook/Teams): clic = 30 min; con el ratón, arrastrar elige la duración
+  function enableSlotCreate(cont, fecha, h0, h1, pxMin, ghostLeft) {
+    if (fecha < todayISO) return;
+    cont.classList.add('slots');
+    const isBg = (t) => t === cont || (t && t.closest && !t.closest('.cal-ev, .cal-pop, .slot-ghost') && cont.contains(t) && (t.classList.contains('cal-hour') || t.classList.contains('cal-half') || t.classList.contains('cal-free') || t.classList.contains('wk-line') || t.parentElement && (t.parentElement.classList.contains('cal-hour') || t.parentElement.classList.contains('cal-free'))));
+    const minAt = (cy) => { const r = cont.getBoundingClientRect(); return h0 * 60 + Math.floor((cy - r.top) / pxMin / 30) * 30; };
+    const clampA = (m) => Math.max(h0 * 60, Math.min(h1 * 60 - 30, m));
+    const minNow = fecha === todayISO ? Math.floor(nowMin() / 30) * 30 : -1;
+    const ghost = el('div', 'slot-ghost'); ghost.hidden = true; ghost.style.left = ghostLeft; ghost.style.right = '2px'; cont.appendChild(ghost);
+    const show = (a, b) => { ghost.hidden = false; ghost.style.top = ((a - h0 * 60) * pxMin + 1) + 'px'; ghost.style.height = Math.max(14, (b - a) * pxMin - 2) + 'px'; ghost.textContent = '+ ' + hmOf(a) + '–' + hmOf(b); };
+    let drag = null;
+    cont.addEventListener('pointermove', (k) => {
+      if (drag) { const m = clampA(minAt(k.clientY)); const a = Math.min(drag.a, m), b = Math.max(drag.a, m) + 30; drag.b = b; drag.a2 = a; drag.moved = drag.moved || Math.abs(k.clientY - drag.y) > 6; show(a, b); return; }
+      if (k.pointerType !== 'mouse' || !isBg(k.target)) { ghost.hidden = true; return; }
+      const a = clampA(minAt(k.clientY)); if (a < minNow) { ghost.hidden = true; return; } show(a, a + 30);
+    });
+    cont.addEventListener('pointerleave', () => { if (!drag) ghost.hidden = true; });
+    cont.addEventListener('pointerdown', (k) => {
+      if (k.button !== 0 || !isBg(k.target)) return;
+      const a = clampA(minAt(k.clientY)); if (a < minNow) return;
+      drag = {a, a2: a, b: a + 30, y: k.clientY, moved: false, touch: k.pointerType !== 'mouse'};
+      if (!drag.touch) { try { cont.setPointerCapture(k.pointerId); } catch (x) { /* sin captura */ } k.preventDefault(); show(a, a + 30); }
+    });
+    const finish = (k) => {
+      if (!drag) return; const d = drag; drag = null; ghost.hidden = true;
+      if (d.touch && Math.abs(k.clientY - d.y) > 8) return; // en el móvil, si se desplazaba no se crea nada
+      const a = d.touch ? d.a : d.a2, b = d.touch ? d.a + 30 : d.b;
+      if (typeof window.__sqNewMeeting === 'function') window.__sqNewMeeting({fecha, hora: hmOf(a), duracion: b - a});
+    };
+    cont.addEventListener('pointerup', finish);
+    cont.addEventListener('pointercancel', () => { drag = null; ghost.hidden = true; });
+  }
+  const agDayLbl = (f, corto) => { if (!f) return ''; const t = new Intl.DateTimeFormat('es-ES', {weekday: corto ? 'short' : 'long', day: 'numeric', month: 'short'}).format(new Date(f + 'T12:00:00')).replace(',', '').replace('.', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
   function setAgView(v) { state.agendaView = v; lsSet('sq-ag-view', v); }
   // Botón «Por responder» con su lista desplegable (junto a «Nueva reunión»)
   function renderPendMenu() {
@@ -3064,7 +3287,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     items.sort((a, b) => (a.fecha + a.inicio).localeCompare(b.fecha + b.inicio));
     w.hidden = !items.length && !state.pendMenu;
     const b = el('button', 'btn ag-pend-btn'); b.type = 'button'; b.setAttribute('aria-expanded', String(!!state.pendMenu));
-    b.append('Por responder'); b.appendChild(el('span', 'n', String(items.length))); b.append(' ▾');
+    const ic = el('span', 'api'); ic.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 8l9 6 9-6"></path></svg>';
+    b.append(el('span', 'apl', 'Por responder'), ic); b.appendChild(el('span', 'n', String(items.length))); b.appendChild(el('span', 'apc', ' ▾'));
+    b.setAttribute('aria-label', 'Por responder: ' + items.length); b.title = 'Convocatorias por responder';
     b.addEventListener('click', (k) => { k.stopPropagation(); state.pendMenu = !state.pendMenu; renderPendMenu(); });
     w.appendChild(b);
     if (!state.pendMenu) return;
@@ -3092,19 +3317,12 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   // barra de la agenda: plegar el mes, Hoy / ‹ › / semana, y Día | Semana
   function renderAgTools(days) {
     let tb = $('#ag-tools');
-    if (!tb) { tb = el('div', 'ag-tools'); tb.id = 'ag-tools'; $('#agenda-day').before(tb); }
+    if (!tb) { tb = el('div', 'ag-tools'); tb.id = 'ag-tools'; const sel = $('#agenda-day'); const bar = el('div', 'ag-bar'); sel.before(bar); bar.append(tb, sel); }
     tb.replaceChildren();
     const side = el('button', 'btn ghost ag-ico'); side.type = 'button'; side.setAttribute('aria-label', 'Mostrar u ocultar el calendario del mes'); side.title = 'Calendario del mes'; side.setAttribute('aria-pressed', String(state.agendaSide));
     side.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>';
     side.addEventListener('click', () => { state.agendaSide = !state.agendaSide; lsSet('sq-ag-side', state.agendaSide ? '1' : '0'); renderMeetings(); });
     tb.appendChild(side);
-    if (state.agendaView === 'semana') {
-      const go = (mon) => { state.agendaWeek = mon; state.calPop = null; state.mcalMonth = null; renderMeetings(); };
-      const hoy = el('button', 'btn', 'Hoy'); hoy.type = 'button'; hoy.addEventListener('click', () => go(mondayOf(todayISO))); tb.appendChild(hoy);
-      const pv = el('button', 'btn ghost', '‹'); pv.type = 'button'; pv.setAttribute('aria-label', 'Semana anterior'); pv.addEventListener('click', () => go(addDays(state.agendaWeek, -7))); tb.appendChild(pv);
-      const nx = el('button', 'btn ghost', '›'); nx.type = 'button'; nx.setAttribute('aria-label', 'Semana siguiente'); nx.addEventListener('click', () => go(addDays(state.agendaWeek, 7))); tb.appendChild(nx);
-      tb.appendChild(el('span', 'wk-lbl', weekLabel(state.agendaWeek)));
-    }
     const seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Vista');
     [['dia', 'Día'], ['semana', 'Semana']].forEach(([v, t]) => {
       const b = el('button', null, t); b.type = 'button'; b.setAttribute('aria-pressed', String(state.agendaView === v));
@@ -3112,6 +3330,149 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       seg.appendChild(b);
     });
     tb.appendChild(seg);
+    // elegir cualquier fecha con el calendario del sistema
+    const pick = el('label', 'btn ghost ag-ico ag-date'); pick.title = 'Elegir fecha'; pick.setAttribute('aria-label', 'Elegir fecha');
+    pick.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>';
+    const di = document.createElement('input'); di.type = 'date'; di.className = 'ag-date-in'; di.value = state.agendaView === 'semana' ? state.agendaWeek : (state.agendaDay || todayISO);
+    di.addEventListener('change', () => { const f = di.value; if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return; state.calPop = null; state.mcalMonth = null; if (state.agendaView === 'semana') state.agendaWeek = mondayOf(f); else { state.agendaDay = f; state.agendaFree = true; state.mtOpen = null; renderMeetRoom(true); } renderMeetings(); });
+    pick.addEventListener('click', (k) => { if (k.target === di) return; k.preventDefault(); try { di.showPicker(); } catch (x) { di.focus(); di.click(); } });
+    pick.appendChild(di); tb.appendChild(pick);
+    if (state.agendaView === 'semana') {
+      const go = (mon) => { state.agendaWeek = mon; state.calPop = null; state.mcalMonth = null; renderMeetings(); };
+      const pv = el('button', 'btn ghost day-nav', '‹'); pv.type = 'button'; pv.setAttribute('aria-label', 'Semana anterior'); pv.addEventListener('click', () => go(addDays(state.agendaWeek, -7))); tb.appendChild(pv);
+      const hoy = el('button', 'btn', 'Hoy'); hoy.type = 'button'; hoy.addEventListener('click', () => go(mondayOf(todayISO))); tb.appendChild(hoy);
+      const nx = el('button', 'btn ghost day-nav', '›'); nx.type = 'button'; nx.setAttribute('aria-label', 'Semana siguiente'); nx.addEventListener('click', () => go(addDays(state.agendaWeek, 7))); tb.appendChild(nx);
+      tb.appendChild(el('span', 'wk-lbl', weekLabel(state.agendaWeek)));
+    }
+    // barra única: herramientas · días · etiqueta del día · (hueco) · Por responder · Nueva reunión
+    const bar = tb.parentElement;
+    const mk = (cls) => bar.querySelector(':scope > .' + cls) || el('span', cls);
+    const lb = mk('ag-dlbl'), sp = mk('ag-sp'), br = mk('ag-brk');
+    bar.append(lb, sp, br);
+    const pd = $('#ag-pend'); if (pd) bar.appendChild(pd);
+    const nm = $('#agenda-card .nm-open'); if (nm) bar.appendChild(nm);
+  }
+  // ===== Agenda en el móvil y el Z Fold, al estilo de Outlook (26/11/2026) =====
+  // Solo la agenda, a todo el ancho: mes (toca para desplegarlo), Hoy, Por responder y Día/Semana/Mes; la tira de días se desliza
+  // a los lados para cambiar de semana (o de mes, desplegado); deslizar el calendario cambia de día; ＋ flotante para crear.
+  const agmMQ = window.matchMedia('(max-width: 899px)');
+  const agmOn = () => agmMQ.matches;
+  agmMQ.addEventListener ? agmMQ.addEventListener('change', () => renderMeetings()) : agmMQ.addListener(() => renderMeetings());
+  const agmIco = (d, w) => '<svg width="' + (w || 20) + '" height="' + (w || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + d + '</svg>';
+  function agmGo(f) {
+    state.agendaDay = f; state.agendaFree = true; state.agendaWeek = mondayOf(f);
+    state.mtOpen = null; state.calPop = null; renderMeetRoom(true); renderMeetings();
+  }
+  function agmShift(n) { // ±n días (la vista semana va de 7 en 7)
+    if (state.agendaView === 'semana') { state.agendaWeek = addDays(state.agendaWeek, n); state.agendaDay = addDays(state.agendaDay || todayISO, n); state.agendaFree = true; state.calPop = null; renderMeetings(); }
+    else agmGo(addDays(state.agendaDay || todayISO, n));
+  }
+  function agmSwipe(node, fn) {
+    let x0 = null, y0 = 0, t0 = 0, bad = false;
+    node.addEventListener('touchstart', (k) => { if (k.touches.length !== 1) { x0 = null; return; } const t = k.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); bad = !!(k.target.closest && k.target.closest('.cal-ev, .cal-pop, .slot-ghost, input, textarea, select')); }, {passive: true});
+    node.addEventListener('touchend', (k) => {
+      if (x0 == null || bad) return; const t = k.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Date.now() - t0 > 700 || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      fn(dx < 0 ? 1 : -1);
+    }, {passive: true});
+  }
+  function renderAgMobile(card) {
+    const on = agmOn();
+    const view = $('#view-reuniones');
+    card.classList.toggle('agm', on); if (view) view.classList.toggle('agm-on', on);
+    const app = card.closest('.app');
+    if (!on) { card.style.marginLeft = card.style.marginRight = ''; return; }
+    if (app) { const cs = getComputedStyle(app); card.style.marginLeft = '-' + cs.paddingLeft; card.style.marginRight = '-' + cs.paddingRight; }
+    const ref = state.agendaDay || todayISO;
+    const mesOpen = !!state.agmMes;
+    const mref = mesOpen && state.agmMonth ? state.agmMonth : (state.agendaView === 'semana' && !(ref >= state.agendaWeek && ref <= addDays(state.agendaWeek, 6)) ? addDays(state.agendaWeek, 3) : ref);
+    const y = Number(mref.slice(0, 4)), m = Number(mref.slice(5, 7)) - 1;
+    // cabecera
+    let h = card.querySelector(':scope > .agm-h');
+    if (!h) { h = el('div', 'agm-h'); card.prepend(h); }
+    h.replaceChildren();
+    const mb = el('button', 'agm-mes'); mb.type = 'button'; mb.setAttribute('aria-expanded', String(mesOpen)); mb.title = mesOpen ? 'Plegar el mes' : 'Ver el mes entero';
+    mb.append(AG_MESES[m].replace(/^./, (c) => c.toUpperCase()) + (y !== Number(todayISO.slice(0, 4)) ? ' ' + y : ''));
+    mb.appendChild(el('small', null, mesOpen ? '▴' : '▾'));
+    mb.addEventListener('click', () => { state.agmMes = mesOpen ? false : 'temp'; state.agmMonth = null; state.agmMenu = false; renderMeetings(); });
+    h.append(mb, el('span', 'agm-sp'));
+    const hoy = el('button', 'agm-ib agm-hoy'); hoy.type = 'button'; hoy.title = 'Ir a hoy'; hoy.setAttribute('aria-label', 'Ir a hoy');
+    hoy.appendChild(el('b', null, String(Number(todayISO.slice(8)))));
+    hoy.addEventListener('click', () => { state.agmMonth = null; if (state.agmMes === 'temp') state.agmMes = false; agmGo(todayISO); });
+    h.appendChild(hoy);
+    const pd = $('#ag-pend'); if (pd) h.appendChild(pd);
+    const vw = el('div', 'agm-vw');
+    const vName = state.agmMes === 'mes' ? 'Mes' : state.agendaView === 'semana' ? 'Semana' : 'Día';
+    const vb = el('button', 'agm-ib agm-vbtn'); vb.type = 'button'; vb.setAttribute('aria-haspopup', 'menu'); vb.setAttribute('aria-expanded', String(!!state.agmMenu)); vb.title = 'Vista: día, semana o mes';
+    vb.innerHTML = agmIco('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path>');
+    vb.appendChild(el('span', null, vName));
+    vb.addEventListener('click', (k) => { k.stopPropagation(); state.agmMenu = !state.agmMenu; state.pendMenu = false; renderPendMenu(); renderMeetings(); });
+    vw.appendChild(vb);
+    if (state.agmMenu) {
+      const mn = el('div', 'agm-vmenu'); mn.setAttribute('role', 'menu');
+      [['Día', 'dia', false], ['Semana', 'semana', false], ['Mes', 'dia', 'mes']].forEach(([t, v, mes]) => {
+        const it = el('button'); it.type = 'button'; it.setAttribute('role', 'menuitemradio'); it.setAttribute('aria-checked', String(t === vName));
+        it.append(el('i', null, t === vName ? '✓' : ''), t);
+        it.addEventListener('click', (k) => { k.stopPropagation(); state.agmMenu = false; state.agmMes = mes; state.agmMonth = null; state.calPop = null; setAgView(v); if (v === 'semana') state.agendaWeek = mondayOf(state.agendaDay || todayISO); renderMeetings(); });
+        mn.appendChild(it);
+      });
+      vw.appendChild(mn);
+    }
+    h.appendChild(vw);
+    // tira de días (semana) o mes desplegado
+    let st = card.querySelector(':scope > .agm-strip');
+    if (!st) {
+      st = el('div', 'agm-strip'); h.after(st);
+      agmSwipe(st, (dir) => {
+        if (state.agmMes) { const r = state.agmMonth || state.agendaDay || todayISO; state.agmMonth = isoOf(new Date(Number(r.slice(0, 4)), Number(r.slice(5, 7)) - 1 + dir, 1, 12)); renderMeetings(); }
+        else agmShift(7 * dir);
+      });
+      document.addEventListener('click', (k) => { if (state.agmMenu && !k.target.closest('.agm-vw')) { state.agmMenu = false; renderMeetings(); } });
+    }
+    st.replaceChildren();
+    const dw = el('div', 'agm-dw'); ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach((d) => dw.appendChild(el('span', null, d))); st.appendChild(dw);
+    const pdm = pendDates();
+    const hasEv = (f) => { const ag = agendaOf(f); return !!(ag && (ag.eventos || []).some((e) => toMin(e.inicio) != null && !/ubicaci/i.test(e.estado || ''))); };
+    const selDay = state.agendaView === 'semana' ? (ref >= state.agendaWeek && ref <= addDays(state.agendaWeek, 6) ? ref : null) : ref;
+    const weeks = [];
+    if (mesOpen) { const d0 = mondayOf(isoOf(new Date(y, m, 1, 12))); for (let w = 0; w < 6; w++) { const mon = addDays(d0, w * 7); if (w > 3 && Number(mon.slice(5, 7)) - 1 !== m) break; weeks.push(mon); } }
+    else weeks.push(state.agendaView === 'semana' ? state.agendaWeek : mondayOf(ref));
+    weeks.forEach((mon) => {
+      const r = el('div', 'agm-wk');
+      for (let i = 0; i < 7; i++) {
+        const f = addDays(mon, i);
+        const pn = pdm.get(f) || 0;
+        const b = el('button', 'agm-d' + (f === selDay ? ' sel' : '') + (f === todayISO ? ' today' : '') + (mesOpen && Number(f.slice(5, 7)) - 1 !== m ? ' out' : '') + (pn ? ' pn' : hasEv(f) ? ' ev' : ''));
+        b.type = 'button'; b.setAttribute('aria-label', dayName(f) + (pn ? ' · ' + pn + ' por responder' : '')); b.setAttribute('aria-pressed', String(f === selDay));
+        b.append(el('b', null, String(Number(f.slice(8)))), el('i'));
+        b.addEventListener('click', () => { if (state.agmMes === 'temp') state.agmMes = false; state.agmMonth = null; if (state.agendaView === 'semana') setAgView('dia'); agmGo(f); }); // en la semana, tocar un día abre ese día
+        r.appendChild(b);
+      }
+      st.appendChild(r);
+    });
+    const g = el('div', 'agm-grip');
+    const mv = (txt, lbl, dir) => { const b = el('button', 'mv', txt); b.type = 'button'; b.setAttribute('aria-label', lbl); b.addEventListener('click', () => { if (mesOpen) { state.agmMonth = isoOf(new Date(y, m + dir, 1, 12)); renderMeetings(); } else agmShift(7 * dir); }); return b; };
+    const gb = el('button', 'g'); gb.type = 'button'; gb.setAttribute('aria-label', mesOpen ? 'Plegar el mes' : 'Ver el mes entero');
+    gb.addEventListener('click', () => { state.agmMes = mesOpen ? false : 'temp'; state.agmMonth = null; renderMeetings(); });
+    g.append(mv('‹', mesOpen ? 'Mes anterior' : 'Semana anterior', -1), gb, mv('›', mesOpen ? 'Mes siguiente' : 'Semana siguiente', 1));
+    st.appendChild(g);
+    // botón ＋ flotante (abre «Nueva reunión»)
+    if (!card.querySelector(':scope > .agm-fab')) {
+      const fab = el('button', 'agm-fab'); fab.type = 'button'; fab.setAttribute('aria-label', 'Nueva reunión'); fab.title = 'Nueva reunión';
+      fab.innerHTML = agmIco('<path d="M12 5v14M5 12h14"></path>', 26);
+      fab.addEventListener('click', () => { const nm = card.querySelector('.nm-open'); if (nm) nm.click(); });
+      card.appendChild(fab);
+    }
+  }
+  // tras pintar el calendario: ocupa el alto de la pantalla y se desliza de día en día
+  function agmFit(card) {
+    if (!card.classList.contains('agm')) return;
+    const sc = card.querySelector('#agenda-box .cal-scroll'); if (!sc) return;
+    if (!sc.dataset.sw) { sc.dataset.sw = '1'; agmSwipe(sc, (dir) => agmShift(state.agendaView === 'semana' ? 7 * dir : dir)); }
+    const nav = $('.tabs'); const nr = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect() : null;
+    const bottom = nr && nr.top > innerHeight / 2 ? nr.top : innerHeight;
+    const top = sc.getBoundingClientRect().top + window.scrollY;
+    sc.style.height = Math.max(320, Math.round(bottom - top)) + 'px';
   }
   function placeNow(nl) {
     const h0 = Number(nl.dataset.h0); const m = nowMin();
@@ -3241,6 +3602,24 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     return data;
   }
   window.__sqGraphCall = graphCall;
+  // Pendientes al día con Outlook (25/11): lo respondido, reenviado, archivado o borrado allí (y lo leído si no te piden nada)
+  // sale solo de Pendientes; y lo que marcas «Gestionado» aquí queda leído en Outlook.
+  function leidoEnOutlook(id) { buzonCall({op: 'leidoPend', mail: id}).then((r) => { if (r && r.ok === false) setSync('Gestionado. No encuentro ese correo en Outlook para marcarlo leído.'); else window.dispatchEvent(new Event('sq-bz-refresh')); }).catch(() => null); }
+  let concAt = 0, concBusy = false;
+  async function conciliarOutlook() {
+    if (concBusy || document.hidden || !window.__sb || window.__sqOffline) return;
+    concBusy = true; concAt = Date.now();
+    try {
+      const r = await buzonCall({op: 'conciliar'});
+      const n = (r && r.cerrados || []).length;
+      if (n) setSync(n === 1 ? '1 correo ya gestionado en Outlook sale de Pendientes' : n + ' correos ya gestionados en Outlook salen de Pendientes');
+      if (r && r.leidos) { setSync(r.leidos + ' correos gestionados marcados como leídos en Outlook'); window.dispatchEvent(new Event('sq-bz-refresh')); }
+    } catch (e) { /* sin Microsoft 365 o sin conexión: se intenta más tarde */ }
+    concBusy = false;
+  }
+  setTimeout(conciliarOutlook, 5000);
+  setInterval(conciliarOutlook, 3 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - concAt > 60000) conciliarOutlook(); });
   async function buzonCall(body) {
     const { data, error } = await window.__sb.functions.invoke('buzon', { body });
     if (error) { let t = error.message; try { t = (await error.context.json()).error || t; } catch (e) {} throw new Error(t); }
@@ -3399,6 +3778,22 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     return box;
   }
 
+  // Correo único (25/11): dictar y perfeccionar con IA también en Responder / A todos / Reenviar / Correo nuevo
+  window.__sqAI = {
+    ok: () => !!sample,
+    mic: (field, onChange) => micButton(field, onChange),
+    redactar: async (c, onText) => {
+      if (!sample) throw new Error('La IA no está conectada; recarga la página');
+      const base = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Cierra solo con «Un saludo,» y NO pongas su nombre ni firma debajo (Outlook añade su firma electrónica).';
+      const ctx = c.tipo === 'nuevo' ? 'ES UN CORREO NUEVO' + (c.asunto ? ' con asunto «' + c.asunto + '»' : '') + (c.para ? ' para ' + c.para : '') + '.'
+        : (c.tipo === 'reenviar' ? 'JAIME REENVÍA ESTE CORREO' + (c.para ? ' a ' + c.para : '') + ' (escribe solo el comentario de arriba, corto):\n' : 'CORREO AL QUE SE RESPONDE:\n') + 'De: ' + (c.de || '') + '\nAsunto: ' + (c.asunto || '') + '\n\n' + String(c.texto || '').slice(0, 8000);
+      const pide = c.borrador ? 'LO QUE HA ESCRITO O DICTADO JAIME (puede estar desordenado, con muletillas o errores del dictado):\n' + c.borrador + '\n\nConviértelo en el correo listo para enviar: respeta todo lo que dice y su intención, ordénalo, corrige y mejora la redacción, sin añadir nada que él no diga.'
+        : 'Propón la respuesta más útil.';
+      const prompt = base + '\n\n' + ctx + '\n\n' + pide + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en lo que dice Jaime: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
+      const out = await sample(prompt, onText ? {onText: ({text}) => onText(text)} : undefined);
+      return String((out && out.text) || '').trim();
+    },
+  };
   // Personas o grupos de catch-up que aparecen en el correo (remitente, destinatarios o CC): se proponen en «Ver con»
   function cuCandidates(m) {
     const names = String((m.de || '') + ';' + (m.para || '')).split(/[;,]|\bCC\b/).map((x) => x.replace(/\(.*?\)|y \d+ más/gi, '').trim()).filter((x) => x && !isMe(x));
@@ -3416,8 +3811,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       const di = document.createElement('input'); di.type = 'date'; di.value = /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : todayISO; di.setAttribute('aria-label', 'Fecha límite');
       const quick = el('div', 'tsug-quick');
       // la fecha rápida elegida queda marcada (sombreada) igual que la prioridad; si se cambia el calendario, se marca la que coincida
-      const markQuick = () => quick.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.v === di.value)));
-      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.dataset.v = v; q.addEventListener('click', () => { di.value = v; t.vence = v; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); });
+      if (t.sinFecha) di.value = '';
+      const markQuick = () => quick.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.v === 'none' ? !!t.sinFecha : (!t.sinFecha && c.dataset.v === di.value))));
+      [['Hoy', todayISO], ['Mañana', tomorrowISO], ['Viernes', (() => { const d = new Date(now); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return iso(d); })()]].forEach(([lbl, v]) => { const q = el('button', 'chip', lbl); q.type = 'button'; q.dataset.v = v; q.addEventListener('click', () => { di.value = v; t.vence = v; t.sinFecha = false; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); });
+      { const q = el('button', 'chip', 'Sin fecha'); q.type = 'button'; q.dataset.v = 'none'; q.title = 'Sin fecha: la verás en Mis tareas y en el próximo catch-up'; q.addEventListener('click', () => { di.value = ''; t.vence = null; t.sinFecha = true; row.classList.remove('needdate'); markQuick(); }); quick.appendChild(q); }
       markQuick();
       // prioridad elegida por Jaime (por defecto, la del correo)
       if (!['Mega', 'Alta', 'Media', 'Baja'].includes(t.prioridad)) t.prioridad = ['Alta', 'Media', 'Baja'].includes(m.prioridad) ? m.prioridad : 'Media';
@@ -3444,16 +3841,16 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       ok.addEventListener('click', async () => {
         if (voice._stop && row.querySelector('.tf-voice.listening')) voice._stop(false);
         const titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
-        if (!di.value) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
+        if (!di.value && !t.sinFecha) { row.classList.add('needdate'); di.focus(); try { di.showPicker(); } catch (e) {} return; }
         row.classList.remove('needdate');
-        ok.disabled = true; t.titulo = titulo; t.vence = di.value;
+        ok.disabled = true; t.titulo = titulo; t.vence = di.value || null;
         const vcn = vi.value.trim(); t.verCon = vcn && !isMe(vcn) ? vcn : '';
-        const id = await addTask(Object.assign({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || todayISO, origen: 'correo', ref: m.id}, t.verCon ? {espera: 'vercon', extra: {verCon: t.verCon}} : {}));
+        const id = await addTask(Object.assign({persona: personaDe(m.de), titulo, detalle: 'Del correo «' + m.asunto + '» de ' + m.de, empresa: /MSH/i.test(m.de) ? 'MSH' : 'Provalliance', prioridad: t.prioridad, vence: di.value || null, origen: 'correo', ref: m.id}, t.verCon ? {espera: 'vercon', extra: {verCon: t.verCon}} : {}));
         if (id) { t.creada = true; doneRow(row, t); refreshAll(); }
         else ok.disabled = false;
       });
       no.addEventListener('click', () => { t.descartada = true; row.classList.add('done', 'gone'); row.replaceChildren(el('span', 'tsug-gone', 'Descartada: ' + (ti.value.trim() || 'tarea'))); refreshAll(); });
-      di.addEventListener('change', () => { t.vence = di.value; if (di.value) row.classList.remove('needdate'); markQuick(); });
+      di.addEventListener('change', () => { t.vence = di.value; if (di.value) { t.sinFecha = false; row.classList.remove('needdate'); } markQuick(); });
       ti.addEventListener('input', () => { t.titulo = ti.value; });
       ti.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !row.querySelector('.tf-voice.listening')) { e.preventDefault(); ok.click(); } });
       // tras dictar, la fecha queda a mano: se resalta para elegir Hoy / Mañana / Viernes y pulsar «Crear»
@@ -3546,7 +3943,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const setStatus = (t, err) => { status.textContent = t; status.classList.toggle('err', !!err); };
     if (preSug && !locked) setStatus('Respuesta preparada al leer el correo. Revísala, pide un cambio o llévala a Borradores.');
     // en el panel, si te piden algo y no hay respuesta preparada, la redacto sola al abrir (una vez)
-    if (inPane && !locked && !ta.value.trim() && isDecision(m) && m.cuerpo && sample) { state.autoTried = state.autoTried || {}; if (!state.autoTried[m.id]) { state.autoTried[m.id] = true; state.autoDraft[m.id] = true; } }
+    if (inPane && !window.__sqUnified && !locked && !ta.value.trim() && isDecision(m) && m.cuerpo && sample) { state.autoTried = state.autoTried || {}; if (!state.autoTried[m.id]) { state.autoTried[m.id] = true; state.autoDraft[m.id] = true; } }
 
     if (!locked) {
       const change = el('div', 'change');
@@ -3580,7 +3977,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       ask.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); askBtn.click(); } });
       askRow.appendChild(askBtn);
       askBox.appendChild(ask); askBox.appendChild(askRow);
-      if (state.autoDraft[m.id] && !ta.value.trim()) { delete state.autoDraft[m.id]; setTimeout(() => run(ask.value.trim(), askBtn), 80); }
+      if (state.autoDraft[m.id] && !ta.value.trim() && (o && o.bz || !window.__sqUnified)) { delete state.autoDraft[m.id]; setTimeout(() => run(ask.value.trim(), askBtn), 80); }
       askBox.appendChild(slotFinder((s, label) => {
         ask.value = (ask.value.trim() ? ask.value.trim() + '. ' : '') + 'Propón una reunión el ' + label.replace(' · ', ' de ') + ' (' + (s.fin - s.inicio) + ' min) por Teams';
         state.asks[m.id] = ask.value; ask.focus(); setStatus('Hueco añadido. Pulsa «Sugerir correo».');
@@ -3671,7 +4068,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         const t = ta.value.trim();
         if (!t) { setStatus('La respuesta está vacía.', true); return; }
         if (/\[[^\]]+\]/.test(t)) { setStatus('Quedan huecos entre [corchetes] por completar.', true); return; }
-        if (!sample) { finish(t); return; }
+        // sin ronda de correcciones (25/11): se envía tal cual lo has dejado, con lo que hayas cambiado a mano
+        { await finish(t); return; }
         ready.disabled = true; setStatus('Revisando el texto antes de darlo por listo…');
         try {
           const prompt = 'Revisa este borrador de correo de Jaime Marrero (director de la unidad de salones de Provalliance España) antes de enviarlo. Busca: erratas y ortografía, puntuación, frases cortadas o sin verbo, respuestas ambiguas para el destinatario, saludo y cierre (debe terminar en «Un saludo,» SIN nombre ni firma debajo, porque Outlook añade la firma electrónica; si lleva «Jaime» u otra firma al final, quítala), y tono (directo y cordial). Respeta lo que Jaime quiere decir: no añadas compromisos, datos ni fechas nuevos; si algo es ambiguo, señálalo en vez de inventarlo.\n\nCorreo al que responde:\n' + mailContext(m) + '\n\nBORRADOR:\n' + t + '\n\nDevuelve SOLO JSON: {"ok": true si no hace falta cambiar nada, "cambios": ["cada cambio en una frase corta"], "texto": "versión corregida completa"}';
@@ -3764,6 +4162,11 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         box.appendChild(full); if (adj) box.appendChild(adj);
       }
       if (tb) box.insertBefore(tb, box.firstChild);
+      // Correo único (25/11): el correo ya se ve arriba; aquí solo «¿Qué quieres contestar?» y, justo debajo, la propuesta
+      if (o.bz) {
+        [...box.children].forEach((x) => { if (x === full || x === adj || x.classList.contains('mail-full') || (x.classList.contains('section-label') && x.textContent === 'Correo')) x.remove(); });
+        box.insertBefore(askBox, prop);
+      }
     }
     return box;
   }
@@ -3813,6 +4216,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   const byFecha = (a, b) => fechaDe(b).localeCompare(fechaDe(a));
   const sortMails = (a, b) => (state.mailSort === 'prioridad' ? (PRIO[a.prioridad] ?? 1) - (PRIO[b.prioridad] ?? 1) : 0) || byFecha(a, b);
   const isMeeting = (m) => m.categoria === 'Reuniones';
+  // aviso de que una reunión se ha cancelado («Cancelado: …», «Canceled: …»): no es una convocatoria por responder
+  const isCancelMail = (m) => !!m && (/^\s*(cancelad[oa]s?|cancel+ed|anulad[oa])\s*:/i.test(String(m.asunto || '')) || /cancel/i.test(String(m.meetingMessageType || m.tipoReunion || '')));
   // Nivel de lo que se espera de Jaime: 'bloquea' (urgente · decide tú), 'pide' (te piden algo, sin prisa) o null (en copia / informativo).
   // Lo pone la IA al clasificar (campos nivel, motivo, plazo); Jaime puede corregirlo (nivelManual: bloquea | pide | no).
   // «Te piden algo» sube solo a urgente si lleva más de 5 días o el plazo es en 48 h o menos.
@@ -3840,12 +4245,31 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   const handled = (m) => { const r = state.replies[m.id]; return !!(r && OUT.includes(r.estado)); };
   const snoozed = (m) => !!(m.posponer && m.posponer > todayISO);
   const isPending = (m) => m.estado !== 'gestionado' && !handled(m) && !snoozed(m);
+  // El Correo único (v4, 25/11) usa Pendientes como filtros (Urgente, Te piden algo, Para otro día) sin cambiar de pantalla
+  window.__sqPend = {
+    list: (k) => state.mails.filter((m) => !isMeeting(m) && m.estado !== 'gestionado' && (k === 'otro' ? (snoozed(m) && !handled(m)) : isPending(m) && (k === 'urgente' ? isUrgent(m) : k === 'pide' ? isDecision(m) : true))),
+    get: (id) => state.mails.find((x) => x.id === id) || null,
+    byConv: (conv) => state.mails.find((x) => x.conv === conv && !isMeeting(x)) || null,
+    pendiente: (m) => !!m && !isMeeting(m) && isPending(m),
+    pospuesto: (m) => !!m && snoozed(m),
+    nivel: (m) => nivelDe(m),
+    fecha: (m) => fechaDe(m),
+    persona: (de) => personaDe(de),
+    motivo: (m) => { try { return motivoDe(m); } catch (e) { return ''; } },
+    gestionado: (id) => { write(() => db.collection('correos').doc(id).update({estado: 'gestionado'}), 'Correo gestionado'); leidoEnOutlook(id); },
+    posponer: (id) => write(() => db.collection('correos').doc(id).update({posponer: tomorrowISO}), 'Lo verás mañana'),
+    reactivar: (id) => write(() => db.collection('correos').doc(id).update({posponer: null}), 'De vuelta a pendientes'),
+    clasificar: (id, v) => write(() => db.collection('correos').doc(id).update({nivelManual: v}), v === 'no' ? 'No te piden nada' : v === 'bloquea' ? 'Marcado como urgente' : v ? 'Te piden algo' : 'Clasificación de la IA'),
+    // la caja de respuesta de siempre (propuesta con IA, pulir, CC, programar, adjuntos, tareas…) dentro del correo abierto
+    composer: (id, auto) => { const m = state.mails.find((x) => x.id === id); if (!m) return null; if (auto) state.autoDraft[id] = true; return composer(m, {pane: true, bz: true}); },
+    clasico: (id) => { if (window.__sqBzModo) window.__sqBzModo('pend'); if (id) window.__sqOpenMail(id); },
+  };
   const meetingPast = (m) => (m.reunion && m.reunion.fecha) ? m.reunion.fecha < todayISO : (/reenv[ií]o|cancelad|actualiz/i.test(m.asunto || '') || daysSince(fechaDe(m)) > 3);
   const agendaAccepted = (m) => { const r = m.reunion; if (!r || !r.fecha || !state.agenda[r.fecha]) return false; const tk = normTxt(r.titulo || m.asunto).slice(0, 12); return (state.agenda[r.fecha].eventos || []).some((e) => sameSlot(e, r) && (!tk || normTxt(e.titulo).includes(tk) || tk.includes(normTxt(e.titulo).slice(0, 12))) && !/sin confirmar|tentative|provisional/i.test(e.estado || '')); };
-  const meetingDone = (m) => meetingPast(m) || agendaAccepted(m) || m.estado === 'gestionado' || (state.decisions[m.id] && state.decisions[m.id].estado === 'hecha');
+  const meetingDone = (m) => isCancelMail(m) || meetingPast(m) || agendaAccepted(m) || m.estado === 'gestionado' || (state.decisions[m.id] && state.decisions[m.id].estado === 'hecha');
   const meetingDecided = () => false;
 
-  function renderAll() { renderMail(); renderMeetings(); renderHoy(); }
+  function renderAll() { renderMail(); renderMeetings(); renderHoy(); try { window.dispatchEvent(new Event('sq-mails')); } catch (e) {} }
 
   // Saca fecha y hora de la reunión del texto de la invitación cuando no vienen guardadas
   const MES_L = {enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12};
@@ -3892,7 +4316,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const openMob = state.openReply === m.id && !o.compact && !o.split && !!o.inbox && !isMeeting(m);
     if (!o.compact && !o.pane && !openMob && !(isMeeting(m) && /^convocatoria\.?$/i.test(String(m.accion || '').trim()))) body.appendChild(el('div', 'detail', m.accion));
     if (snoozed(m)) body.appendChild(el('div', 'detail', 'Vuelve a tu lista el ' + dayName(m.posponer)));
-    if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
+    if (isMeeting(m) && meetingDone(m)) { const meta = el('div', 'meta'); meta.appendChild(el('span', 'rstate ' + (isCancelMail(m) ? 'pasada' : agendaAccepted(m) || !meetingPast(m) ? 'enviada' : 'pasada'), isCancelMail(m) ? 'Reunión cancelada · no hay que responder' : agendaAccepted(m) ? 'Aceptada en tu Outlook' : meetingPast(m) ? 'Ya pasó' : dz && dz.estado === 'hecha' ? (DLABEL[dz.decision] || dz.decision) + ' en Outlook' : 'Resuelta')); body.appendChild(meta); }
     else if (r || dz) { const meta = el('div', 'meta'); if (r) meta.appendChild(el('span', 'rstate ' + r.estado, RLABEL[r.estado] || r.estado)); if (dz) meta.appendChild(el('span', 'rstate ' + (dz.estado === 'hecha' ? 'enviada' : 'lista'), (DLABEL[dz.decision] || dz.decision) + (dz.estado === 'hecha' ? ' · hecho en Outlook' : ' · decidida, falta aplicar en Outlook'))); body.appendChild(meta); }
     if (m.reunion && m.reunion.fecha && state.agenda[m.reunion.fecha] && !meetingDone(m)) {
       const evs = state.agenda[m.reunion.fecha].eventos || [];
@@ -3986,7 +4410,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         }
       }
       const done = el('button', 'btn ghost', isMeeting(m) ? 'Ya resuelta' : 'Gestionado'); done.type = 'button';
-      done.addEventListener('click', () => write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), isMeeting(m) ? 'Reunión resuelta' : 'Correo gestionado'));
+      done.addEventListener('click', () => { write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), isMeeting(m) ? 'Reunión resuelta' : 'Correo gestionado'); if (!isMeeting(m)) leidoEnOutlook(m.id); });
       act.appendChild(done);
     } else {
       const undo = el('button', 'btn ghost', 'Devolver'); undo.type = 'button';
@@ -4313,7 +4737,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         });
       });
     }
-    state.mails.filter((m) => isMeeting(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO).forEach((m) => {
+    // Con la lista de convocatorias de Outlook (Microsoft 365) no se añaden las sacadas de correos: esa lista ya es la buena
+    // (un correo de convocatoria ya respondida, rechazada o cancelada en Outlook volvía a salir como «por responder»)
+    if (!inv) state.mails.filter((m) => isMeeting(m) && !isCancelMail(m) && m.estado !== 'gestionado' && m.reunion && m.reunion.fecha && m.reunion.fecha >= todayISO && !(m.reunion.fecha === todayISO && (m.reunion.fin || '23:59') <= nowHM)).forEach((m) => {
       const r = m.reunion; const ag = state.agenda[r.fecha];
       if (ag && (ag.eventos || []).some((e) => sameSlot(e, r))) return; // ya está en el calendario
       if (raw.some((x) => x.fecha === r.fecha && x.inicio === r.inicio)) return;
@@ -4409,6 +4835,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (!state.agendaWeek) state.agendaWeek = mondayOf(state.agendaDay || todayISO);
     renderAgTools(days); sel.hidden = state.agendaView === 'semana';
     if (!state.agendaDay || !days.includes(state.agendaDay)) state.agendaDay = days.includes(todayISO) ? todayISO : (days.find((d) => d >= todayISO) || days[days.length - 1] || todayISO);
+    renderAgMobile($('#agenda-card'));
     sel.replaceChildren();
     const shift = (n) => { const t = new Date(todayISO + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
     const tmw = shift(1), yst = shift(-1);
@@ -4419,35 +4846,25 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     nav('‹', cur > 0 ? days[cur - 1] : null, 'Día anterior');
     const prevDay = days.filter((d) => d < todayISO).pop();
     const quick = [prevDay].concat(days.filter((d) => d >= todayISO).slice(0, 3)).filter(Boolean);
+    if (state.agendaDay && !quick.includes(state.agendaDay)) { quick.push(state.agendaDay); quick.sort(); } // día elegido en el calendario del mes
     quick.forEach((d) => { const c = el('button', 'chip' + (d < todayISO ? ' past' : ''), lbl(d) + (noted.has(d) && d < todayISO ? ' 📝' : '')); c.type = 'button'; c.setAttribute('aria-pressed', String(d === state.agendaDay)); c.addEventListener('click', () => go(d)); sel.appendChild(c); });
     nav('›', cur >= 0 && cur < days.length - 1 ? days[cur + 1] : null, 'Día siguiente');
-    const rest = days.filter((d) => !quick.includes(d));
-    if (rest.length) {
-      const wrap = el('label', 'chip day-pick' + (quick.includes(state.agendaDay) ? '' : ' on'));
-      const dd = document.createElement('select'); dd.setAttribute('aria-label', 'Elegir otro día');
-      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Otro día…'; dd.appendChild(o0);
-      [['Próximos días', rest.filter((d) => d >= todayISO)], ['Días anteriores', rest.filter((d) => d < todayISO).reverse()]].forEach(([g, list]) => {
-        if (!list.length) return;
-        const og = document.createElement('optgroup'); og.label = g;
-        list.forEach((d) => { const o = document.createElement('option'); o.value = d; o.textContent = dayName(d).replace(/^./, (x) => x.toUpperCase()) + (noted.has(d) ? ' · 📝 notas' : ''); if (d === state.agendaDay) o.selected = true; og.appendChild(o); });
-        dd.appendChild(og);
-      });
-      dd.addEventListener('change', () => { if (dd.value) go(dd.value); });
-      wrap.appendChild(dd); sel.appendChild(wrap);
-    }
+    // «Otro día…» ya no hace falta: el calendario del mes (botón del panel) lleva a cualquier día
+    const dl = $('#agenda-card .ag-dlbl'); if (dl) { dl.replaceChildren(el('span', 'l-long', agDayLbl(state.agendaDay)), el('span', 'l-short', agDayLbl(state.agendaDay, true))); dl.hidden = state.agendaView === 'semana'; }
     const h2 = $('#agenda-card h2'); if (h2) h2.textContent = state.agendaDay < todayISO ? 'Agenda · ' + lbl(state.agendaDay) : 'Agenda y reuniones';
     const ag = $('#agenda-box');
     const oldSc = ag.querySelector('.cal-scroll'); const keepTop = oldSc && state.agKeep === state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay) ? oldSc.scrollTop : null;
     state.agKeep = state.agendaView + (state.agendaView === 'semana' ? state.agendaWeek : state.agendaDay);
     ag.replaceChildren();
     const lay = el('div', 'ag-lay');
-    if (state.agendaSide) lay.appendChild(miniCal());
+    if (state.agendaSide && !agmOn()) lay.appendChild(miniCal());
     const main = el('div', 'ag-main'); lay.appendChild(main); ag.appendChild(lay);
     if (state.agendaView === 'semana') main.appendChild(weekGrid(state.agendaWeek).wrap);
     else if (!days.length) main.appendChild(el('div', 'empty', 'Aún no he leído tu calendario.'));
     else main.appendChild(dayTimeline(state.agendaDay, null).wrap);
     if (keepTop != null) requestAnimationFrame(() => requestAnimationFrame(() => { const sc = ag.querySelector('.cal-scroll'); if (sc && !state.calPop) sc.scrollTop = keepTop; }));
     const tip = $('#agenda-card .mt-tip'); if (tip) tip.hidden = state.agendaView === 'semana';
+    if (agmOn()) requestAnimationFrame(() => agmFit($('#agenda-card')));
   }
 
   function renderHoy() {
@@ -4560,7 +4977,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     inMegaNotes().forEach((n) => out.push({score: 99, key: 'n' + n.id, tag: 'Mega · tu nota', cls: 'mega', title: n.titulo || String(n.cuerpo || '').slice(0, 90) || 'Nota', sub: (window.__sqNotas.bookName(n.libreta) || 'Notas') + ' · ' + relDay(n.creada || todayISO), open: () => window.__sqNotas.open(n.id),
       acts: [['Abrir', 'pri', () => window.__sqNotas.open(n.id)], ['Ya está', '', () => window.__sqNotas.update(n.id, {mega: false})]]}));
     const mailItem = (m, score, tag, cls) => out.push({score, key: 'm' + m.id, tag, cls, title: String(m.asunto || '(sin asunto)'), who: 'Correo · ' + personaDe(m.de), sub: String(m.peticion || m.resumen || motivoDe(m) || '').slice(0, 180), open: () => window.__sqOpenMail(m.id), age: fechaDe(m),
-      acts: [['Abrir', 'pri', () => window.__sqOpenMail(m.id)], ['Mañana', '', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Lo verás mañana')], ['Gestionado', '', () => write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Correo gestionado')]]});
+      acts: [['Abrir', 'pri', () => window.__sqOpenMail(m.id)], ['Mañana', '', () => write(() => db.collection('correos').doc(m.id).update({posponer: tomorrowISO}), 'Lo verás mañana')], ['Gestionado', '', () => { write(() => db.collection('correos').doc(m.id).update({estado: 'gestionado'}), 'Correo gestionado'); leidoEnOutlook(m.id); }]]});
     const ms = inMails();
     ms.filter(isUrgent).forEach((m) => mailItem(m, 90, 'Urgente · decide tú', 'urg'));
     state.tasks.filter((t) => forToday(t) && espOf(t) === 'mia' && t.prioridad !== 'Mega').forEach((t) => out.push({score: isLate(t) ? 80 : 76, key: 't' + t.id, tag: isLate(t) ? 'Tarea · vencida' : 'Tarea · vence hoy', cls: isLate(t) ? 'late' : 'task', title: t.titulo, sub: [otherPerson(t) ? firstName(otherPerson(t)) : '', t.prioridad && t.prioridad !== 'Media' ? 'prioridad ' + t.prioridad.toLowerCase() : ''].filter(Boolean).join(' · '), open: () => openTaskEdit(t),
@@ -5338,7 +5755,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const baseRec = () => ({persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas});
     const curAtt = () => ((state.catchups.find((c) => c.id === id) || {}).adjuntos || []);
     const setAtt = (list) => { const r = state.catchups.find((c) => c.id === id); if (r) r.adjuntos = list; else state.catchups.push(Object.assign({id}, baseRec(), {adjuntos: list})); };
-    const drawAtt = (msg) => {
+    const drawAtt = (msg, keep) => {
+      if (keep) state.attMsg = {id, msg, t: Date.now()};
+      else if (msg === undefined && state.attMsg && state.attMsg.id === id && Date.now() - state.attMsg.t < 20000) msg = state.attMsg.msg;
       attBox.replaceChildren();
       const list = curAtt();
       if (list.length) {
@@ -5360,12 +5779,12 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       }
       const bar = el('div', 'att-bar');
       if (assets) {
-        const fi = document.createElement('input'); fi.type = 'file'; fi.multiple = true; fi.hidden = true; fi.accept = 'image/*,application/pdf,text/plain,text/csv,text/markdown,application/json,.csv,.md,.txt';
-        const b = el('button', 'btn small', '📎 Adjuntar imagen o archivo'); b.type = 'button';
+        const fi = document.createElement('input'); fi.type = 'file'; fi.multiple = true; fi.hidden = true;
+        const b = el('button', 'btn small', '📎 Adjuntar archivo'); b.type = 'button';
         b.addEventListener('click', () => fi.click());
         fi.addEventListener('change', () => { uploadFiles([...fi.files]); fi.value = ''; });
         bar.appendChild(b); bar.appendChild(fi);
-        bar.appendChild(el('span', 'note', msg || 'También puedes pegar una captura (Ctrl+V) o arrastrar una imagen sobre las notas.'));
+        bar.appendChild(el('span', 'note' + (/^No se|no se ha|demasiado/i.test(msg || '') ? ' err' : ''), msg || 'O arrastra el archivo a esta reunión, o pégalo con Ctrl+V (capturas, PDF, Word, Excel, correos…).'));
       } else bar.appendChild(el('span', 'note', 'Los adjuntos no están disponibles en este momento.'));
       attBox.appendChild(bar);
     };
@@ -5375,34 +5794,51 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       img.onload = () => { const k = Math.min(1, 2000 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob((b) => res(b ? new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', {type: 'image/jpeg'}) : file), 'image/jpeg', 0.85); };
       img.onerror = () => res(file); img.src = u;
     });
-    const OK_TYPE = /^(image\/|application\/pdf|text\/|application\/json)/;
+    // cualquier archivo (26/11): imágenes, PDF, Word, Excel, PowerPoint, correos… hasta 25 MB, el límite del almacén
+    const MAX_ATT = 25 * 1024 * 1024;
     const uploadFiles = async (files) => {
-      if (!assets) { drawAtt('Los adjuntos no están disponibles aquí.'); return; }
-      const bad = files.filter((f) => !OK_TYPE.test(f.type || ''));
-      files = files.filter((f) => OK_TYPE.test(f.type || ''));
-      if (!files.length) { drawAtt(bad.length ? 'Word y Excel no se pueden adjuntar aquí: guárdalo como PDF o haz una captura.' : ''); return; }
-      drawAtt('Subiendo ' + files.length + (files.length === 1 ? ' archivo…' : ' archivos…'));
-      if (!state.catchups.find((c) => c.id === id)) await saveCu(id, baseRec());
-      const added = [];
+      if (!assets) { drawAtt('Los adjuntos no están disponibles aquí.', true); return; }
+      files = files.filter((f) => f && f.size > 0);
+      const big = files.filter((f) => f.size > MAX_ATT).map((f) => f.name);
+      files = files.filter((f) => f.size <= MAX_ATT);
+      if (!files.length) { drawAtt(big.length ? 'Demasiado grande (máximo 25 MB): ' + big.join(', ') : 'No se ha podido leer el archivo.', true); return; }
+      drawAtt('Subiendo ' + files.length + (files.length === 1 ? ' archivo…' : ' archivos…'), true);
+      try { if (!state.catchups.find((c) => c.id === id)) await saveCu(id, baseRec()); } catch (e) { /* lo intenta igual */ }
+      const added = [], fail = [];
       for (const f0 of files) {
         try {
           const f = await shrink(f0);
-          if (f.size > 20 * 1024 * 1024) continue;
           const r = await assets.upload(f);
-          added.push({id: r.id, nombre: f0.name && f0.name !== 'image.png' ? f0.name : 'Captura ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}) + '.png', tipo: r.contentType || f.type, size: r.sizeBytes || f.size, fecha: new Date().toISOString()});
-        } catch (e) { /* sigue con el resto */ }
+          const auto = !f0.name || /^image\.(png|jpe?g|gif|webp)$/i.test(f0.name);
+          added.push({id: r.id, nombre: auto ? 'Captura ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}) + '.' + ((f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')) : f0.name, tipo: r.contentType || f.type || 'application/octet-stream', size: r.sizeBytes || f.size, fecha: new Date().toISOString()});
+        } catch (e) { fail.push(f0.name + (e && e.message ? ' (' + e.message + ')' : '')); }
       }
       if (added.length) { const next = curAtt().concat(added); await saveCu(id, {adjuntos: next}); setAtt(next); }
-      setTimeout(() => drawAtt(added.length ? (added.length === 1 ? 'Adjunto guardado.' : added.length + ' adjuntos guardados.') + (bad.length ? ' Word/Excel no se pueden adjuntar: pásalos a PDF.' : '') : 'No se ha podido subir. Inténtalo otra vez.'), 400);
+      const msg = (added.length ? (added.length === 1 ? '«' + added[0].nombre + '» guardado en la reunión.' : added.length + ' archivos guardados en la reunión.') : '')
+        + (fail.length ? ' No se ha podido subir: ' + fail.join(', ') + '.' : '') + (big.length ? ' Demasiado grande (máximo 25 MB): ' + big.join(', ') + '.' : '');
+      setTimeout(() => { state.attMsg = {id, msg: msg.trim(), t: Date.now()}; const h = window.__sqAttDraw; if (h && h.id === id && h.box.isConnected) h.fn(); else if (attBox.isConnected) drawAtt(); }, 300);
     };
-    ta.addEventListener('paste', (e) => {
+    // pegar (Ctrl+V) en cualquier sitio de la reunión, o arrastrar el archivo encima de ella
+    card.addEventListener('paste', (e) => {
+      const files = [...((e.clipboardData && e.clipboardData.files) || [])];
+      if (files.length) { e.preventDefault(); e.stopPropagation(); uploadFiles(files); }
+    });
+    const onDocPaste = (e) => { // con la reunión abierta y sin estar escribiendo en otro sitio: el Ctrl+V también va a la reunión
+      if (!card.isConnected) { document.removeEventListener('paste', onDocPaste); return; }
+      if (!card.offsetParent || e.defaultPrevented) return;
+      const ae = document.activeElement; if (ae && ae !== document.body && !card.contains(ae) && (ae.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) return;
       const files = [...((e.clipboardData && e.clipboardData.files) || [])];
       if (files.length) { e.preventDefault(); uploadFiles(files); }
-    });
-    ta.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); ta.classList.add('drop'); } });
-    ta.addEventListener('dragleave', () => ta.classList.remove('drop'));
-    ta.addEventListener('drop', (e) => { const files = [...((e.dataTransfer && e.dataTransfer.files) || [])]; ta.classList.remove('drop'); if (files.length) { e.preventDefault(); uploadFiles(files); } });
-    drawAtt();
+    };
+    if (document.__sqAttPaste) document.removeEventListener('paste', document.__sqAttPaste);
+    document.__sqAttPaste = onDocPaste; document.addEventListener('paste', onDocPaste);
+    const hasFiles = (e) => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+    let dragN = 0;
+    card.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragN++; card.classList.add('att-drag'); });
+    card.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    card.addEventListener('dragleave', () => { dragN = Math.max(0, dragN - 1); if (!dragN) card.classList.remove('att-drag'); });
+    card.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragN = 0; card.classList.remove('att-drag'); const files = [...(e.dataTransfer.files || [])]; if (files.length) uploadFiles(files); });
+    drawAtt(); window.__sqAttDraw = {id, fn: drawAtt, box: attBox};
     let tmr = null;
     const persist = () => { clearTimeout(tmr); tmr = setTimeout(async () => { if (!d.notas.trim() && !cu && !state.catchups.find((c) => c.id === id)) return; saved.textContent = 'Guardando…'; const ok = await saveCu(id, {persona: p.nombre, equipoId: p.id, fecha: d.fecha, notas: d.notas}); saved.textContent = ok ? 'Guardado ' + fmtStamp.format(new Date()).split(', ').pop() : 'No se ha podido guardar'; }, 900); };
     ta.addEventListener('input', () => { d.notas = ta.value; persist(); });
@@ -5561,7 +5997,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       return (await putNotes(id, p, (ex && ex.fecha) || state.cuDraft[id].fecha, ta, next)) !== false;
     },
   };
-  window.__sqGoDay = (d) => { state.agendaDay = d; state.mtOpen = null; show('reuniones'); renderMeetRoom(true); renderMeetings(); setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); };
+  // tras crear una reunión (nueva-reunion.js): sale ya en la agenda aunque la sincronización de Outlook tarde unos segundos
+  window.__sqAddEvent = (fecha, ev) => {
+    const cur = state.agenda[fecha] || {fecha, eventos: []};
+    const evs = (cur.eventos || []).filter((x) => !(x.inicio === ev.inicio && cleanTitle(x.titulo) === cleanTitle(ev.titulo)));
+    state.agenda[fecha] = Object.assign({}, cur, {eventos: evs.concat([ev]).sort((p, q) => toMin(p.inicio) - toMin(q.inicio))});
+    renderMeetings();
+  };
+  window.__sqAgFlash = (t) => agFlash(t);
+  window.__sqGoDay = (d) => { state.agendaDay = d; state.agendaFree = true; state.agendaWeek = mondayOf(d); state.mtOpen = null; show('reuniones'); renderMeetRoom(true); renderMeetings(); setTimeout(() => { const c = $('#agenda-card'); if (c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40); };
   function openMeetRoom(ev) {
     const {p, team} = mtEntity(ev);
     const ex = mtRecord(ev);
@@ -5944,14 +6388,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       body.replaceChildren();
       if (/^image\//.test(a.tipo || blob.type)) { const im = document.createElement('img'); im.src = objUrl; im.alt = a.nombre || ''; body.appendChild(im); }
       else if (/pdf/.test(a.tipo || blob.type)) { const fr = document.createElement('iframe'); fr.src = objUrl; fr.title = a.nombre || 'PDF'; body.appendChild(fr); body.appendChild(el('p', 'note att-ov-hint', 'Si el PDF no se ve aquí, pulsa «Descargar».')); }
-      else { const pre = el('pre', 'att-ov-txt'); pre.textContent = (await blob.text()).slice(0, 200000); body.appendChild(pre); }
+      else if (/^(text\/|application\/(json|xml))/.test(a.tipo || blob.type) || /\.(txt|csv|md|json)$/i.test(a.nombre || '')) { const pre = el('pre', 'att-ov-txt'); pre.textContent = (await blob.text()).slice(0, 200000); body.appendChild(pre); }
+      else body.appendChild(el('div', 'note', '«' + (a.nombre || 'Archivo') + '» no se puede ver aquí: pulsa «Descargar» para abrirlo con su programa (Word, Excel, Outlook…).'));
     } catch (e) { body.replaceChildren(el('div', 'note', 'No se ha podido abrir el adjunto.')); }
   }
   function attLink(a, mini) {
     const l = document.createElement('a'); l.href = '#'; l.title = a.nombre || '';
     if (/^image\//.test(a.tipo)) { const im = document.createElement('img'); im.src = blobUrl(a.id); im.alt = a.nombre || ''; im.loading = 'lazy'; l.appendChild(im); }
     else if (mini) l.textContent = '📎 ' + a.nombre;
-    else l.appendChild(el('span', 'att-file', (/pdf/.test(a.tipo) ? '📄 ' : '📎 ') + a.nombre));
+    else l.appendChild(el('span', 'att-file', (/pdf/.test(a.tipo) ? '📄 ' : /\.(xlsx?|csv)$/i.test(a.nombre || '') ? '📊 ' : /\.(docx?)$/i.test(a.nombre || '') ? '📝 ' : /\.(msg|eml)$/i.test(a.nombre || '') ? '✉️ ' : '📎 ') + a.nombre));
     l.addEventListener('click', (e) => { e.preventDefault(); openAtt(a); });
     return l;
   }
@@ -6110,12 +6555,35 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="lista.js?v=20261119f" defer></script>
 <script src="graph-live.js?v=20261125a" defer></script>
 <script src="aviso-reunion.js?v=20261124a" defer></script>
-<script src="nueva-reunion.js?v=20261124a" defer></script>
-<script src="plaud.js?v=20261125d" defer></script>
-<script src="mensajes.js?v=20261125c" defer></script>
+<script src="nueva-reunion.js?v=20261126c" defer></script>
+<script src="plaud.js?v=20261125f" defer></script>
+<script src="mensajes.js?v=20261126le" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261125a" defer></script>
+<script src="buzon.js?v=20261125gm3" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
+<script>/* Fold abierto y pantallas medianas (561–699 px): la barra de secciones va abajo, igual que en el móvil.
+   Copia en tiempo de carga las reglas del móvil (max-width: 560px) de la barra de abajo, «Más» y la franja de arriba. */
+(function () {
+  var RX = /\.tabs|\.tab-mas|\.sq-more|\.sqa-|sq-has-bar|\.sq-logo|\.sq-switch|^\s*:root\s*$|^\s*\.app(::before)?\s*$/;
+  function build() {
+    var out = [];
+    for (var i = 0; i < document.styleSheets.length; i++) {
+      var rules; try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+      (function walk(list) {
+        for (var j = 0; j < list.length; j++) {
+          var r = list[j];
+          if (r.type === 4) { var c = r.conditionText || r.media.mediaText; if (/max-width:\s*560px/.test(c) && !/min-width/.test(c)) { for (var k = 0; k < r.cssRules.length; k++) { var x = r.cssRules[k]; if (x.type === 1 && RX.test(x.selectorText) && (!/^\s*:root\s*$/.test(x.selectorText) || /--sq-tabbar/.test(x.style.cssText))) out.push(x.cssText); } } else walk(r.cssRules); }
+          else if (r.cssRules && r.type !== 1) walk(r.cssRules);
+        }
+      })(rules);
+    }
+    if (!out.length) return;
+    var st = document.createElement('style'); st.id = 'sq-midbar';
+    st.textContent = '@media (min-width: 561px) and (max-width: 699px) {\n' + out.join('\n') + '\n}';
+    document.head.appendChild(st);
+  }
+  if (document.readyState === 'complete') build(); else addEventListener('load', build);
+})();</script>
 </body>
 </html>

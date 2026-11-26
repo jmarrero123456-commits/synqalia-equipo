@@ -196,65 +196,121 @@
   /* ---------- pintar la tarjeta ---------- */
   function paint() {
     llenarSlots();
+    paintModulo();
+    // Agenda: cada grabación se ve dentro de su reunión; aquí solo un aviso si hay alguna sin reunión (todo lo demás, en «Grabaciones»)
     card.replaceChildren();
+    const lim = isoDay(new Date(Date.now() - 10 * 864e5));
+    const sueltas = [...recs.values()].filter((g) => !g.asignado && !g.descartado && g.fecha >= lim);
+    const espera = sueltas.filter((g) => g.estadoTx !== 'lista').length;
+    const sinReu = sueltas.length - espera;
+    if (!estado.conectado || !sueltas.length) { card.hidden = true; return; }
+    card.hidden = false;
+    const p = document.createElement('div'); p.className = 'pl-aviso';
+    const partes = [];
+    if (sinReu) partes.push(sinReu === 1 ? '1 grabación del Plaud sin reunión' : sinReu + ' grabaciones del Plaud sin reunión');
+    if (espera) partes.push(espera === 1 ? '1 esperando la transcripción de Plaud' : espera + ' esperando la transcripción de Plaud');
+    p.innerHTML = '<span>🎙️ ' + esc(partes.join(' · ')) + '</span>';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pl-btn'; b.textContent = 'Ver en Grabaciones →';
+    b.onclick = () => { mod.f = 'sin'; irA('grabaciones'); };
+    p.appendChild(b); card.appendChild(p);
+  }
+  const irA = (v) => { const t = document.getElementById('tab-' + v); if (t) t.click(); else location.hash = v; };
+  function itemSuelta(g) {
+    const it = document.createElement('div'); it.className = 'pl-it';
+    const b = g.estadoTx === 'lista' ? mejor(g) : null;
+    const sub = g.estadoTx !== 'lista' ? 'Plaud aún no la ha transcrito: en la app de Plaud, abre la grabación y pulsa «Generar» (o activa la transcripción automática). Se añade sola cuando esté.'
+      : !eventosDe(g.fecha).length ? 'No hay reuniones ese día en tu agenda.' : b ? 'Coincide con «' + clean(b.ev.titulo) + '».' : 'No coincide con ninguna reunión de tu agenda.';
+    it.innerHTML = `<div class="t">${esc(diaTxt(g.fecha))} · ${esc(g.hIni)}–${esc(g.hFin)} · ${g.minutos || 0} min${g.nombre && !/^\d{4}-\d{2}-\d{2} /.test(g.nombre) ? ' · ' + esc(nombrePlaud(g)) : ''}</div><div class="s">${esc(sub)}</div><div class="b"></div>`;
+    accionesSuelta(g, it.querySelector('.b'), b);
+    return it;
+  }
+  function accionesSuelta(g, bx, b) {
+    if (g.estadoTx === 'lista') {
+      if (b) { const p = document.createElement('button'); p.className = 'pl-btn pri'; p.type = 'button'; p.textContent = 'Poner en «' + clean(b.ev.titulo).slice(0, 40) + '»'; p.onclick = async () => { p.disabled = true; await asignar(g, b.ev, false).catch((e) => alert(e.message)); toastHecha(recs.get(g.id), false); paint(); }; bx.appendChild(p); }
+      const s = selectEventos(g, b ? { inicio: b.ev.inicio, titulo: clean(b.ev.titulo) } : null);
+      if (s) { s.onchange = async () => { if (s.value === '') return; s.disabled = true; await asignar(g, s._evs[+s.value], false).catch((e) => alert(e.message)); toastHecha(recs.get(g.id), false); paint(); }; bx.appendChild(s); }
+    }
+    if (!g.descartado) { const d = document.createElement('button'); d.className = 'pl-btn lnk'; d.type = 'button'; d.textContent = 'Dejar sin reunión'; d.onclick = async () => { await saveRec(g.id, { descartado: true }); paint(); }; bx.appendChild(d); }
+    else { const d = document.createElement('button'); d.className = 'pl-btn lnk'; d.type = 'button'; d.textContent = 'Volver a ofrecer reunión'; d.onclick = async () => { await saveRec(g.id, { descartado: false }); paint(); }; bx.appendChild(d); }
+  }
+  const nombrePlaud = (g) => String(g.nombre || '').replace(/^\d{2}-\d{2}\s+/, '');
+
+  /* ---------- módulo «Grabaciones»: todas las grabaciones del Plaud, con buscador ---------- */
+  const vista = document.getElementById('view-grabaciones');
+  const mod = { q: '', f: 'todas', abiertos: new Set() };
+  function paintModulo() {
+    if (!vista) return;
+    const foco = document.activeElement && document.activeElement.id === 'pl-mod-q' ? document.activeElement.selectionStart : null;
+    vista.replaceChildren();
+    const sec = document.createElement('section'); sec.className = 'card pl-card pl-mod';
     const h = document.createElement('div'); h.className = 'pl-h';
     h.innerHTML = '<h2>🎙️ Grabaciones del Plaud</h2><span class="pl-sp"></span>';
-    card.appendChild(h);
+    sec.appendChild(h);
     const st = document.createElement('div'); st.className = 'pl-st';
     if (!estado.conectado) {
-      st.textContent = estado.error ? estado.error + '.' : 'Graba con tu Plaud y la grabación se añade sola a la reunión de tu agenda que coincide en hora.';
-      if (estado.error) st.classList.add('err');
+      st.textContent = 'Conecta tu Plaud y tus grabaciones aparecerán aquí, con su resumen, índice, transcripción y audio.';
       const b = document.createElement('button'); b.className = 'pl-btn pri'; b.type = 'button'; b.textContent = 'Conectar Plaud';
-      b.onclick = async () => { b.disabled = true; b.textContent = 'Abriendo Plaud…'; try { const r = await call('conectar'); location.href = r.url; } catch (e) { b.disabled = false; b.textContent = 'Conectar Plaud'; st.textContent = 'No se ha podido conectar: ' + e.message; st.classList.add('err'); } };
-      h.appendChild(b); card.appendChild(st);
-      return;
+      b.onclick = async () => { b.disabled = true; try { const r = await call('conectar'); location.href = r.url; } catch (e) { b.disabled = false; st.textContent = 'No se ha podido conectar: ' + e.message; } };
+      h.appendChild(b);
+    } else {
+      st.textContent = estado.ultimo_sync ? 'Conectado · revisado ' + new Date(estado.ultimo_sync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + ' · se revisa cada 5 minutos.' : 'Conectado.';
+      const rv = document.createElement('button'); rv.className = 'pl-btn'; rv.type = 'button'; rv.textContent = 'Revisar ahora';
+      rv.onclick = async () => { rv.disabled = true; rv.textContent = 'Revisando…'; await sincronizar(); };
+      const dc = document.createElement('button'); dc.className = 'pl-btn lnk'; dc.type = 'button'; dc.textContent = 'Desconectar';
+      dc.onclick = async () => { if (!confirm('¿Desconectar tu Plaud de Synqalia? Las grabaciones ya traídas se quedan.')) return; await call('desconectar').catch(() => {}); estado = { conectado: false }; paint(); };
+      h.append(rv, dc);
     }
-    const rv = document.createElement('button'); rv.className = 'pl-btn'; rv.type = 'button'; rv.textContent = 'Revisar ahora';
-    rv.onclick = async () => { rv.disabled = true; rv.textContent = 'Revisando…'; await sincronizar(); };
-    const dc = document.createElement('button'); dc.className = 'pl-btn lnk'; dc.type = 'button'; dc.textContent = 'Desconectar';
-    dc.onclick = async () => { if (!confirm('¿Desconectar tu Plaud de Synqalia? Las grabaciones ya añadidas a tus reuniones se quedan.')) return; await call('desconectar').catch(() => {}); estado = { conectado: false }; paint(); };
-    h.appendChild(rv); h.appendChild(dc);
-    st.textContent = estado.error ? 'Último aviso: ' + estado.error : estado.ultimo_sync ? 'Conectado · revisado ' + new Date(estado.ultimo_sync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '. Se revisa cada 5 minutos; la grabación llega cuando el Plaud se sincroniza con la app del móvil.' : 'Conectado · trayendo tus grabaciones…';
-    if (estado.error) st.classList.add('err');
-    card.appendChild(st);
-
-    const lim = isoDay(new Date(Date.now() - 10 * 864e5));
-    const todas = [...recs.values()].filter((g) => g.fecha >= lim).sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
-    const sueltas = todas.filter((g) => !g.asignado && !g.descartado);
-    const puestas = todas.filter((g) => g.asignado).slice(0, 4);
-    const list = document.createElement('div'); list.className = 'pl-list';
-    sueltas.forEach((g) => {
-      const it = document.createElement('div'); it.className = 'pl-it';
-      const b = g.estadoTx === 'lista' ? mejor(g) : null;
-      const sub = g.estadoTx !== 'lista' ? 'Plaud aún no la ha transcrito: en la app de Plaud, abre la grabación y pulsa «Generar» (o activa la transcripción automática). Se añade sola cuando esté.'
-        : !eventosDe(g.fecha).length ? 'No hay reuniones ese día en tu agenda.' : b ? 'Coincide con «' + clean(b.ev.titulo) + '».' : 'No coincide con ninguna reunión de tu agenda.';
-      it.innerHTML = `<div class="t">${esc(diaTxt(g.fecha))} · ${esc(g.hIni)}–${esc(g.hFin)} · ${g.minutos || 0} min</div><div class="s">${esc(sub)}</div><div class="b"></div>`;
+    sec.appendChild(st);
+    // buscador y filtros
+    const bar = document.createElement('div'); bar.className = 'pl-modbar';
+    const q = document.createElement('input'); q.type = 'search'; q.id = 'pl-mod-q'; q.className = 'pl-find'; q.placeholder = 'Buscar en títulos, resúmenes y transcripciones…'; q.value = mod.q;
+    q.oninput = () => { mod.q = q.value; paintModulo(); };
+    bar.appendChild(q);
+    const fl = document.createElement('div'); fl.className = 'pl-chips';
+    const todas = [...recs.values()].sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
+    const n = { todas: todas.length, sin: todas.filter((g) => !g.asignado).length, con: todas.filter((g) => g.asignado).length };
+    [['todas', 'Todas'], ['con', 'En una reunión'], ['sin', 'Sin reunión']].forEach(([k, t]) => {
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'pl-chip' + (mod.f === k ? ' on' : ''); c.textContent = t + ' · ' + n[k];
+      c.onclick = () => { mod.f = k; paintModulo(); }; fl.appendChild(c);
+    });
+    bar.appendChild(fl); sec.appendChild(bar);
+    // lista por días
+    const qq = mod.q.trim().toLowerCase();
+    const lista = todas.filter((g) => mod.f === 'todas' || (mod.f === 'con' ? !!g.asignado : !g.asignado))
+      .filter((g) => !qq || [g.nombre, g.asignado && g.asignado.titulo, g.resumenPlaud, g.transcripcion].join(' ').toLowerCase().includes(qq));
+    let dia = '';
+    const cont = document.createElement('div'); cont.className = 'pl-list';
+    lista.forEach((g) => {
+      if (g.fecha !== dia) { dia = g.fecha; const d = document.createElement('div'); d.className = 'pl-dia'; d.textContent = diaTxt(g.fecha); cont.appendChild(d); }
+      const it = document.createElement('div'); it.className = 'pl-it pl-rec' + (g.asignado ? ' ok' : '');
+      const titulo = nombrePlaud(g) && !/^\d{4}-\d{2}-\d{2} /.test(g.nombre) ? nombrePlaud(g) : (g.asignado ? g.asignado.titulo : 'Grabación');
+      const sub = g.asignado ? '→ ' + g.asignado.titulo : g.estadoTx !== 'lista' ? 'Esperando la transcripción de Plaud' : g.descartado ? 'Sin reunión' : 'Sin reunión asignada';
+      let trozo = '';
+      if (qq) { const src = (String(g.resumenPlaud || '') + ' ' + String(g.transcripcion || '')).replace(/[#*>]+/g, ' ').replace(/\[[ xX]?\]/g, ''); const i = src.toLowerCase().indexOf(qq); if (i >= 0) trozo = '…' + src.slice(Math.max(0, i - 60), i + qq.length + 80).replace(/\s+/g, ' ') + '…'; }
+      it.innerHTML = `<div class="pl-rh"><div><div class="t">${esc(g.hIni)}–${esc(g.hFin)} · ${esc(titulo)}</div><div class="s">${g.minutos || 0} min · ${esc(sub)}${g.ficha ? ' · ficha' : ''}</div>${trozo ? '<div class="s pl-trozo">' + esc(trozo) + '</div>' : ''}</div><div class="b"></div></div>`;
       const bx = it.querySelector('.b');
-      if (g.estadoTx === 'lista') {
-        if (b) { const p = document.createElement('button'); p.className = 'pl-btn pri'; p.type = 'button'; p.textContent = 'Poner en «' + clean(b.ev.titulo).slice(0, 40) + '»'; p.onclick = async () => { p.disabled = true; await asignar(g, b.ev, false).catch((e) => alert(e.message)); toastHecha(recs.get(g.id), false); paint(); }; bx.appendChild(p); }
-        const s = selectEventos(g, b ? { inicio: b.ev.inicio, titulo: clean(b.ev.titulo) } : null);
-        if (s) { s.onchange = async () => { if (s.value === '') return; s.disabled = true; await asignar(g, s._evs[+s.value], false).catch((e) => alert(e.message)); toastHecha(recs.get(g.id), false); paint(); }; bx.appendChild(s); }
+      const ab = mod.abiertos.has(g.id);
+      const vb = document.createElement('button'); vb.type = 'button'; vb.className = 'pl-btn' + (ab ? '' : ' pri'); vb.textContent = ab ? 'Ocultar' : 'Ver';
+      vb.onclick = () => { if (mod.abiertos.has(g.id)) mod.abiertos.delete(g.id); else mod.abiertos.add(g.id); paintModulo(); };
+      bx.appendChild(vb);
+      if (g.asignado) { const o = document.createElement('button'); o.type = 'button'; o.className = 'pl-btn'; o.textContent = 'Abrir reunión'; o.onclick = () => M().open(evDe(g.asignado)); bx.appendChild(o); }
+      if (ab) {
+        const acc = document.createElement('div'); acc.className = 'b pl-acc';
+        if (g.asignado) {
+          const s2 = selectEventos(g, g.asignado);
+          if (s2) { s2.options[0].textContent = 'Cambiar a otra reunión…'; s2.onchange = () => { if (s2.value !== '') mover(g, s2._evs[+s2.value]); }; acc.appendChild(s2); }
+          const qb = document.createElement('button'); qb.className = 'pl-btn lnk'; qb.type = 'button'; qb.textContent = 'Quitar de la reunión';
+          qb.onclick = async () => { await quitar(g); await saveRec(g.id, { autoVisto: true }); paint(); }; acc.appendChild(qb);
+        } else accionesSuelta(g, acc, g.estadoTx === 'lista' ? mejor(g) : null);
+        it.appendChild(acc);
+        if (g.estadoTx === 'lista') { const pp = panel(g); pp.open = true; it.appendChild(pp); }
       }
-      const d = document.createElement('button'); d.className = 'pl-btn lnk'; d.type = 'button'; d.textContent = 'Dejar sin reunión';
-      d.onclick = async () => { await saveRec(g.id, { descartado: true }); paint(); };
-      bx.appendChild(d);
-      list.appendChild(it);
+      cont.appendChild(it);
     });
-    puestas.forEach((g) => {
-      const a = g.asignado;
-      const it = document.createElement('div'); it.className = 'pl-it ok';
-      it.innerHTML = `<div class="s">${esc(diaTxt(g.fecha))} · ${esc(g.hIni)}–${esc(g.hFin)} → <b>${esc(a.titulo)}</b></div><div class="b"></div>`;
-      const bx = it.querySelector('.b');
-      const o = document.createElement('button'); o.className = 'pl-btn'; o.type = 'button'; o.textContent = 'Abrir'; o.onclick = () => M().open(evDe(a)); bx.appendChild(o);
-      const s = selectEventos(g, a);
-      if (s) { s.options[0].textContent = 'Cambiar a otra reunión…'; s.onchange = () => { if (s.value !== '') mover(g, s._evs[+s.value]); }; bx.appendChild(s); }
-      const q = document.createElement('button'); q.className = 'pl-btn lnk'; q.type = 'button'; q.textContent = 'Quitar de la reunión';
-      q.onclick = async () => { await quitar(g); await saveRec(g.id, { autoVisto: true }); paint(); };
-      bx.appendChild(q);
-      list.appendChild(it);
-    });
-    if (list.children.length) card.appendChild(list);
-    else { const e = document.createElement('div'); e.className = 'pl-st'; e.textContent = 'Sin grabaciones en los últimos días.'; card.appendChild(e); }
+    if (!lista.length) { const e = document.createElement('div'); e.className = 'pl-st'; e.textContent = qq ? 'Ninguna grabación coincide con «' + mod.q + '».' : 'Aún no hay grabaciones.'; cont.appendChild(e); }
+    sec.appendChild(cont);
+    vista.appendChild(sec);
+    if (foco != null) { const n2 = document.getElementById('pl-mod-q'); if (n2) { n2.focus(); n2.setSelectionRange(foco, foco); } }
   }
 
   async function leerEstado() { try { estado = await call('estado'); } catch (_) { /* sin conexión */ } }
@@ -341,6 +397,18 @@
   .pl-fi .per li{font-size:13.5px;display:grid;grid-template-columns:16px 1fr;gap:6px}.pl-fi .per li::before{content:"○";color:var(--zt)}
   .pl-fi .pf{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:#6b6a63}
   @media (max-width:760px){.pl-fi .grid{grid-template-columns:1fr}.pl-fi .b.w2,.pl-fi .b.w3{grid-column:auto}}
+  .pl-aviso{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
+  #plaud-card:has(.pl-aviso){padding:10px 14px}
+  .pl-mod{display:grid;gap:12px}
+  .pl-modbar{display:grid;gap:8px}
+  .pl-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .pl-chip{font:inherit;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;cursor:pointer}
+  .pl-chip.on{background:var(--accent,#0f766e);border-color:var(--accent,#0f766e);color:#fff}
+  .pl-dia{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#6b7280);margin:8px 2px 0}
+  .pl-rh{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .pl-rh .b{display:flex;gap:6px;flex-wrap:wrap}
+  .pl-trozo{font-style:italic}
+  .pl-rec .pl-pan{margin-top:4px}
   .pl-sp0{color:#0f766e}.pl-sp1{color:#7c3aed}.pl-sp2{color:#c2410c}.pl-sp3{color:#2563eb}.pl-sp4{color:#be185d}`;
   document.head.appendChild(css2);
   const mmss = (ms) => { const s = Math.floor((Number(ms) || 0) / 1000); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(x); };

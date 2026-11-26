@@ -43,7 +43,7 @@
 @keyframes inPulse { 50% { box-shadow: 0 0 0 10px rgba(198,47,59,.15); } }
 .in-cap-in { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .in-cap-l { font-size: 14px; font-weight: 800; }
-.in-cap-in textarea { width: 100%; box-sizing: border-box; resize: none; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); outline: none; font: 15px/1.4 var(--font-body, inherit); padding: 6px 0; min-height: 34px; }
+.in-cap-in textarea { width: 100%; box-sizing: border-box; resize: none; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); outline: none; font: 15px/1.4 var(--font-body, inherit); padding: 6px 0; min-height: 50px; }
 .in-cap-in textarea:focus { border-bottom-color: #0b6e63; }
 .in-save { flex: none; min-height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #0b0e13; color: #fff; font: 800 14px var(--font-body, inherit); cursor: pointer; }
 .in-save:disabled { opacity: .5; }
@@ -146,6 +146,21 @@
   .in-ask .in-h, .in-ask-thread { display: none !important; }
   .in-ask-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 0 2px; }
   .in-ask-chips::-webkit-scrollbar { display: none; }
+  .in-ask-chips > * { flex: none; white-space: nowrap; max-width: none; }
+  /* 25/11 · móvil v2: «Pregúntame» pegado a la barra de abajo (sin hueco por donde asome lo de detrás); las sugerencias salen al tocarlo */
+  .in-ask { bottom: calc(var(--sq-tabbar, 0px) + env(safe-area-inset-bottom, 0px)); margin: 0 calc(-1 * var(--in-bleed, 14px)) calc(-1 * var(--in-bleed-b, 18px));
+    border-radius: 18px 18px 0 0; border-bottom: 0; padding: 8px 12px 10px; box-shadow: 0 -8px 24px rgba(8,12,20,.10); }
+  .in-ask:not(:focus-within) .in-ask-chips { display: none; }
+  /* Apuntar algo: micrófono + texto arriba; tipo, Mega y Guardar debajo, y el texto se ve entero */
+  .in-cap { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "mic txt txt" "opts opts save"; align-items: center; column-gap: 10px; }
+  .in-cap-row { display: contents; }
+  .in-mic { grid-area: mic; width: 50px; height: 50px; }
+  .in-cap-in { grid-area: txt; }
+  .in-cap-in textarea { min-height: 48px; font-size: 15px; }
+  .in-cap-opts { grid-area: opts; gap: 6px; }
+  .in-save { grid-area: save; align-self: start; }
+  .in-cap-st, .in-review { grid-column: 1 / -1; }
+  .in-seg button { padding: 0 10px; }
 }
 /* ---------- Z Fold abierto y tablet ---------- */
 @container inicio (min-width: 560px) {
