@@ -11,6 +11,7 @@
 // agenda (24/11): ocupado de tu calendario entre dos días, para rellenar fechas libres en las respuestas.
 // inline (25/11): imágenes pegadas dentro del texto (cid). pendiente admite preparar para adjuntos.
 // conciliar / leidoPend (25/11): Pendientes al día con lo hecho en Outlook (respondido, reenviado, archivado, leído si es informativo).
+// hilo (26/11): adjuntos en la misma petición e imágenes internas solo del mensaje que se ve (más rápido en el móvil).
 // hilo (25/11): html (como en Outlook, sin scripts, imágenes internas incrustadas) y ligero:true para desplegar la lista.
 // lista (25/11): foco «prioritarios» | «otros» (Bandeja de entrada Prioritarios / Otros de Outlook). Trae «verbo» (respondido 102/103, reenviado 104) para el icono de la lista.
 // conciliar (25/11, tarde): además deja leídos en Outlook los gestionados en Synqalia (leidoOutlook); leidoPend busca la conversación si falta.
@@ -299,18 +300,21 @@ async function boxThread(ctx: Ctx, b: any, acc: any) {
   if (!/^[A-Za-z0-9_\-=+/.]{1,400}$/.test(conv)) throw new Error("Conversación no válida");
   const ligero = b.ligero === true; // solo para desplegar el hilo en la lista: sin el texto
   const sel = ligero ? MSG_SEL : `${MSG_SEL},body,uniqueBody,webLink`;
-  const all = await gAll(ctx, `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${conv}'`)}&$top=50&$select=${sel}`, [], 60);
+  // rapidez (26/11): los adjuntos vienen en la misma petición (antes, una por mensaje)
+  const base = `/me/messages?$filter=${encodeURIComponent(`conversationId eq '${conv}'`)}&$top=50&$select=${sel}`;
+  const all = ligero ? await gAll(ctx, base, [], 60)
+    : await gAll(ctx, base + `&$expand=${encodeURIComponent("attachments($select=id,name,size,contentType,isInline)")}`, [], 60).catch((e) => { if (e.status === 400) return gAll(ctx, base, [], 60); throw e; });
   const yo = String(acc.upn || "").toLowerCase();
   const msgs = all.filter((m: any) => !m.isDraft).sort((x: any, y: any) => String(y.receivedDateTime || y.sentDateTime).localeCompare(String(x.receivedDateTime || x.sentDateTime)));
   const clean = (t: string, n: number) => String(t || "").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
-  let presupuesto = 3 * 1024 * 1024; // imágenes internas incrustadas en todo el hilo, como mucho
+  let presupuesto = 1536 * 1024; // imágenes internas incrustadas (solo en el mensaje que se ve), como mucho
   const out = await Promise.all(msgs.map(async (m: any, i: number) => {
     const mio = String(m.from?.emailAddress?.address || "").toLowerCase() === yo;
     if (ligero) return { ...slim(m), mio };
     let adjuntos: any[] = [];
     let inl: any[] = [];
     if (m.hasAttachments) {
-      const a = await g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments?$select=id,name,size,contentType,isInline`).catch(() => null);
+      const a = m.attachments ? { value: m.attachments } : await g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments?$select=id,name,size,contentType,isInline`).catch(() => null);
       adjuntos = (a?.value || []).filter((x: any) => !x.isInline).map((x: any) => ({ id: x.id, nombre: x.name, tam: x.size, tipo: x.contentType }));
       inl = (a?.value || []).filter((x: any) => x.isInline && x.size < 400000);
     }
@@ -323,12 +327,11 @@ async function boxThread(ctx: Ctx, b: any, acc: any) {
     let html = isHtml ? cleanHtml(uniqH || fullH) : "";
     let htmlCompleto = isHtml && conCita && i === 0 ? cleanHtml(fullH) : "";
     // imágenes pegadas o del logotipo de la firma (cid:) → dentro del correo
-    if ((html || htmlCompleto) && inl.length && /cid:/i.test(html + htmlCompleto)) {
-      for (const x of inl.slice(0, 8)) {
-        if (presupuesto < x.size) break;
-        const f = await g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments/${encodeURIComponent(x.id)}`).catch(() => null);
+    if (i === 0 && (html || htmlCompleto) && inl.length && /cid:/i.test(html + htmlCompleto)) {
+      const elegidas = inl.slice(0, 8).filter((x: any) => { if (presupuesto < x.size) return false; presupuesto -= x.size; return true; });
+      const fs = await Promise.all(elegidas.map((x: any) => g(ctx, `/me/messages/${encodeURIComponent(m.id)}/attachments/${encodeURIComponent(x.id)}`).catch(() => null)));
+      for (const f of fs) {
         if (!f?.contentBytes || !f.contentId) continue;
-        presupuesto -= x.size;
         const uri = `data:${f.contentType || "image/png"};base64,${f.contentBytes}`;
         const re = new RegExp(`cid:${escRe(String(f.contentId).replace(/^<|>$/g, ""))}`, "gi");
         html = html.replace(re, uri); htmlCompleto = htmlCompleto.replace(re, uri);
