@@ -3,6 +3,7 @@
 // la app pide esa semana aquí: POST {desde, hasta} (máx. 62 días) con la sesión de synqalia.
 // Guarda cada día en personal_docs agenda/<fecha> con el mismo formato que «graph» y devuelve { dias: { fecha: eventos[] } }.
 // Usa el token de Microsoft de graph_accounts (Calendars.Read ya concedido). Solo lee: no cambia nada en Outlook.
+// 26/11/2026: action «asistentes» {enlace} = organizador y asistentes de una reunión, con su respuesta (para la sala de la reunión).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -23,6 +24,7 @@ const cors = {
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const owaId = (id: string) => encodeURIComponent(id.replace(/-/g, "/").replace(/_/g, "+"));
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const idFromEnlace = (l: string) => { const m = /\/calendar\/item\/([^?#/]+)/.exec(String(l || "")); return m ? decodeURIComponent(m[1]).replace(/\//g, "-").replace(/\+/g, "_") : null; };
 const addDays = (f: string, n: number) => { const d = new Date(f + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 async function token(acc: any) {
@@ -70,6 +72,26 @@ Deno.serve(async (req) => {
   const { data: member } = await db.from("members").select("email").eq("email", (user.email || "").toLowerCase()).maybeSingle();
   if (!member) return json({ error: "No eres miembro de synqalia" }, 403);
   const b = await req.json().catch(() => ({}));
+  if (b.action === "asistentes") {
+    const id = idFromEnlace(b.enlace);
+    if (!id) return json({ error: "Esta reunión no tiene enlace de Outlook" }, 400);
+    const { data: acc } = await db.from("graph_accounts").select("*").eq("owner", user.id).maybeSingle();
+    if (!acc) return json({ error: "Microsoft 365 no está conectado" }, 400);
+    try {
+      const tok = await token(acc);
+      const r = await fetch(`${G}/me/events/${id}?$select=organizer,attendees,isOrganizer`, { headers: { Authorization: `Bearer ${tok}` } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 404 ? "No encuentro esta reunión en tu calendario de Outlook" : `${r.status} ${j?.error?.message || ""}`.trim());
+      const RESP: Record<string, string> = { accepted: "acepta", tentativelyAccepted: "provisional", declined: "rechaza", organizer: "convoca" };
+      const org = { nombre: j.organizer?.emailAddress?.name || "", email: String(j.organizer?.emailAddress?.address || "").toLowerCase() };
+      const asistentes = (j.attendees || []).map((a: any) => ({ nombre: a.emailAddress?.name || "", email: String(a.emailAddress?.address || "").toLowerCase(), tipo: a.type === "optional" ? "opcional" : a.type === "resource" ? "sala" : "obligatorio", respuesta: RESP[a.status?.response] || "sin responder" }))
+        .filter((a: any) => a.email !== org.email);
+      return json({ organizador: org, yoConvoco: !!j.isOrganizer, asistentes });
+    } catch (err) {
+      console.error(JSON.stringify({ fn: "agenda-dia", action: "asistentes", owner: user.id, error: (err as Error).message }));
+      return json({ error: (err as Error).message }, 400);
+    }
+  }
   const desde = String(b.desde || ""), hasta = String(b.hasta || b.desde || "");
   if (!DAY.test(desde) || !DAY.test(hasta) || hasta < desde) return json({ error: "Fechas no válidas" }, 400);
   if ((new Date(hasta).getTime() - new Date(desde).getTime()) / 864e5 > 62) return json({ error: "Como mucho dos meses de una vez" }, 400);

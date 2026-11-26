@@ -1129,6 +1129,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .att-drag { position: relative; outline: 3px dashed var(--accent); outline-offset: -3px; }
   .att-drag::after { content: "Suelta aquí para guardarlo en la reunión"; position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; color: var(--accent); background: color-mix(in srgb, var(--panel) 82%, transparent); border-radius: inherit; pointer-events: none; }
   .att-bar .note.err { color: #c0392b; }
+  .mt-ppl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .mt-pp { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px 4px 6px; font-size: 13px; font-weight: 600; background: var(--panel); max-width: 100%; }
+  .mt-pp > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mt-pp small { color: var(--muted); font-weight: 500; }
+  .mt-pp i { font-style: normal; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex: none; background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+  .mt-pp.ok i { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .mt-pp.tent i { background: #fbefd3; color: #a16207; }
+  .mt-pp.no { opacity: .7; } .mt-pp.no i { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); } .mt-pp.no > span { text-decoration: line-through; }
+  .mt-pp.org i { background: var(--accent-soft); color: var(--accent); }
   .att-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .att-mini img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
   .att-ov { position: fixed; inset: 0; z-index: 1000; background: rgba(10,16,28,.72); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -6078,6 +6087,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       fm.appendChild(el('p', 'note', 'Se cambia en tu calendario de Outlook y Microsoft avisa a los asistentes. Solo para reuniones que convocas tú.'));
       host.appendChild(fm);
     }
+    { const enl = (agEv && agEv.enlace) || ev.enlace; if (enl) host.appendChild(meetPeople(enl)); }
     if (team) host.appendChild(el('p', 'note', 'Se guarda también en el historial de catch-ups de ' + (isGroup(p) ? p.nombre : firstName(p.nombre)) + '.'));
     host.appendChild(cuEditor(p, mo.id, {pre: 'mt', kind: team ? null : 'reunion', refresh: () => renderMeetRoom(true), onDone: () => { state.mtOpen = null; renderMeetRoom(true); renderMeetNotes(); }}));
     try { recPaint(); } catch (e) { /* aún no listo */ }
@@ -6100,6 +6110,47 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       });
       host.appendChild(w);
     }
+  }
+  // Asistentes de la reunión (26/11/2026): se leen de Outlook al abrirla (función agenda-dia, acción «asistentes»)
+  const mtPeople = {};
+  function meetPeople(enlace) {
+    const w = el('div', 'mt-block mt-people');
+    const st = mtPeople[enlace];
+    if (!st || (st.s === 'err' && Date.now() - st.t > 20000)) {
+      const me = mtPeople[enlace] = {s: 'pend', t: Date.now()};
+      window.__sb.functions.invoke('agenda-dia', {body: {action: 'asistentes', enlace}}).then(async ({data, error}) => {
+        let msg = data && data.error; if (error) { msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (x) { /* sin detalle */ } }
+        if (msg) throw new Error(msg);
+        me.s = 'ok'; me.d = data;
+      }).catch((e) => { me.s = 'err'; me.msg = e.message; me.t = Date.now(); }).finally(() => { const h = $('#meet-room .mt-people'); if (h && state.mtOpen) h.replaceWith(meetPeople(enlace)); });
+    }
+    const cur = mtPeople[enlace];
+    const lbl = el('div', 'cu-lbl', 'Asistentes'); w.appendChild(lbl);
+    if (cur.s === 'pend') { w.appendChild(el('p', 'note', 'Leyendo los asistentes de Outlook…')); return w; }
+    if (cur.s === 'err') { w.appendChild(el('p', 'note', 'No he podido leer los asistentes (' + cur.msg + ').')); return w; }
+    const d = cur.d || {}; const list = d.asistentes || [];
+    const ICON = {acepta: ['✓', 'ok', 'Acepta'], provisional: ['?', 'tent', 'Provisional'], rechaza: ['✕', 'no', 'Rechaza'], 'sin responder': ['·', 'pend', 'Sin responder'], convoca: ['★', 'org', 'Convoca']};
+    const people = list.filter((a) => a.tipo !== 'sala');
+    const n = (k) => people.filter((a) => a.respuesta === k).length;
+    const salas = list.filter((a) => a.tipo === 'sala');
+    lbl.textContent = 'Asistentes · ' + (people.length + 1);
+    const sum = [n('acepta') && n('acepta') + (n('acepta') === 1 ? ' acepta' : ' aceptan'), n('provisional') && n('provisional') + ' provisional', n('rechaza') && n('rechaza') + (n('rechaza') === 1 ? ' rechaza' : ' rechazan'), n('sin responder') && n('sin responder') + ' sin responder'].filter(Boolean).join(' · ');
+    if (sum) w.appendChild(el('p', 'note', sum));
+    const g = el('div', 'mt-ppl');
+    const chip = (a, r, extra) => {
+      const [ic, cls, txt] = ICON[r] || ICON['sin responder'];
+      const c = el('span', 'mt-pp ' + cls); c.title = (a.email || '') + ' · ' + txt + (extra ? ' · ' + extra : '');
+      c.append(el('i', null, ic), el('span', null, a.nombre || a.email || '—'));
+      if (extra) c.appendChild(el('small', null, extra));
+      return c;
+    };
+    if (d.organizador && (d.organizador.nombre || d.organizador.email)) g.appendChild(chip(d.organizador, 'convoca', d.yoConvoco ? 'tú convocas' : 'convoca'));
+    const ord = {acepta: 0, provisional: 1, 'sin responder': 2, rechaza: 3};
+    people.slice().sort((a, b) => (ord[a.respuesta] ?? 2) - (ord[b.respuesta] ?? 2) || (a.tipo === 'opcional') - (b.tipo === 'opcional')).forEach((a) => g.appendChild(chip(a, a.respuesta, a.tipo === 'opcional' ? 'opcional' : '')));
+    w.appendChild(g);
+    if (salas.length) w.appendChild(el('p', 'note', 'Sala: ' + salas.map((x) => x.nombre || x.email).join(', ')));
+    if (!people.length) w.appendChild(el('p', 'note', 'No hay más asistentes: solo está en tu calendario.'));
+    return w;
   }
   // Preguntar a Claude sobre una reunión ya grabada o con notas
   function meetAsk(rec, ev) {
