@@ -275,7 +275,7 @@
         st.carpetas = st.gmCarpetas.get(gAcc(st.gacc)) || [{ id: st.carpeta, nombre: 'Recibidos', sys: true }];
         raw('gmail', 'carpetas', { cuenta: st.gacc }).then((r) => { st.gmCarpetas.set(gAcc(st.gacc), r.carpetas || []); if (st.cuenta === 'gmail' && gAcc(st.carpeta) === gAcc(st.gacc)) { st.carpetas = r.carpetas || []; paintFolders(); } }).catch(() => null);
       } else { st.carpeta = 'g~none'; st.carpetas = []; }
-      if (isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); }
+      if (isPF()) { st.filtro = 'todos'; paintChips(); root.classList.remove('bz-pf'); }
     } else {
       if (isG(st.carpeta) || st.carpeta === GALL || st.carpeta === 'g~none') st.carpeta = 'inbox';
       if (st.oCarpetas) st.carpetas = st.oCarpetas;
@@ -323,17 +323,44 @@
       if (st.cuenta === 'gmail') setCuenta('gmail', st.gm[0]?.ref || null); else reload();
     } catch (e) { toast('No se pudo desconectar: ' + e.message); }
   }
+  // «No leídos» se combina con los demás (26/11): No leídos + Te piden algo, No leídos + Urgente, No leídos + bandera…
   $('.bz-filters').addEventListener('click', (e) => {
     const b = e.target.closest('[data-fil]'); if (!b) return;
-    // volver a pulsar «No leídos» la refresca (quita los ya leídos); en los demás filtros, volver a pulsar lo quita
-    if (b.dataset.fil === 'noleidos' && st.filtro === 'noleidos') { reload(); return; }
-    setFiltro(st.filtro === b.dataset.fil && b.dataset.fil !== 'todos' ? 'todos' : b.dataset.fil);
+    const k = b.dataset.fil;
+    if (k === 'todos') { st.nl = false; setFiltro('todos'); return; }
+    if (k === 'noleidos') {
+      // volver a pulsar «No leídos» la refresca (quita los ya leídos); «Todos» la quita
+      st.nl = true; paintChips();
+      if (isPF()) loadUnread(); else reload();
+      return;
+    }
+    setFiltro(st.filtro === k ? 'todos' : k);
   });
+  function paintChips() {
+    root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'noleidos' ? !!st.nl : x.dataset.fil === 'todos' ? st.filtro === 'todos' && !st.nl : x.dataset.fil === st.filtro)));
+  }
+  // qué conversaciones tienen algo sin leer (para No leídos + Urgente / Te piden / Otro día / Anclados)
+  async function loadUnread() {
+    const n = ++unreadN;
+    st.unread = null; paintList();
+    const set = new Set();
+    try {
+      let r = await call('lista', { carpeta: 'inbox', ver: 'noleidos', bandera: false, q: '', foco: null });
+      for (let pag = 0; ; pag++) {
+        for (const x of r.items || []) if (x.conv) set.add(x.conv);
+        if (!r.next || pag >= 4) break;
+        r = await call('lista', { next: r.next });
+      }
+    } catch { /* se ve lo que haya */ }
+    if (n !== unreadN) return;
+    st.unread = set; paintList();
+  }
+  let unreadN = 0;
   function setFiltro(f) {
     st.filtro = f;
-    root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === f)));
+    paintChips();
     root.classList.toggle('bz-pf', isPF());
-    if (isPF()) { if (st.sel) closeMsg(true); st.err = ''; paintList(); }
+    if (isPF()) { if (st.sel) closeMsg(true); st.err = ''; if (st.nl && !st.unread) loadUnread(); else paintList(); }
     else reload();
   }
   fsel.addEventListener('change', () => openFolder(fsel.value));
@@ -341,7 +368,7 @@
   $('#bz-q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { st.q = e.target.value.trim(); afterSearch(); }, 450); });
   $('#bz-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qT); st.q = e.target.value.trim(); afterSearch(); } });
   // buscar siempre va al buzón entero (sale de los filtros de Pendientes)
-  function afterSearch() { if (st.q && isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); } reload(); }
+  function afterSearch() { if (st.q && isPF()) { st.filtro = 'todos'; paintChips(); root.classList.remove('bz-pf'); } reload(); }
   $('#bz-new').addEventListener('click', () => { if (st.modo !== 'bandeja') setModo('bandeja'); openCompose({ tipo: 'nuevo' }); });
 
   // contadores de los filtros (los de Pendientes salen de mi.html; los de Outlook, de las carpetas)
@@ -394,7 +421,7 @@
   try { if (localStorage.getItem('sq-bz-fcol')) root.classList.add('bz-fcol'); } catch {}
   function openFolder(f) {
     st.carpeta = f; st.q = ''; $('#bz-q').value = '';
-    if (isPF()) { st.filtro = 'todos'; root.querySelectorAll('[data-fil]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.fil === 'todos'))); root.classList.remove('bz-pf'); }
+    if (isPF()) { st.filtro = 'todos'; paintChips(); root.classList.remove('bz-pf'); }
     paintFolders(); reload();
   }
   const refreshFolders = () => {
@@ -614,14 +641,16 @@
       return;
     }
     let html = '', ts = [];
+    const soloNL = (arr) => !st.nl ? arr : !st.unread ? [] : arr.filter((t) => st.unread.has(t.conv)).map((t) => ({ ...t, unread: true }));
     if (PEND_F.includes(st.filtro)) {
-      ts = pendThreads(st.filtro);
+      ts = soloNL(pendThreads(st.filtro));
+      if (st.nl && !st.unread) { statusEl.innerHTML = '<div class="bz-empty">Mirando cuáles están sin leer…</div>'; list.innerHTML = ''; foot.innerHTML = ''; return; }
       const tit = { urgente: 'Urgente', pide: 'Te piden algo', otro: 'Para otro día' }[st.filtro];
       statusEl.innerHTML = !P() ? '<div class="bz-empty">Cargando Pendientes…</div>' : !ts.length ? `<div class="bz-empty">${st.filtro === 'otro' ? 'No has dejado nada para otro día.' : 'Nada por aquí. 👌'}</div>` : '';
-      html = ts.length ? sec(`${tit} · ${ts.length}`) + ts.map(rowHtml).join('') : '';
+      html = ts.length ? sec(`${tit}${st.nl ? ' sin leer' : ''} · ${ts.length}`) + ts.map(rowHtml).join('') : '';
       foot.innerHTML = '';
     } else if (st.filtro === 'anclados') {
-      ts = pinThreads();
+      ts = soloNL(pinThreads());
       statusEl.innerHTML = ts.length ? '' : `<div class="bz-empty">No tienes correos anclados. Pasa el ratón por un correo y pulsa ${svg('pin', 13)} para dejarlo arriba.</div>`;
       html = ts.length ? sec(`Anclado · ${ts.length}`) + ts.map(rowHtml).join('') : '';
       foot.innerHTML = '';
@@ -633,7 +662,7 @@
       const rest = ts.filter((t) => !pinSet.has(t.conv));
       statusEl.innerHTML = st.err ? `<div class="bz-empty err">${esc(st.err)} <button type="button" class="bz-link" data-retry>Reintentar</button></div>`
         : st.cargando && !ts.length ? '<div class="bz-empty">Cargando correos…</div>'
-        : !ts.length && !pt.length ? `<div class="bz-empty">${st.q ? 'No hay correos que coincidan con la búsqueda.' : st.filtro === 'noleidos' ? 'No tienes correos sin leer aquí. 👌' : st.filtro === 'bandera' ? 'No hay correos con bandera en esta carpeta.' : 'No hay correos en los últimos 90 días.'}</div>`
+        : !ts.length && !pt.length ? `<div class="bz-empty">${st.q ? 'No hay correos que coincidan con la búsqueda.' : st.nl ? 'No tienes correos sin leer aquí. 👌' : st.filtro === 'bandera' ? 'No hay correos con bandera en esta carpeta.' : 'No hay correos en los últimos 90 días.'}</div>`
         : st.q ? `<div class="bz-hint">Resultados en todo el buzón para «${esc(st.q)}»</div>` : '';
       const sw = usaFoco() ? `<span class="bz-foco" role="tablist" aria-label="Bandeja de entrada"><button type="button" role="tab" data-foco="prioritarios" aria-selected="${st.foco === 'prioritarios'}">Prioritarios</button><button type="button" role="tab" data-foco="otros" aria-selected="${st.foco === 'otros'}">Otros</button></span>` : '';
       let first = true;
@@ -728,10 +757,10 @@
     const mine = st.items.filter((x) => x.conv === st.sel && !fresh.some((y) => y.id === x.id));
     return [...fresh, ...mine];
   }
-  const listArgs = () => ({ carpeta: st.carpeta, ver: st.filtro === 'noleidos' ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q, foco: usaFoco() ? st.foco : null });
+  const listArgs = () => ({ carpeta: st.carpeta, ver: st.nl ? 'noleidos' : 'todos', bandera: st.filtro === 'bandera', q: st.q, foco: usaFoco() ? st.foco : null });
 
   /* ---------- rapidez (25/11): la lista sale al momento con lo último guardado y las conversaciones se precargan ---------- */
-  const LKEY = () => `sq-bz:${uid}:${st.cuenta === 'todas' && st.gm.length ? 'todas:' : ''}${st.carpeta}:${usaFoco() ? st.foco : '-'}:${st.filtro}`;
+  const LKEY = () => `sq-bz:${uid}:${st.cuenta === 'todas' && st.gm.length ? 'todas:' : ''}${st.carpeta}:${usaFoco() ? st.foco : '-'}:${st.filtro}${st.nl ? ':nl' : ''}`;
   const saveLocal = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin sitio: no pasa nada */ } };
   const readLocal = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
   const full = new Map(); // conversación → { mensajes, at } (con el texto, para abrir al instante)
@@ -764,6 +793,13 @@
   const prefetchTop = () => { const ts = isPF() ? pendThreads(st.filtro) : threads(); prefetch(ts.slice(0, 10).map((t) => t.conv)); };
   // al pasar el ratón por un correo, se adelanta su carga
   list.addEventListener('pointerover', (e) => { const li = e.target.closest('.bz-item'); if (li && !mqNarrow.matches) prefetch([li.dataset.conv], true); });
+  // en el móvil: al tocar se adelanta la carga, y al dejar de deslizar se precargan los correos que tienes a la vista (26/11)
+  list.addEventListener('pointerdown', (e) => { const li = e.target.closest('.bz-item'); if (li) prefetch([li.dataset.conv], true); }, { passive: true });
+  let scrollT = null;
+  const visibles = () => { const h = innerHeight; return [...list.querySelectorAll('.bz-item')].filter((li) => { const r = li.getBoundingClientRect(); return r.bottom > 0 && r.top < h; }).slice(0, 6).map((li) => li.dataset.conv); };
+  const onScroll = () => { clearTimeout(scrollT); scrollT = setTimeout(() => { if (!view.hidden && !root.classList.contains('bz-reading')) prefetch(visibles()); }, 400); };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  $('.bz-col').addEventListener('scroll', onScroll, { passive: true });
 
   let reqN = 0;
   async function reload() {
@@ -798,7 +834,7 @@
     try {
       const r = await call('lista', listArgs());
       const fresh = r.items || [];
-      const extra = st.filtro === 'noleidos'
+      const extra = st.nl
         ? st.items.filter((x) => !fresh.some((y) => y.id === x.id)) // los ya leídos siguen en la lista
         : st.items.slice(fresh.length).filter((x) => !fresh.some((y) => y.id === x.id));
       st.items = keepOpen([...fresh, ...extra].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))));
@@ -879,7 +915,14 @@
     if (!mqNarrow.matches && (t?.n > 1 || t?.pend?.mensajes > 1)) st.exp.add(conv);
     paintListSoft();
     reading(true);
-    if (!st.hilo) pane.innerHTML = `<div class="bz-loading">Abriendo${t ? ' «' + esc(t.latest.asunto) + '»' : ''}…</div>`;
+    // se ve al momento lo que ya sabemos (asunto, quién, resumen) mientras llega el texto completo (26/11)
+    if (!st.hilo && !full.has(conv)) {
+      const l = t?.latest || {}, de = l.de?.nombre || l.de?.mail || '';
+      pane.innerHTML = `<div class="bz-mtop"><button type="button" class="bz-back" data-a="volver">${svg('back', 20)}<span>Volver</span></button></div>
+        <div class="bz-phead"><h3>${esc(l.asunto || '')}</h3><button type="button" class="bz-ibtn bz-close" data-a="volver" aria-label="Cerrar">✕</button></div>
+        <div class="bz-card bz-skel"><div class="bz-from">${avatar(de)}<div class="w"><div class="l1"><b>${esc(de)}</b><span>${esc(largo(l.fecha))}</span></div></div></div>
+        <div class="bz-text">${esc(l.prev || '')}</div><p class="bz-loading">Cargando el correo completo…</p></div>`;
+    }
     const n = ++openN;
     const pre = full.get(conv);
     try {
@@ -892,7 +935,13 @@
         pre.mensajes.forEach((x) => { x.leido = true; });
         fetchFull(conv).then((m) => { if (st.sel === conv && openN === n && !st.compose && m.length !== (st.hilo || []).length) { st.hilo = m; paintThread(); } }).catch(() => null);
       } else {
-        r = await call('hilo', { conv });
+        // el texto y el «leído» van a la vez (antes, Outlook marcaba leído y luego contestaba)
+        const ids = st.items.filter((x) => x.conv === conv && !x.leido).map((x) => x.id);
+        if (ids.length) call('leido', { ids, valor: true }).then(refreshFolders).catch(() => null);
+        r = await (inflight.get(conv) ? fetchFull(conv).then((m) => ({ mensajes: m })) : call('hilo', { conv, marcar: false }));
+        const resto = (r.mensajes || []).filter((x) => !x.leido && !ids.includes(x.id)).map((x) => x.id);
+        if (resto.length) call('leido', { ids: resto, valor: true }).catch(() => null);
+        (r.mensajes || []).forEach((x) => { x.leido = true; });
         full.set(conv, { mensajes: r.mensajes || [], at: Date.now() });
       }
       if (n !== openN) return;
