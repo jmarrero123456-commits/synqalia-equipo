@@ -59,6 +59,7 @@
     next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
     search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
     pen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    clip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 11-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg>',
     send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-6 16-3-7Z"/><path d="m11 13 9-9"/></svg>',
     ext: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
@@ -368,6 +369,51 @@
 
   let teamsReadOff = false; // sin permiso Chat.ReadWrite no se vuelve a intentar en esta sesión
   const graphOn = () => !!(window.__sqGraph && window.__sqGraph.connected && window.__sqGraphCall);
+  /* ---------- adjuntos para Teams: 📎, arrastrar o pegar (Ctrl+V) ---------- */
+  const MAX_ADJ = 25 * 1024 * 1024, MAX_N = 10;
+  st.att = new Map(); // chat id → [{ file, url }]
+  const kb = (n) => n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+  function attTray(id) {
+    const l = st.att.get(id) || [];
+    if (!l.length) return '';
+    return `<div class="sqm-atts">${l.map((a, i) => `<span class="sqm-att">${a.url ? `<img src="${esc(a.url)}" alt="">` : `<i>${ICON.clip}</i>`}<span><b>${esc(a.file.name)}</b><small>${kb(a.file.size)}</small></span><button type="button" data-act="quitar-adj" data-i="${i}" aria-label="Quitar ${esc(a.file.name)}">×</button></span>`).join('')}</div>`;
+  }
+  function addFiles(files) {
+    const id = st.open; if (!id || st.canal !== 'teams') return;
+    const d = st.teams.get(id); if (!(graphOn() && d && d.gid)) return;
+    const l = st.att.get(id) || [], fuera = [];
+    for (let f of files) {
+      if (!f || !f.size) continue;
+      if (f.size > MAX_ADJ) { fuera.push(f.name + ' (más de 25 MB)'); continue; }
+      if (l.length >= MAX_N) { fuera.push(f.name + ' (máximo 10 a la vez)'); continue; }
+      if (!f.name || f.name === 'image.png') { const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg'); f = new File([f], 'Captura ' + new Date().toLocaleString('es-ES').replace(/[/:]/g, '-').replace(',', '') + '.' + ext, { type: f.type }); }
+      l.push({ file: f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : '' });
+    }
+    st.att.set(id, l);
+    if (fuera.length) toast('No se han añadido: ' + fuera.join(', '));
+    paintConv();
+    const ta = document.getElementById('sqm-in'); if (ta) ta.focus();
+  }
+  function clearAtt(id) { (st.att.get(id) || []).forEach((a) => a.url && URL.revokeObjectURL(a.url)); st.att.delete(id); }
+  const dropOk = () => st.open && st.canal === 'teams' && document.querySelector('.sqm-conv.sqm-dropok');
+  const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  let dragN = 0;
+  document.addEventListener('dragenter', (e) => { const c = dropOk(); if (!c || !hasFiles(e) || !e.target.closest?.('.sqm-conv')) return; dragN++; c.classList.add('drag'); });
+  document.addEventListener('dragleave', (e) => { const c = dropOk(); if (!c || !hasFiles(e) || !e.target.closest?.('.sqm-conv')) return; if (--dragN <= 0) { dragN = 0; c.classList.remove('drag'); } });
+  document.addEventListener('dragover', (e) => { if (dropOk() && hasFiles(e) && e.target.closest?.('.sqm-conv')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  document.addEventListener('drop', (e) => {
+    const c = dropOk(); if (!c || !hasFiles(e) || !e.target.closest?.('.sqm-conv')) return;
+    e.preventDefault(); dragN = 0; c.classList.remove('drag');
+    addFiles([...e.dataTransfer.files]);
+  });
+  document.addEventListener('paste', (e) => {
+    if (!dropOk() || view.hidden || document.querySelector('.sqm-tsheet, .sqm-dlg')) return;
+    const files = [...(e.clipboardData?.files || [])];
+    if (!files.length) return; // texto: se pega normal
+    e.preventDefault(); addFiles(files);
+  });
+  document.addEventListener('change', (e) => { if (e.target.matches?.('.sqm-file')) { addFiles([...e.target.files]); e.target.value = ''; } });
+
   function paintTeamsConv(host) {
     const id = st.open, d = st.teams.get(id);
     if (!d) { closeConv(); return; }
@@ -379,13 +425,16 @@
       ? teamsThread(msgs)
       : `<div class="sqm-b"><p>${esc(d.ultimo || '—')}</p><span class="sqm-bt">${esc(d.hora || '')}</span></div>
          <p class="sqm-info">${live ? 'Cargando el hilo completo…' : 'Por ahora Synqalia solo recibe el último mensaje de cada chat. El hilo completo y responder desde aquí llegan al conectar Microsoft 365.'}</p>`;
-    host.innerHTML = `<div class="sqm-conv">
+    host.innerHTML = `<div class="sqm-conv${live ? ' sqm-dropok' : ''}">
+      <div class="sqm-drop" aria-hidden="true"><span>${ICON.clip}Suelta aquí para enviar a Teams</span></div>
       ${convHead(d.nombre || 'Chat de Teams', d.tipo === 'reunion' ? 'Chat de reunión de Teams' : d.tipo === 'grupo' ? 'Grupo de Teams' : 'Chat de Teams', 'teams', url ? `<a class="sqm-ib" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Abrir en Teams" title="Abrir en Teams">${ICON.ext}</a>` : '')}
       ${d.accion ? `<div class="sqm-ask${isTrue(d.pide) ? ' pide' : ''}"><span class="sqm-pide">${isTrue(d.pide) ? 'Te pide algo' : 'Resumen'}</span><p>${esc(d.accion)}</p></div>` : ''}
       <div class="sqm-thread">${bubbles}</div>
       <div class="sqm-foot">
         ${isTrue(d.noLeido) ? '<button type="button" class="sqm-link" data-act="noleido">Marcar como no leído</button>' : ''}
-        ${live ? `<form class="sqm-compose" data-act="teams-send"><label class="sr" for="sqm-in">Respuesta</label>
+        ${live ? `${attTray(id)}<form class="sqm-compose" data-act="teams-send"><label class="sr" for="sqm-in">Respuesta</label>
+          <button type="button" class="sqm-clip" data-act="adjuntar" aria-label="Adjuntar archivos" title="Adjuntar archivos (también puedes arrastrarlos aquí o pegarlos con Ctrl+V)">${ICON.clip}</button>
+          <input type="file" class="sqm-file" multiple hidden>
           <textarea id="sqm-in" rows="1" placeholder="Responde en Teams…"></textarea>
           <button type="submit" class="sqm-send" aria-label="Enviar a Teams" title="Envía el mensaje a este chat de Teams">${ICON.send}</button></form>`
         : `<form class="sqm-compose" data-act="teams-copy"><label class="sr" for="sqm-in">Respuesta</label>
@@ -661,6 +710,8 @@ ${hist}`;
     if (act === 'hub') { if (st.open) closeConv(); st.nivel = 'hub'; paint(); scrollTo(0, 0); return; }
     if (act === 'cerrar') { closeConv(); return; }
     if (act === 'nuevo') { nuevoChat(); return; }
+    if (act === 'adjuntar') { t.closest('.sqm-compose')?.querySelector('.sqm-file')?.click(); return; }
+    if (act === 'quitar-adj') { const l = st.att.get(st.open) || [], [a] = l.splice(+t.closest('[data-i]').dataset.i, 1); if (a && a.url) URL.revokeObjectURL(a.url); st.att.set(st.open, l); paintConv(); return; }
     if (act === 'noleido') { const id = st.open; await setVisto(id, false); closeConv(); return; }
     if (act === 'tarea') { openTask(null); return; }
     if (act === 'ver-tareas') { verTareas(); return; }
@@ -694,12 +745,24 @@ ${hist}`;
       return;
     }
     if (f.dataset.act === 'teams-send') {
-      if (!body || !st.open) return;
-      const id = st.open, btn = f.querySelector('button');
-      btn.disabled = true; ta.disabled = true;
-      try { await window.__sqGraphCall({ action: 'teamsSend', id, texto: body }); ta.value = ''; }
-      catch (err) { alert('No se ha podido enviar a Teams: ' + err.message); }
-      finally { btn.disabled = false; ta.disabled = false; ta.focus(); }
+      const id = st.open, pend = st.att.get(id) || [];
+      if ((!body && !pend.length) || !id) return;
+      const btn = f.querySelector('.sqm-send'), btns = [...f.querySelectorAll('button')];
+      btns.forEach((b) => { b.disabled = true; }); ta.disabled = true;
+      let subidos = [];
+      try {
+        if (pend.length) {
+          if (btn) btn.classList.add('busy');
+          const assets = await window.claude.use('assets'); // módulo propio de archivos (hoy Supabase Storage)
+          for (const a of pend) { const r = await assets.upload(a.file); subidos.push({ path: r.id, nombre: a.file.name, tipo: a.file.type || 'application/octet-stream' }); }
+        }
+        const r = await window.__sqGraphCall({ action: 'teamsSend', id, texto: body, adjuntos: subidos });
+        if (r && r.enviado === false) {
+          const assets = await window.claude.use('assets'); subidos.forEach((x) => assets.delete(x.path).catch(() => {}));
+          alert(r.motivo || 'No se ha podido enviar a Teams.');
+        } else { ta.value = ''; clearAtt(id); paintConv(); }
+      } catch (err) { alert('No se ha podido enviar a Teams: ' + err.message); }
+      finally { const f2 = document.querySelector('.sqm-compose[data-act="teams-send"]'); if (f2) { f2.querySelectorAll('button').forEach((b) => { b.disabled = false; b.classList.remove('busy'); }); const t2 = f2.querySelector('textarea'); t2.disabled = false; t2.focus(); } }
       return;
     }
     if (!body || !st.open) return;
