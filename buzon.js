@@ -165,7 +165,8 @@
   ];
   const PEND_F = ['urgente', 'pide', 'otro'];
   const st = {
-    modo: 'bandeja', cuenta: 'todas', filtro: 'todos', q: '', carpeta: 'inbox',
+    modo: 'bandeja', cuenta: 'outlook', // por defecto, siempre Outlook (27/11)
+    filtro: 'todos', q: '', carpeta: 'inbox',
     carpetas: [], items: [], next: null, sel: null, selMid: null, hilo: null, cargando: false, err: '', compose: null,
     exp: new Set(), hcache: new Map(), outlook: '',
     gm: [], gacc: null, gmCarpetas: new Map(), oCarpetas: null, // cuentas de Gmail conectadas y la elegida (ref o GALL)
@@ -202,8 +203,8 @@
     </div>
     <div class="bz-right">
       <div class="bz-seg bz-acc" role="tablist" aria-label="Cuenta">
-        <button type="button" role="tab" data-acc="todas" aria-selected="true">Todas</button>
-        <button type="button" role="tab" data-acc="outlook" aria-selected="false">Outlook</button>
+        <button type="button" role="tab" data-acc="todas" aria-selected="false">Todas</button>
+        <button type="button" role="tab" data-acc="outlook" aria-selected="true">Outlook</button>
         <button type="button" role="tab" data-acc="gmail" aria-selected="false" aria-haspopup="menu"><span class="bz-gml">Gmail</span><span class="bz-caret" aria-hidden="true">▾</span></button>
       </div>
       <div class="bz-gmenu" role="menu" hidden></div>
