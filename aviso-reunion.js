@@ -68,7 +68,9 @@
   const proximas = () => {
     const now = new Date(); const f = isoDay(now);
     if (mem.dia !== f) { mem.dia = f; mem.cerradas = []; mem.notificadas = []; saveMem(); }
-    const evs = (agenda.get(f)?.eventos || []);
+    // la agenda se guarda en hora de Madrid; se compara con la hora de donde estás (27/11/2026: Canarias)
+    const tz = window.__sqTz; const L = (h) => (tz && h ? tz.toLocal(f, h) : h);
+    const evs = (agenda.get(f)?.eventos || []).map((e) => (e.todoElDia ? e : Object.assign({}, e, { inicio: L(e.inicio), fin: L(e.fin) })));
     return evs.filter((e) => !e.todoElDia && e.inicio && !/cancelad|rechazad/i.test(e.estado || '') && (e.unirse || /teams/i.test(e.lugar || '')))
       .map((e) => { const [h, m] = e.inicio.split(':').map(Number); const t0 = new Date(now); t0.setHours(h, m, 0, 0); return { e, f, key: keyOf(f, e), min: Math.round((t0 - now) / 60000) }; })
       .filter((x) => x.min <= ANTES && x.min >= -DESPUES && !mem.cerradas.includes(x.key));

@@ -193,6 +193,8 @@
     try {
       const r = await call({ action: 'disponibilidad', fecha, emails: people.map((p) => p.email), duracion: Number($('#nm-dur').value) });
       if (my !== avSeq) return;
+      const TZ = window.__sqTz; // disponibilidad en hora de Madrid → hora de donde estás
+      if (TZ && TZ.diff(fecha)) { const L = (h) => TZ.toLocal(fecha, h); r.desde = L(r.desde); r.hasta = L(r.hasta); (r.huecos || []).forEach((h) => { h.inicio = L(h.inicio); h.fin = L(h.fin); }); (r.personas || []).forEach((p) => (p.ocupado || []).forEach((o) => { o.inicio = L(o.inicio); o.fin = L(o.fin); })); }
       lastAv = r; paintAvail();
     } catch (e) { if (my === avSeq) av.innerHTML = `<span class="note">No pude ver la disponibilidad: ${esc(e.message)}</span>`; }
   }
@@ -203,7 +205,7 @@
     const hora = $('#nm-hora').value, dur = Number($('#nm-dur').value);
     const pick = hora ? { a: toMin(hora), b: toMin(hora) + dur } : null;
     const nameOf = (p) => (p.yo ? 'Tú' : nice(people.find((x) => x.email === p.email) || contacts.find((x) => x.email === p.email) || { email: p.email }));
-    let html = '<div class="lbl">Disponibilidad</div><div class="nm-hours"><div></div><div><span>08:00</span><span>11:00</span><span>14:00</span><span>17:00</span><span>20:00</span></div></div><div class="nm-tl">';
+    let html = '<div class="lbl">Disponibilidad</div><div class="nm-hours"><div></div><div>' + [0, 1, 2, 3, 4].map((i) => '<span>' + hm(d0 + i * span / 4) + '</span>').join('') + '</div></div><div class="nm-tl">';
     let choque = [];
     for (const p of r.personas) {
       html += `<div class="who${p.ok ? '' : ' err'}" title="${esc(p.email)}">${esc(nameOf(p))}</div>`;
@@ -283,7 +285,8 @@
     if (!bloqueo && !(await ask(`¿Enviar la convocatoria?\n«${titulo}» · ${fechaTxt}, ${hora}–${hm(b)}${donde}\nA ${people.length} ${people.length === 1 ? 'persona' : 'personas'}:\n${lista}`, 'Enviar convocatoria'))) return;
     const go = $('#nm-go'); go.disabled = true; go.textContent = bloqueo ? 'Guardando…' : 'Convocando…'; say('');
     try {
-      const r = await call({ action: 'crearReunion', titulo, fecha, inicio: hora, fin: hm(b), asistentes: people.map((p) => ({ email: p.email, nombre: p.nombre })), teams, lugar, texto: $('#nm-txt').value.trim() });
+      const TZ = window.__sqTz; const mad = (h) => (TZ ? TZ.toMad(fecha, h) : h); // el formulario va en la hora de donde estás; Outlook la recibe en hora de Madrid
+      const r = await call({ action: 'crearReunion', titulo, fecha, inicio: mad(hora), fin: mad(hm(b)), asistentes: people.map((p) => ({ email: p.email, nombre: p.nombre })), teams, lugar, texto: $('#nm-txt').value.trim() });
       if (!r || !r.creada) throw new Error('Outlook no ha confirmado la reunión. Revisa tu calendario antes de repetirla.');
       close();
       if (typeof window.__sqGoDay === 'function') window.__sqGoDay(fecha);

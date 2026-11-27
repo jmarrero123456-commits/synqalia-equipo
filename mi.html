@@ -879,6 +879,14 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   .cal-ev.okd .ev-x { color: #137a4b; }
   .cal-ev.meal { background: #f1f3f6; border-left-color: #9aa3b2; }
   .cal-ev.past { opacity: .55; }
+  .cal-ev.live { box-shadow: 0 0 0 2px #1f9d55 inset; }
+  .cal-ev.soon { box-shadow: 0 0 0 2px #d99a1b inset; }
+  .ev-live { display: table; margin: 0 0 2px; font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; color: #fff; background: #1f9d55; white-space: nowrap; line-height: 1.5; }
+  .cal-ev.soon .ev-live { background: #c98a00; }
+  .cal-ev.tiny .ev-live { padding: 0 5px; font-size: 10px; }
+  .ag-tz { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; white-space: nowrap; }
+  #agenda-card > .ag-tz { margin: 2px 0 6px; }
+  .free-sum .ag-tz-in { font-weight: 700; color: var(--ink); }
   .cal-now { position: absolute; left: calc(var(--cal-g) - 6px); right: 0; height: 0; border-top: 2px solid #e5484d; z-index: 5; pointer-events: none; }
   .cal-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
   /* Agenda: vista semana, minicalendario, convocatorias en el calendario, mover arrastrando (24/11/2026) */
@@ -2882,6 +2890,32 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   // ---------- render correo ----------
   const DLABEL = {aceptar: 'Aceptar', rechazar: 'Rechazar', proponer: 'Proponer otra hora', reorganizar: 'Reorganizar agenda'};
   const toMin = (h) => { const p = String(h || '').split(':'); return p.length === 2 ? Number(p[0]) * 60 + Number(p[1]) : null; };
+  // ===== Zona horaria (27/11/2026) =====
+  // Outlook y Synqalia guardan la agenda en hora de Madrid. La app la enseña en la hora del lugar donde está el dispositivo
+  // (el móvil y el ordenador cambian de zona solos al viajar: Canarias = una hora menos). Lo guardado sigue en hora de Madrid
+  // (notas de reuniones, mover o crear reuniones): se convierte al leer y al enviar.
+  const TZ_MAD = 'Europe/Madrid';
+  const TZ_DEV = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || TZ_MAD; } catch (e) { return TZ_MAD; } })();
+  const tzOffCache = {};
+  const tzOff = (tz, fecha) => {
+    const k = tz + fecha; if (k in tzOffCache) return tzOffCache[k];
+    const d = new Date(fecha + 'T12:00:00Z');
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'}).formatToParts(d).map((x) => [x.type, x.value]));
+    return (tzOffCache[k] = Math.round((Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute) - d.getTime()) / 60000));
+  };
+  const tzDiff = (fecha) => { if (TZ_DEV === TZ_MAD || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return 0; try { return tzOff(TZ_DEV, fecha) - tzOff(TZ_MAD, fecha); } catch (e) { return 0; } };
+  const tzShift = (hm, m) => { const t = toMin(hm); if (t == null || !m) return hm; const x = Math.min(1439, Math.max(0, t + m)); return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+  const toLocalHM = (fecha, hm) => tzShift(hm, tzDiff(fecha));   // hora de Madrid → hora de aquí
+  const toMadHM = (fecha, hm) => tzShift(hm, -tzDiff(fecha));    // hora de aquí → hora de Madrid
+  const allDayEv = (e) => e.todoElDia || (e.inicio === '00:00' && (e.fin === '23:59' || e.fin === '00:00'));
+  function locEv(fecha, e) {
+    const m = tzDiff(fecha); if (!m || !e || allDayEv(e)) return e;
+    return Object.assign({}, e, {inicio: tzShift(e.inicio, m), fin: e.fin ? tzShift(e.fin, m) : e.fin, mad: {inicio: e.inicio, fin: e.fin}});
+  }
+  const locAgendaDoc = (f, doc) => (doc && Array.isArray(doc.eventos) && tzDiff(f) ? Object.assign({}, doc, {eventos: doc.eventos.map((e) => locEv(f, e))}) : doc);
+  const locCuEv = (c) => locEv((c.evento && c.evento.fecha) || c.fecha, c.evento); // evento guardado (Madrid) → hora de aquí
+  const tzName = (() => { const z = TZ_DEV; return /Canary/.test(z) ? 'Canarias' : z === TZ_MAD ? 'Madrid' : (z.split('/').pop() || z).replace(/_/g, ' '); })();
+  window.__sqTz = {diff: tzDiff, toLocal: toLocalHM, toMad: toMadHM, name: tzName};
   const overlaps = (a, b) => { const a1 = toMin(a.inicio), a2 = toMin(a.fin), b1 = toMin(b.inicio), b2 = toMin(b.fin); return a1 != null && a2 != null && b1 != null && b2 != null && a1 < b2 && b1 < a2; };
   const dayName = (f) => { try { return fmtLong.format(new Date(f + 'T12:00:00')); } catch (e) { return f; } };
 
@@ -2907,7 +2941,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (!recs.length) return ag;
     const evs = ag && Array.isArray(ag.eventos) ? ag.eventos.slice() : [];
     recs.forEach((c) => {
-      const e = c.evento;
+      const e = locCuEv(c);
       if (evs.some((x) => x.inicio === e.inicio && normTxt(cleanTitle(x.titulo)) === normTxt(cleanTitle(e.titulo)))) return;
       const fin = e.fin || (() => { const m = (toMin(e.inicio) || 0) + 60; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); })();
       evs.push({inicio: e.inicio, fin, titulo: e.titulo, organiza: e.organiza || null});
@@ -2925,7 +2959,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     window.__sb.functions.invoke('agenda-dia', {body: {desde: mon, hasta: addDays(mon, 6)}}).then(async ({data, error}) => {
       let msg = data && data.error; if (error) { msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (x) { /* sin detalle */ } }
       if (msg) throw new Error(msg);
-      Object.entries((data && data.dias) || {}).forEach(([f, eventos]) => { state.agenda[f] = {fecha: f, capturado: data.capturado, eventos, fuente: 'graph-dia'}; });
+      Object.entries((data && data.dias) || {}).forEach(([f, eventos]) => { state.agenda[f] = locAgendaDoc(f, {fecha: f, capturado: data.capturado, eventos, fuente: 'graph-dia'}); });
       me.s = 'ok'; me.t = Date.now();
     }).catch((e) => { me.s = 'err'; me.t = Date.now(); me.msg = e.message; }).finally(() => renderMeetings());
     return me;
@@ -2989,6 +3023,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
           box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '')));
           if (pend && h >= 44) box.appendChild(el('div', 'ev-x', okd ? '✓ Respondida en Outlook' : 'Pendiente de responder'));
         }
+        if (fecha === todayISO && !past) { box.dataset.la = String(a); box.dataset.lb = String(b); liveMark(box); }
         wireCalBox(box, fecha, e, {pxMin: CAL_PX / 60, minM: h0 * 60, maxM: h1 * 60});
         cal.appendChild(box);
         if (state.calPop === fecha + '|' + e.inicio && box.classList.contains('pend')) { const pop = calPopover(fecha, e); pop.style.top = box.style.top; pop.style.right = '8px'; cal.appendChild(pop); }
@@ -3132,7 +3167,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (state.mtOpen && state.mtOpen.ev.fecha === fecha && state.mtOpen.ev.inicio === e.inicio) state.mtOpen = null;
     state.mvForm = null; renderMeetRoom(true); renderMeetings();
     try {
-      const {data, error} = await window.__sb.functions.invoke('reuniones', {body: Object.assign({action: 'moverReunion', enlace: e.enlace, fecha: nf, inicio: ni, fin: nfi}, lugar !== undefined ? {lugar} : {})});
+      const {data, error} = await window.__sb.functions.invoke('reuniones', {body: Object.assign({action: 'moverReunion', enlace: e.enlace, fecha: nf, inicio: toMadHM(nf, ni), fin: toMadHM(nf, nfi)}, lugar !== undefined ? {lugar} : {})});
       let msg = data && data.error; if (error) { msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (x) { /* sin detalle */ } }
       if (msg) throw new Error(msg);
       agFlash('✓ «' + t + '» movida a ' + cuando + (data && data.asistentes ? ' · avisados ' + data.asistentes + (data.asistentes === 1 ? ' asistente' : ' asistentes') : ''));
@@ -3238,6 +3273,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
           const a = toMin(e.inicio), b = toMin(e.fin), k = pos.get(e);
           const past = p.f < todayISO || (p.f === todayISO && b <= nowMin());
           const box = el('div', 'cal-ev' + (past ? ' past' : '') + (/^comida/i.test(e.titulo) ? ' meal' : ''));
+          if (p.f === todayISO && !past) { box.dataset.la = String(a); box.dataset.lb = String(b); box.dataset.short = '1'; }
           const hh = y(b) - y(a);
           box.style.top = (y(a) + 1) + 'px'; box.style.height = Math.max(hh - 2, 14) + 'px';
           box.style.left = 'calc(' + k + ' * (100% / ' + n + '))'; box.style.width = 'calc(100% / ' + n + ' - 3px)';
@@ -3246,6 +3282,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
           if (hh < 30) { box.classList.add('tiny'); box.appendChild(el('span', 'ev-t', t)); }
           else { box.appendChild(el('div', 'ev-t', t)); box.appendChild(el('div', 'ev-h', e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : ''))); }
           box.title = t + ' · ' + e.inicio + '–' + e.fin + (e.lugar ? ' · ' + e.lugar : '');
+          if (box.dataset.la) liveMark(box);
           wireCalBox(box, p.f, e, {pxMin: PX / 60, minM: h0 * 60, maxM: h1 * 60, cols, idx: i, dates});
           col.appendChild(box);
           if (state.calPop === p.f + '|' + e.inicio && box.classList.contains('pend')) popAt = {i, top: y(a), pop: calPopover(p.f, e)};
@@ -3409,7 +3446,16 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       fn(dx < 0 ? 1 : -1);
     }, {passive: true});
   }
+  // Aviso de la zona horaria en la que se enseña la agenda (solo si no es la de Madrid)
+  function agTzChip(corto) {
+    const d = tzDiff(todayISO); if (!d) return null;
+    const c = el('span', 'ag-tz'); c.title = 'Las horas de la agenda están en la hora de ' + tzName + ' (' + (d > 0 ? '+' : '−') + Math.abs(d / 60) + ' h respecto a Madrid). Se ajusta sola según dónde está tu dispositivo.';
+    c.textContent = '🕐 ' + (agmOn() ? 'Hora de ' + tzName : 'Hora de ' + tzName + ' · ' + (d > 0 ? '+' : '−') + Math.abs(d / 60) + ' h Madrid');
+    return c;
+  }
   function renderAgMobile(card) {
+    const old = card.querySelector(':scope > .ag-tz'); if (old) old.remove();
+    if (!agmOn()) { const tz = agTzChip(); const bar = card.querySelector(':scope > .ag-bar'); if (tz && bar) bar.after(tz); }
     const on = agmOn();
     const view = $('#view-reuniones');
     card.classList.toggle('agm', on); if (view) view.classList.toggle('agm-on', on);
@@ -3500,6 +3546,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
   // tras pintar el calendario: ocupa el alto de la pantalla y se desliza de día en día
   function agmFit(card) {
     if (!card.classList.contains('agm')) return;
+    const fs = card.querySelector('#agenda-box .free-sum'); const dz = tzDiff(todayISO);
+    if (fs && dz && !fs.querySelector('.ag-tz-in')) { const t = el('span', 'ag-tz-in', '🕐 Hora de ' + tzName + ' · '); t.title = (dz > 0 ? '+' : '−') + Math.abs(dz / 60) + ' h respecto a Madrid; se ajusta sola según dónde está tu móvil.'; fs.prepend(t); }
     const sc = card.querySelector('#agenda-box .cal-scroll'); if (!sc) return;
     if (!sc.dataset.sw) { sc.dataset.sw = '1'; agmSwipe(sc, (dir) => agmShift(state.agendaView === 'semana' ? 7 * dir : dir)); }
     const nav = $('.tabs'); const nr = nav && getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect() : null;
@@ -3507,6 +3555,19 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const top = sc.getBoundingClientRect().top + window.scrollY;
     sc.style.height = Math.max(320, Math.round(bottom - top)) + 'px';
   }
+  // Reunión en curso o a punto de empezar (27/11/2026), con la hora de donde estás. Se repasa cada 30 s sin repintar la agenda.
+  function liveMark(box) {
+    const a = Number(box.dataset.la), b = Number(box.dataset.lb), n = nowMin();
+    const live = a <= n && n < b, soon = !live && a > n && a - n <= 15;
+    box.classList.toggle('live', live); box.classList.toggle('soon', soon);
+    if (n >= b) box.classList.add('past');
+    let t = box.querySelector(':scope > .ev-live');
+    const txt = live ? (box.dataset.short ? 'Ahora' : 'Ahora · quedan ' + (b - n) + ' min') : soon ? 'Empieza en ' + (a - n) + ' min' : '';
+    if (!txt) { if (t) t.remove(); return; }
+    if (!t) { t = el('span', 'ev-live'); box.prepend(t); }
+    t.textContent = txt;
+  }
+  setInterval(() => { $$('#agenda-box .cal-ev[data-la]').forEach((b) => { if (state.agendaDay === todayISO || state.agendaView === 'semana') liveMark(b); }); }, 30000);
   function placeNow(nl) {
     const h0 = Number(nl.dataset.h0); const m = nowMin();
     nl.style.top = ((m - h0 * 60) / 60 * CAL_PX) + 'px';
@@ -5424,7 +5485,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     }
     // Reuniones que has tenido: todas (con el equipo, de la agenda o grabadas con el Plaud), la más reciente primero, con buscador
     const fOf = (c) => String((c.evento && c.evento.fecha) || c.fecha || '');
-    const hOf = (c) => String((c.evento && c.evento.inicio) || '');
+    const hOf = (c) => String((c.evento && locCuEv(c).inicio) || '');
     const tOf = (c) => { const tp = cuTeamOf(c); return c.evento && c.evento.titulo ? cleanTitle(c.evento.titulo) : tp ? (isGroup(tp) ? 'Reunión de ' + tp.nombre : 'Reunión con ' + tp.nombre) : (c.persona || 'Reunión'); };
     const mts = state.catchups.filter((c) => fOf(c) && fOf(c) <= todayISO && (c.evento || cuTeamOf(c))).sort((a, b) => fOf(b).localeCompare(fOf(a)) || hOf(b).localeCompare(hOf(a)) || String(b.creado || '').localeCompare(String(a.creado || '')));
     if (mts.length) {
@@ -5444,10 +5505,10 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         const r = el('button', 'cu-row'); r.type = 'button'; r.title = 'Abrir «' + t + '»';
         r.appendChild(el('span', 'cu-av' + (!tp || isGroup(tp) ? ' grp' : ''), tp ? initials(tp) : (t.match(/[A-Za-zÁÉÍÓÚÑ]/g) || ['·']).slice(0, 2).join('').toUpperCase()));
         const m = el('span', 'cu-main'); m.appendChild(el('span', 'cu-name', t));
-        m.appendChild(el('span', 'cu-sub', dayName(f).replace(/^./, (x) => x.toUpperCase()) + (hOf(c) ? ' · ' + hOf(c) + (c.evento && c.evento.fin ? '–' + c.evento.fin : '') : '') + (/— Grabación del Plaud/.test(c.notas || '') ? ' · 🎙️ grabada' : '') + (c.tipo !== 'reunion' && !c.cerrado && tp ? ' · sin terminar' : '')));
+        m.appendChild(el('span', 'cu-sub', dayName(f).replace(/^./, (x) => x.toUpperCase()) + (hOf(c) ? ' · ' + hOf(c) + (c.evento && c.evento.fin ? '–' + locCuEv(c).fin : '') : '') + (/— Grabación del Plaud/.test(c.notas || '') ? ' · 🎙️ grabada' : '') + (c.tipo !== 'reunion' && !c.cerrado && tp ? ' · sin terminar' : '')));
         r.appendChild(m);
         r.addEventListener('click', () => {
-          if (c.evento && c.evento.inicio) openMeetRoom(Object.assign({}, c.evento, {fecha: f}));
+          if (c.evento && c.evento.inicio) openMeetRoom(Object.assign({}, locCuEv(c), {fecha: f}));
           else if (tp) { openCuEditor(tp, c); if (window.innerWidth < 900) setTimeout(() => $('#cu-detail').scrollIntoView({behavior: 'smooth', block: 'start'}), 60); }
         });
         lw.appendChild(r);
@@ -6021,7 +6082,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const org = ev.organiza || ((String(ev.titulo || '').match(/\(([^)]+)\)\s*$/) || [])[1] || '');
     return {p: {id: 'mt-' + normTxt(nm).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60), nombre: nm, tipo: 'grupo', reunion: true, miembros: org && !isMe(org) ? [org] : []}, team: false};
   }
-  const mtRecord = (ev) => state.catchups.find((c) => c.evento && c.evento.fecha === ev.fecha && c.evento.inicio === ev.inicio && normTxt(cleanTitle(c.evento.titulo)) === normTxt(cleanTitle(ev.titulo)));
+  const mtRecord = (ev) => state.catchups.find((c) => c.evento && c.evento.fecha === ev.fecha && toLocalHM(c.evento.fecha, c.evento.inicio) === ev.inicio && normTxt(cleanTitle(c.evento.titulo)) === normTxt(cleanTitle(ev.titulo)));
   window.__sqOpenMeet = (ev) => openMeetRoom(ev);
   // Plaud (plaud.js): añade o quita la grabación del Plaud en las notas de una reunión de la agenda (ev con fecha)
   const PLAUD_FIN = '— fin de la grabación del Plaud —';
@@ -6039,7 +6100,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       const ex = mtRecord(ev);
       const id = ex ? ex.id : ((state.mtOpen && state.mtOpen.ev.fecha === ev.fecha && state.mtOpen.ev.inicio === ev.inicio) ? state.mtOpen.id : newCuId());
       const d = state.cuDraft[id] || (state.cuDraft[id] = {persona: p.nombre, equipoId: p.id, fecha: ev.fecha, notas: ex ? (ex.notas || '') : ''});
-      d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: ev.inicio, fin: ev.fin || null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: (ex && ex.miembros) || p.miembros});
+      d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: toMadHM(ev.fecha, ev.inicio), fin: ev.fin ? toMadHM(ev.fecha, ev.fin) : null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: (ex && ex.miembros) || p.miembros});
       const {ta, txt} = notesOf(id);
       if (txt.includes(plaudHead(g))) return id; // ya estaba
       const body = 'El resumen, el índice y la transcripción de Plaud están en «🎙️ Plaud», en esta reunión.';
@@ -6072,7 +6133,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const ex = mtRecord(ev);
     const id = ex ? ex.id : ((state.mtOpen && state.mtOpen.ev.fecha === ev.fecha && state.mtOpen.ev.inicio === ev.inicio) ? state.mtOpen.id : newCuId());
     const d = state.cuDraft[id] || (state.cuDraft[id] = {persona: p.nombre, equipoId: p.id, fecha: ev.fecha, notas: ex ? (ex.notas || '') : ''});
-    d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: ev.inicio, fin: ev.fin || null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: p.miembros});
+    d.extra = Object.assign({evento: {fecha: ev.fecha, inicio: toMadHM(ev.fecha, ev.inicio), fin: ev.fin ? toMadHM(ev.fecha, ev.fin) : null, titulo: cleanTitle(ev.titulo), organiza: ev.organiza || null}}, team ? {} : {tipo: 'reunion', miembros: p.miembros});
     state.mtOpen = {ev, id};
     show('reuniones'); renderMeetRoom(true);
     setTimeout(() => { const h = $('#meet-room'); if (h) h.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 40);
@@ -6232,11 +6293,11 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     list.forEach((c) => {
       const row = el('button', 'item mt-note'); row.type = 'button';
       const b = el('div'); b.appendChild(el('div', 'title', c.evento.titulo));
-      b.appendChild(el('div', 'detail', dayName(c.fecha).replace(/^./, (z) => z.toUpperCase()) + ' · ' + c.evento.inicio + (c.cerrado ? '' : ' · en curso') + ' · ' + state.tasks.filter((t) => t.ref === c.id).length + ' tareas'));
+      b.appendChild(el('div', 'detail', dayName(c.fecha).replace(/^./, (z) => z.toUpperCase()) + ' · ' + locCuEv(c).inicio + (c.cerrado ? '' : ' · en curso') + ' · ' + state.tasks.filter((t) => t.ref === c.id).length + ' tareas'));
       const first = String(c.resumen || c.notas || '').split('\n').map((l) => l.replace(/^[-*•]\s*/, '').trim()).find(Boolean);
       if (first) b.appendChild(el('div', 'detail mt-snip', first));
       row.appendChild(b);
-      row.addEventListener('click', () => openMeetRoom(Object.assign({}, c.evento, {fecha: c.evento.fecha || c.fecha})));
+      row.addEventListener('click', () => openMeetRoom(Object.assign({}, locCuEv(c), {fecha: c.evento.fecha || c.fecha})));
       box.appendChild(row);
     });
   }
@@ -6538,13 +6599,13 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     db.collection('correos').onSnapshot((snap) => { state.mails = snap.docs.map((d) => withMeetingInfo({id: d.id, ...d.data()})); renderTasks(); renderAll(); settle(snap); }, fail);
     db.collection('respuestas').onSnapshot((snap) => { state.replies = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); settle(snap); }, fail);
     db.collection('decisiones').onSnapshot((snap) => { state.decisions = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); settle(snap); }, fail);
-    db.collection('agenda').onSnapshot((snap) => { state.agenda = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); renderBrief(); settle(snap); }, fail);
+    db.collection('agenda').onSnapshot((snap) => { state.agenda = Object.fromEntries(snap.docs.map((d) => [d.id, locAgendaDoc(d.id, d.data())])); renderAll(); renderBrief(); settle(snap); }, fail);
     db.collection('equipo').onSnapshot((snap) => { state.team = snap.docs.map((d) => ({id: d.id, ...d.data()})); renderCatchups(); settle(snap); }, fail);
     db.collection('catchups').onSnapshot((snap) => { state.catchups = snap.docs.map((d) => ({id: d.id, ...d.data()})); renderCatchups(); renderMeetRoom(); renderMeetNotes(); renderMeetings(); settle(snap); }, fail);
     db.collection('respuestas_reunion').onSnapshot((snap) => { indexRsvp(Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))); renderAll(); }, () => {});
     db.collection('respondidas').onSnapshot((snap) => { state.answered = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()])); renderAll(); }, () => {});
     db.doc('outlook/enlaces').onSnapshot((snap) => { state.olinks = snap.exists ? snap.data() : null; renderAll(); }, () => {});
-    db.doc('invitaciones/pendientes').onSnapshot((snap) => { state.invites = snap.exists ? snap.data() : null; renderAll(); }, () => {});
+    db.doc('invitaciones/pendientes').onSnapshot((snap) => { const v = snap.exists ? snap.data() : null; if (v && Array.isArray(v.items)) v.items = v.items.map((it) => locEv(it.fecha, it)); state.invites = v; renderAll(); }, () => {});
     db.doc('brief/hoy').onSnapshot((snap) => { state.brief = snap.exists ? snap.data() : null; renderBrief(); settle(snap); }, fail);
   })();
 })();
@@ -6657,9 +6718,9 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="notas.js?v=20261125a" defer></script>
 <script src="lista.js?v=20261119f" defer></script>
 <script src="graph-live.js?v=20261125a" defer></script>
-<script src="aviso-reunion.js?v=20261124a" defer></script>
-<script src="nueva-reunion.js?v=20261126c" defer></script>
-<script src="plaud.js?v=20261125f" defer></script>
+<script src="aviso-reunion.js?v=20261127a" defer></script>
+<script src="nueva-reunion.js?v=20261127a" defer></script>
+<script src="plaud.js?v=20261127a" defer></script>
 <script src="mensajes.js?v=20261126b" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
 <script src="buzon.js?v=20261126r1" defer></script>
