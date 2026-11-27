@@ -93,7 +93,9 @@
     return ((a && a.eventos) || []).filter((e) => e && e.inicio && mins(e.inicio) != null).map((e) => Object.assign({}, e, { fecha }));
   };
   function candidatos(g) {
-    const gi = mins(g.hIni), gf = mins(g.hFin) != null && mins(g.hFin) > gi ? mins(g.hFin) : gi + (g.minutos || 1);
+    // la agenda se enseña en la hora de donde estás (27/11/2026); la grabación viene en hora de Madrid
+    const L = (h) => (window.__sqTz && h ? window.__sqTz.toLocal(g.fecha, h) : h);
+    const gi = mins(L(g.hIni)), gf = mins(L(g.hFin)) != null && mins(L(g.hFin)) > gi ? mins(L(g.hFin)) : gi + (g.minutos || 1);
     return eventosDe(g.fecha).map((e) => {
       const ei = mins(e.inicio); let ef = mins(e.fin); if (ef == null || ef <= ei) ef = ei + 30;
       const solape = Math.max(0, Math.min(gf, ef) - Math.max(gi, ei));
