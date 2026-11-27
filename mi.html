@@ -1835,8 +1835,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const callJson = async (prompt, opts) => {
       const images = [];
       for (const b of (opts && opts.images) || []) images.push({ media_type: b.type || 'image/png', data: await toB64(b) });
-      const { data, error } = await sb.functions.invoke('ai', { body: { prompt, images } });
-      if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'IA no disponible');
+      let { data, error } = await sb.functions.invoke('ai', { body: { prompt, images } });
+      // 27/11: si la función responde con error, se lee el motivo real para decirlo en pantalla
+      if (error && !data && error.context && typeof error.context.json === 'function') { try { data = await error.context.json(); } catch (e) {} }
+      if (error || !data || data.error) {
+        const code = (data && data.code) || 'ia';
+        const MSG = {sin_saldo: 'La IA de Synqalia se ha quedado sin saldo. Hay que recargar el crédito de la cuenta de Anthropic.', clave: 'La clave de la IA de Synqalia no es válida o no está configurada.', rate_limited: 'Demasiadas peticiones seguidas a la IA. Espera un minuto y vuelve a probar.', saturada: 'La IA está saturada en este momento. Vuelve a probar en un minuto.', modelo: 'El modelo de IA configurado no está disponible.', formato: 'La IA ha contestado algo que no he podido leer. Vuelve a probar.'};
+        const err = new Error(MSG[code] || ('La IA no ha respondido: ' + ((data && data.error) || (error && error.message) || 'sin detalle')));
+        err.code = code; err.detail = data && data.error; throw err;
+      }
       return data.result;
     };
     // Texto libre (redactar, resumir…): la función devuelve JSON, así que pedimos {"texto": "..."} y lo desenvolvemos
@@ -4056,7 +4063,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
           state.drafts[m.id] = ta.value;
           setStatus(/\[[^\]]+\]/.test(ta.value) ? 'Hecho. Completa lo que está entre [corchetes].' : 'Hecho. Revísala y márcala como lista.');
         } catch (e) {
-          setStatus(e && e.code === 'rate_limited' ? 'Demasiadas peticiones seguidas. Espera un momento.' : e && e.code === 'not_granted' ? 'No has dado permiso para usar Claude desde la página.' : 'No se ha podido redactar. Inténtalo otra vez.', true);
+          setStatus(e && e.code === 'not_granted' ? 'No has dado permiso para usar Claude desde la página.' : (e && e.message) || 'No se ha podido redactar. Inténtalo otra vez.', true);
         } finally { btn.disabled = false; }
       };
       askBox.appendChild(el('div', 'section-label', '¿Qué quieres contestar?'));
@@ -6723,7 +6730,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="plaud.js?v=20261127a" defer></script>
 <script src="mensajes.js?v=20261126b" defer></script>
 <script src="correo.js?v=20261124a" defer></script>
-<script src="buzon.js?v=20261127o1" defer></script>
+<script src="buzon.js?v=20261127ia1" defer></script>
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
 <script>/* Fold abierto y pantallas medianas (561–699 px): la barra de secciones va abajo, igual que en el móvil.
