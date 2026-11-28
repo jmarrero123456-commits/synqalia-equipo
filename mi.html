@@ -1389,6 +1389,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <link rel="stylesheet" href="notas.css">
 <link rel="stylesheet" href="lista.css?v=20261119f">
 <link rel="stylesheet" href="synqalia.css?v=20261126a">
+<link rel="stylesheet" href="compartir.css?v=20261128a">
 <link rel="stylesheet" href="mensajes.css?v=20261126at">
 <link rel="stylesheet" href="buzon.css?v=20261125gm3">
 <link rel="stylesheet" href="asistente.css?v=20261118c">
@@ -1770,6 +1771,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       return { id, contentType: file.type, sizeBytes: file.size };
     },
     async delete(id) { await ready; await sb.storage.from(BUCKET).remove([uid + '/' + id]); delete blobMap[id]; },
+    // enlace firmado (caduca en 1 h) para abrir un archivo propio
+    async url(id) { await ready; const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(uid + '/' + id, 60 * 60); if (error) throw error; return data.signedUrl; },
   };
 
   /* ---------- descargas ---------- */
@@ -2039,6 +2042,8 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     done: (id) => write(() => db.collection('tareas').doc(id).update({estado: 'hecha', hecha: new Date().toISOString()}), 'Tarea hecha'),
     open: (id) => { const t = state.tasks.find((x) => x.id === id); if (!t) return; show('tareas'); try { applyQuick(null); } catch (e) {} openTaskEdit(t); },
     esMio: (n) => isMe(n),
+    get: (id) => state.tasks.find((x) => x.id === id) || null,
+    abiertas: () => state.tasks.filter((x) => x.estado !== 'hecha'),
   };
 
   // ---------- render tareas ----------
@@ -2056,6 +2061,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const ttl = el('div', 'title editable', t.titulo); ttl.title = 'Pulsa para editar';
     ttl.addEventListener('click', () => openTaskEdit(t));
     body.appendChild(ttl);
+    if (window.__sqAdj) { const aj = window.__sqAdj.chips(t); if (aj) body.appendChild(aj); }
     if (t.detalle && !compact) body.appendChild(el('div', 'detail', t.detalle));
     const av = Array.isArray(t.avances) ? t.avances : [];
     const avA = t.asignadaA && Array.isArray(t.asigAvances) ? t.asigAvances : [];
@@ -2487,6 +2493,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     });
     bar.appendChild(delE);
     const save = el('button', 'btn primary', 'Guardar cambios'); save.type = 'submit';
+    if (window.__sqAdj) box.appendChild(window.__sqAdj.editor(t));
     bar.appendChild(cancel); bar.appendChild(save); box.appendChild(bar);
     box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); cancel.click(); } });
     box.addEventListener('submit', async (e) => {
@@ -6741,6 +6748,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
 <script src="asistente.js?v=20261125a" defer></script>
 <script src="ia-saldo.js?v=20261128b" defer></script>
 <script src="voz.js?v=20261125c" defer></script>
+<script src="compartir.js?v=20261128a" defer></script>
 <script>/* Fold abierto y pantallas medianas (561–699 px): la barra de secciones va abajo, igual que en el móvil.
    Copia en tiempo de carga las reglas del móvil (max-width: 560px) de la barra de abajo, «Más» y la franja de arriba. */
 (function () {

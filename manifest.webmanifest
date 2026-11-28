@@ -10,13 +10,85 @@
   "theme_color": "#121821",
   "lang": "es",
   "icons": [
-    { "src": "/icons/icon-192-r.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512-r.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192-r.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-r.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Mi trabajo", "url": "/mi.html", "icons": [{ "src": "/icons/icon-192-r.png", "sizes": "192x192" }] },
-    { "name": "Equipo", "url": "/", "icons": [{ "src": "/icons/icon-192-r.png", "sizes": "192x192" }] }
-  ]
+    {
+      "name": "Mi trabajo",
+      "url": "/mi.html",
+      "icons": [
+        {
+          "src": "/icons/icon-192-r.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Equipo",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/icon-192-r.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/compartir",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "archivos",
+          "accept": [
+            "application/pdf",
+            "image/*",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/plain",
+            "text/csv",
+            ".pdf",
+            ".docx",
+            ".xlsx",
+            ".pptx",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".heic"
+          ]
+        }
+      ]
+    }
+  }
 }
