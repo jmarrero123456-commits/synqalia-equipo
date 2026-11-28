@@ -8,7 +8,10 @@
 // «Apuntado»), y asignar tareas, responder correos, responder convocatorias y mandar mensajes de Synqalia («pendiente»:
 // la app lo lee en voz alta y solo lo hace con un «sí»). La app manda en `estado.contexto` sus correos pendientes,
 // tareas abiertas y convocatorias por responder.
+// 28/11/2026 · pasa por el motor IA común: comprueba el saldo Synqalia y los límites, usa el modelo del nivel de la
+// persona (body.nivel = 'avanzada' si la tiene) y apunta el consumo de cada paso como función «asistente».
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { identificar, permitir, registrar, llamarModelo } from '../_shared/ia-motor.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -16,8 +19,6 @@ const cors = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
-const MODEL = Deno.env.get('ASISTENTE_MODEL') || Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-5-5';
-const MODEL_VOZ = Deno.env.get('ASISTENTE_VOZ_MODEL') || MODEL;
 const MAX_STEPS = 12;
 const COLS = ['correos', 'teams', 'catchups', 'tareas', 'agenda', 'lb_notas', 'respuestas', 'decisiones', 'equipo', 'brief', 'invitaciones'];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -222,21 +223,24 @@ Deno.serve(async (req) => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
   const token = (req.headers.get('Authorization') || '').replace('Bearer ', '');
-  const { data: u } = await admin.auth.getUser(token);
-  const email = u?.user?.email?.toLowerCase();
-  if (!email) return json({ error: 'Inicia sesión' }, 401);
-  const { data: m } = await admin.from('members').select('email,name').ilike('email', email).maybeSingle();
-  if (!m) return json({ error: 'No autorizado' }, 403);
+  const yo = await identificar(admin, req);
+  if ('error' in yo) return json({ error: yo.error }, yo.status);
+  const email = yo.email;
   const key = Deno.env.get('ANTHROPIC_API_KEY');
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: 'Petición no válida' }, 400); }
   if (body.ping) return json({ available: !!key });
   if (!key) return json({ error: 'IA no configurada' }, 501);
   const voz = body.modo === 'voz';
+  const perm = await permitir(admin, yo, { nivel: body.nivel });
+  if (!perm.ok) return json({ error: perm.error, code: perm.code }, 402);
+  // Con el motor activo manda el modelo del nivel (ia_plataforma); sin él, las variables de antes.
+  const MODEL = perm.medir ? perm.modelo : (Deno.env.get('ASISTENTE_MODEL') || perm.modelo);
+  const MODEL_VOZ = perm.medir ? MODEL : (Deno.env.get('ASISTENTE_VOZ_MODEL') || MODEL);
 
   // Cliente con la sesión del usuario: RLS decide qué puede ver.
   const sb = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false }, global: { headers: { Authorization: 'Bearer ' + token } } });
-  const nombre = String((m as any).name || u?.user?.user_metadata?.full_name || email);
+  const nombre = yo.nombre;
   const hoyISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
   const hoy = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()) + ' (' + hoyISO + ')' +
     (voz ? ', son las ' + new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' }).format(new Date()) : '');
@@ -438,13 +442,11 @@ Deno.serve(async (req) => {
   const steps = voz ? 8 : MAX_STEPS;
   for (let step = 0; step < steps; step++) {
     const last = step === steps - 1;
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: voz ? MODEL_VOZ : MODEL, max_tokens: voz ? 800 : 4000, system: voz ? systemPromptVoz(nombre, hoy, body.estado) : systemPrompt(nombre, hoy), tools: voz ? [...TOOLS_VOZ, ...TOOLS] : TOOLS, ...(last ? { tool_choice: { type: 'none' } } : {}), messages }),
-    });
-    const out = await r.json();
+    const modelo = voz ? MODEL_VOZ : MODEL;
+    const r = await llamarModelo({ model: modelo, max_tokens: voz ? 800 : 4000, system: voz ? systemPromptVoz(nombre, hoy, body.estado) : systemPrompt(nombre, hoy), tools: voz ? [...TOOLS_VOZ, ...TOOLS] : TOOLS, ...(last ? { tool_choice: { type: 'none' } } : {}), messages });
+    const out = r.out;
     if (!r.ok) return json({ error: out?.error?.message || 'Error de la IA', pasos }, 502);
+    await registrar(admin, yo, perm, { funcion: 'asistente', modelo, usage: out.usage });
     messages.push({ role: 'assistant', content: out.content });
     const uses = (out.content || []).filter((c: any) => c.type === 'tool_use');
     const text = (out.content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('');
