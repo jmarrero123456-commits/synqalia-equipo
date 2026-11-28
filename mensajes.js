@@ -560,7 +560,7 @@ ${focus ? `La tarea sale de ESTE mensaje: «${focus.de}: ${String(focus.texto ||
 Devuelve SOLO un JSON: {"titulo": "verbo + qué, máx. 90 caracteres", "detalle": "1-2 frases: quién lo pide, cuándo y lo necesario", "vence": "YYYY-MM-DD o null si no hay plazo (si dicen 'antes del viernes', el viernes)", "prioridad": "Mega solo si el mensaje dice «mega» (mega urgente, mega importante); si no Alta|Media|Baja", "aviso": "frase corta y natural de Jaime para contestar en el chat confirmando que lo apunta (sin firma)"}.
 CHAT:
 ${hist}`;
-    const { data, error } = await sb.functions.invoke('ai', { body: { prompt } });
+    const { data, error } = await sb.functions.invoke('ai', { body: { prompt, funcion: 'mensajes' } });
     if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'IA no disponible');
     return data.result || {};
   }

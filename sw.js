@@ -2,8 +2,8 @@
 // - Páginas y archivos propios: primero la red (para recibir siempre la última versión); sin red, la copia guardada.
 // - Librerías y tipografías externas: la copia guardada al momento y se refresca en segundo plano.
 // - Nunca guarda datos ni llamadas a Supabase (las notas offline viven en IndexedDB, dentro de la app).
-const CACHE = 'sq-app-v84';
-const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/buzon.js', '/buzon.css', '/graph-live.js', '/aviso-reunion.js', '/nueva-reunion.js', '/plaud.js', '/resumen.js', '/asistente.js', '/asistente.css', '/inicio.css', '/voz.js', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
+const CACHE = 'sq-app-v85';
+const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/buzon.js', '/buzon.css', '/graph-live.js', '/aviso-reunion.js', '/nueva-reunion.js', '/plaud.js', '/resumen.js', '/asistente.js', '/asistente.css', '/ia-saldo.js', '/ia-saldo.css', '/inicio.css', '/voz.js', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'];
 
 self.addEventListener('install', (e) => {
