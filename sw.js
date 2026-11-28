@@ -2,8 +2,8 @@
 // - Páginas y archivos propios: primero la red (para recibir siempre la última versión); sin red, la copia guardada.
 // - Librerías y tipografías externas: la copia guardada al momento y se refresca en segundo plano.
 // - Nunca guarda datos ni llamadas a Supabase (las notas offline viven en IndexedDB, dentro de la app).
-const CACHE = 'sq-app-v86';
-const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/buzon.js', '/buzon.css', '/graph-live.js', '/aviso-reunion.js', '/nueva-reunion.js', '/plaud.js', '/resumen.js', '/asistente.js', '/asistente.css', '/ia-saldo.js', '/ia-saldo.css', '/inicio.css', '/voz.js', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
+const CACHE = 'sq-app-v87';
+const SHELL = ['/', '/mi.html', '/synqalia.css', '/notas.css', '/notas.js', '/lista.js', '/lista.css', '/mensajes.js', '/correo.js', '/buzon.js', '/buzon.css', '/graph-live.js', '/aviso-reunion.js', '/nueva-reunion.js', '/plaud.js', '/resumen.js', '/asistente.js', '/asistente.css', '/ia-saldo.js', '/ia-saldo.css', '/inicio.css', '/voz.js', '/compartir.js', '/compartir.css', '/manifest.webmanifest', '/icons/icon-192-r.png', '/icons/icon-512-r.png'];
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'];
 
 self.addEventListener('install', (e) => {
@@ -40,8 +40,29 @@ async function staleWhileRevalidate(req) {
   return hit || (await net) || Response.error();
 }
 
+// Compartir desde el móvil (menú «Compartir» de Android → Synqalia): se guardan los archivos en el dispositivo
+// (caché «sq-share», nunca en el servidor) y se abre Mi trabajo, que pregunta a qué tarea van.
+const SHARE = 'sq-share';
+async function recibirCompartido(req) {
+  try {
+    const fd = await req.formData();
+    const c = await caches.open(SHARE);
+    for (const k of await c.keys()) await c.delete(k);
+    const files = fd.getAll('archivos').filter((f) => f && typeof f === 'object' && f.size > 0).slice(0, 10);
+    const meta = { fecha: Date.now(), title: String(fd.get('title') || ''), text: String(fd.get('text') || ''), url: String(fd.get('url') || ''), files: [] };
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      await c.put('/__share/f' + i, new Response(f, { headers: { 'Content-Type': f.type || 'application/octet-stream' } }));
+      meta.files.push({ k: '/__share/f' + i, nombre: f.name || ('archivo-' + (i + 1)), tipo: f.type || 'application/octet-stream', tam: f.size });
+    }
+    await c.put('/__share/meta', new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json' } }));
+  } catch (err) { /* si falla, se abre igualmente Mi trabajo */ }
+  return Response.redirect('/mi.html#compartir', 303);
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  if (req.method === 'POST' && new URL(req.url).pathname === '/compartir') { e.respondWith(recibirCompartido(req)); return; }
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === self.location.origin) { e.respondWith(networkFirst(req)); return; }
