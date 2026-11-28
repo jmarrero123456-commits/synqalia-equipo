@@ -1835,13 +1835,15 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     const callJson = async (prompt, opts) => {
       const images = [];
       for (const b of (opts && opts.images) || []) images.push({ media_type: b.type || 'image/png', data: await toB64(b) });
-      let { data, error } = await sb.functions.invoke('ai', { body: { prompt, images } });
+      // 28/11: el Motor IA apunta el consumo por función (sugerida, resumen, perfeccionar, tareas… o general)
+      let { data, error } = await sb.functions.invoke('ai', { body: { prompt, images, funcion: (opts && opts.funcion) || 'general' } });
       // 27/11: si la función responde con error, se lee el motivo real para decirlo en pantalla
       if (error && !data && error.context && typeof error.context.json === 'function') { try { data = await error.context.json(); } catch (e) {} }
       if (error || !data || data.error) {
         const code = (data && data.code) || 'ia';
-        const MSG = {sin_saldo: 'La IA de Synqalia se ha quedado sin saldo. Hay que recargar el crédito de la cuenta de Anthropic.', clave: 'La clave de la IA de Synqalia no es válida o no está configurada.', rate_limited: 'Demasiadas peticiones seguidas a la IA. Espera un minuto y vuelve a probar.', saturada: 'La IA está saturada en este momento. Vuelve a probar en un minuto.', modelo: 'El modelo de IA configurado no está disponible.', formato: 'La IA ha contestado algo que no he podido leer. Vuelve a probar.'};
-        const err = new Error(MSG[code] || ('La IA no ha respondido: ' + ((data && data.error) || (error && error.message) || 'sin detalle')));
+        // 28/11: el Motor IA ya devuelve el motivo redactado en «error»; este mapa es solo por si llega sin texto
+        const MSG = {tope: 'Tu empresa ha llegado al límite de gasto de IA de este mes. Habla con el administrador de tu empresa.', sin_plan: 'Tu empresa no tiene un plan de IA activo.', no_autorizado: 'Tu usuario no tiene acceso a la IA de Synqalia.', servicio_no_disponible: 'La IA de Synqalia no está disponible ahora mismo. Vuelve a probar más tarde.', configuracion: 'La IA de Synqalia no está bien configurada.', demasiadas_peticiones: 'Demasiadas peticiones seguidas a la IA. Espera un momento y vuelve a probar.', saturada: 'La IA está saturada en este momento. Vuelve a probar en un minuto.', modelo: 'El modelo de IA configurado no está disponible.', formato: 'La IA ha contestado algo que no he podido leer. Vuelve a probar.'};
+        const err = new Error((data && data.code && data.error) || MSG[code] || ('La IA no ha respondido: ' + ((data && data.error) || (error && error.message) || 'sin detalle')));
         err.code = code; err.detail = data && data.error; throw err;
       }
       return data.result;
@@ -2759,7 +2761,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
     if (sample) {
       st.textContent = 'Organizando la tarea…';
       try {
-        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Mega" solo si dice «mega» (o «prioridad mega», «mega importante», «mega urgente»), "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null; "asignar": true si la nota pide asignar o encargar la tarea a esa persona para que la haga ella (dice «asigna», «asignar», «asígnale», «asignada a», «encárgale», «que se encargue»…), si no false}. Si la tarea se asigna, el título es lo que tiene que hacer esa persona (ej.: «asigna a Izaskun cerrar el salón el viernes por la mañana» → titulo «Cerrar el salón el viernes por la mañana», persona Izaskun, asignar true). Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw);
+        const out = await sample.json('Eres el asistente de Jaime Marrero (director de salones de Provalliance España; también NEUPAREDIS, la empresa familiar de transporte MSH y el holding MIG). Hoy es ' + todayISO + ' (' + fmtLong.format(now) + '). Convierte esta nota en UNA tarea. Devuelve SOLO JSON {"titulo": verbo en infinitivo + objeto, sin la persona ni la fecha si ya van en sus campos, máx. 90 caracteres, primera letra en mayúscula; "persona": nombre de la otra persona con la que es la tarea o a la que afecta (nunca Jaime, que es el usuario), o null; "empresa": "Provalliance","NEUPAREDIS","MSH","MIG" o "Personal" (Personal si es algo de su vida privada); "prioridad": "Mega" solo si dice «mega» (o «prioridad mega», «mega importante», «mega urgente»), "Alta" si dice urgente/hoy/ya, "Baja" si dice cuando pueda, si no "Media"; "vence": "YYYY-MM-DD" si la nota da o implica fecha, si no null; "asignar": true si la nota pide asignar o encargar la tarea a esa persona para que la haga ella (dice «asigna», «asignar», «asígnale», «asignada a», «encárgale», «que se encargue»…), si no false}. Si la tarea se asigna, el título es lo que tiene que hacer esa persona (ej.: «asigna a Izaskun cerrar el salón el viernes por la mañana» → titulo «Cerrar el salón el viernes por la mañana», persona Izaskun, asignar true). Si la persona coincide con alguien de esta lista, usa exactamente ese nombre: ' + people.slice(0, 120).join(', ') + '.\n\nNOTA: ' + raw, {funcion: 'tareas'});
         if (out && out.titulo) p = out;
       } catch (err) { /* se guarda tal cual */ }
     } else {
@@ -3891,7 +3893,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       const pide = c.borrador ? 'LO QUE HA ESCRITO O DICTADO JAIME (puede estar desordenado, con muletillas o errores del dictado):\n' + c.borrador + '\n\nConviértelo en el correo listo para enviar: respeta todo lo que dice y su intención, ordénalo, corrige y mejora la redacción, sin añadir nada que él no diga.'
         : 'Propón la respuesta más útil.';
       const prompt = base + '\n\n' + ctx + '\n\n' + pide + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en lo que dice Jaime: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
-      const out = await sample(prompt, onText ? {onText: ({text}) => onText(text)} : undefined);
+      const out = await sample(prompt, Object.assign({funcion: c.borrador ? 'perfeccionar' : 'sugerida'}, onText ? {onText: ({text}) => onText(text)} : {}));
       return String((out && out.text) || '').trim();
     },
   };
@@ -3976,7 +3978,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (!sample) { setStatus('La IA no está conectada ahora mismo.', true); return; }
       sug.disabled = true; sug.textContent = 'Pensando…';
       try {
-        const out = await sample('Eres el asistente de Jaime Marrero (director de la unidad de salones de Provalliance España). Lee este correo o hilo y propón las tareas que Jaime tiene que hacer él (de 1 a 4; solo las necesarias; ninguna si es solo informativo). Cada tarea: verbo en infinitivo, concreta, con quién si aplica, máximo 90 caracteres. Si el correo marca un plazo, ponlo como fecha (AAAA-MM-DD; hoy es ' + todayISO + '); si no, deja la fecha vacía. Devuelve SOLO un JSON: [{"titulo": "...", "vence": "AAAA-MM-DD" o ""}].\n\n' + mailContext(m));
+        const out = await sample('Eres el asistente de Jaime Marrero (director de la unidad de salones de Provalliance España). Lee este correo o hilo y propón las tareas que Jaime tiene que hacer él (de 1 a 4; solo las necesarias; ninguna si es solo informativo). Cada tarea: verbo en infinitivo, concreta, con quién si aplica, máximo 90 caracteres. Si el correo marca un plazo, ponlo como fecha (AAAA-MM-DD; hoy es ' + todayISO + '); si no, deja la fecha vacía. Devuelve SOLO un JSON: [{"titulo": "...", "vence": "AAAA-MM-DD" o ""}].\n\n' + mailContext(m), {funcion: 'tareas'});
         const txt = String((out && out.text) || ''); const j = txt.match(/\[[\s\S]*\]/);
         const arr = (j ? JSON.parse(j[0]) : []).filter((t) => t && t.titulo).slice(0, 4).map((t) => ({titulo: String(t.titulo).slice(0, 200), vence: t.vence || todayISO}));
         st[m.id] = arr; fill(arr);
@@ -4012,7 +4014,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       if (!sample) return;
       sumBtn.disabled = true; sumOut.hidden = false; sumOut.textContent = 'Leyendo el correo…';
       try {
-        const out = await sample('Lee este correo o hilo para Jaime (director de la unidad de salones de Provalliance España) y dile en español, en 2 a 5 viñetas cortas que empiecen por «- » (una idea por viñeta, frases sencillas; pon en **negrita** solo lo clave: lo que tiene que hacer, el plazo y el nombre de quien espera): primero QUÉ ESPERAN DE ÉL exactamente (qué le preguntan, qué tiene que decidir, aprobar, enviar o contestar), luego el plazo si lo hay y quién espera la respuesta, y por último, en una sola viñeta, el contexto mínimo necesario. Si no le piden nada y es solo informativo, dilo en la primera viñeta. Sin introducción.\n\n' + mailContext(m), {onText: ({text}) => { renderRich(sumOut, text); }});
+        const out = await sample('Lee este correo o hilo para Jaime (director de la unidad de salones de Provalliance España) y dile en español, en 2 a 5 viñetas cortas que empiecen por «- » (una idea por viñeta, frases sencillas; pon en **negrita** solo lo clave: lo que tiene que hacer, el plazo y el nombre de quien espera): primero QUÉ ESPERAN DE ÉL exactamente (qué le preguntan, qué tiene que decidir, aprobar, enviar o contestar), luego el plazo si lo hay y quién espera la respuesta, y por último, en una sola viñeta, el contexto mínimo necesario. Si no le piden nada y es solo informativo, dilo en la primera viñeta. Sin introducción.\n\n' + mailContext(m), {funcion: 'resumen', onText: ({text}) => { renderRich(sumOut, text); }});
         state.summaries[m.id] = (out && out.text) || sumOut.textContent;
         renderRich(sumOut, state.summaries[m.id]);
       } catch (e) { sumOut.textContent = 'No se ha podido resumir ahora. Inténtalo otra vez.'; }
@@ -4058,7 +4060,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         const actual = ta.value.trim();
         const prompt = 'Redactas correos en nombre de Jaime Marrero, director de la unidad de salones de Grupo Provalliance España (más de 250 salones: Llongueras, Oh My Cut!, Jean Louis David, Franck Provost, The Barber Company, Loida…). Estilo de Jaime: español de España, directo, cordial y breve, tutea a su equipo, sin frases de relleno. Cierra solo con «Un saludo,» y NO pongas su nombre ni firma debajo (Outlook añade su firma electrónica).\n\nCORREO AL QUE SE RESPONDE:\n' + mailContext(m) + '\n\n' + (actual ? 'BORRADOR ACTUAL:\n' + actual + '\n\nINSTRUCCIÓN DE JAIME PARA CAMBIARLO:\n' + instruction : (instruction ? 'INDICACIONES DE JAIME:\n' + instruction : 'Propón la respuesta más útil.')) + '\n\nNo inventes datos, cifras, fechas ni compromisos que no estén en el correo o en las indicaciones: donde falte algo que solo Jaime sabe, deja un hueco entre [corchetes]. Devuelve SOLO el cuerpo del correo, sin asunto ni comentarios.';
         try {
-          const out = await sample(prompt, {onText: ({text}) => { ta.value = text; grow(); }});
+          const out = await sample(prompt, {funcion: 'sugerida', onText: ({text}) => { ta.value = text; grow(); }});
           ta.value = (out && out.text ? out.text : ta.value).trim(); grow();
           state.drafts[m.id] = ta.value;
           setStatus(/\[[^\]]+\]/.test(ta.value) ? 'Hecho. Completa lo que está entre [corchetes].' : 'Hecho. Revísala y márcala como lista.');
@@ -4174,7 +4176,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         ready.disabled = true; setStatus('Revisando el texto antes de darlo por listo…');
         try {
           const prompt = 'Revisa este borrador de correo de Jaime Marrero (director de la unidad de salones de Provalliance España) antes de enviarlo. Busca: erratas y ortografía, puntuación, frases cortadas o sin verbo, respuestas ambiguas para el destinatario, saludo y cierre (debe terminar en «Un saludo,» SIN nombre ni firma debajo, porque Outlook añade la firma electrónica; si lleva «Jaime» u otra firma al final, quítala), y tono (directo y cordial). Respeta lo que Jaime quiere decir: no añadas compromisos, datos ni fechas nuevos; si algo es ambiguo, señálalo en vez de inventarlo.\n\nCorreo al que responde:\n' + mailContext(m) + '\n\nBORRADOR:\n' + t + '\n\nDevuelve SOLO JSON: {"ok": true si no hace falta cambiar nada, "cambios": ["cada cambio en una frase corta"], "texto": "versión corregida completa"}';
-          const out = await sample.json(prompt);
+          const out = await sample.json(prompt, {funcion: 'perfeccionar'});
           if (!out || out.ok || !out.texto || out.texto.trim() === t) { setStatus('Texto revisado: está bien.'); await finish(t); return; }
           review.replaceChildren();
           review.appendChild(el('div', 'section-label', 'Te sugiero estos cambios'));
@@ -5821,7 +5823,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
       state.cuPrep[p.id] = prep; state.cuPrepBusy = null;
       write(() => db.collection('equipo').doc(p.id).update({prep}));
     } catch (e) {
-      state.cuPrepBusy = null; state.cuPrep[p.id] = {texto: e && e.code === 'rate_limited' ? 'Demasiadas peticiones seguidas. Espera un momento y vuelve a pulsar.' : 'No se ha podido preparar. Inténtalo otra vez.', fecha: null};
+      state.cuPrepBusy = null; state.cuPrep[p.id] = {texto: e && e.code === 'demasiadas_peticiones' ? 'Demasiadas peticiones seguidas. Espera un momento y vuelve a pulsar.' : 'No se ha podido preparar. Inténtalo otra vez.', fecha: null};
     }
     renderCuDetail();
   }
@@ -6058,7 +6060,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
             imgs = (await Promise.all(ims.map((a) => fetch(blobUrl(a.id)).then((r) => r.ok ? r.blob() : null).catch(() => null)))).filter(Boolean);
           }
         } catch (e) { imgs = []; }
-        const out = await sample.json(prompt + PEND_HINT + (imgs.length ? '\n\nSe adjuntan ' + imgs.length + ' imágenes de la reunión (capturas, pizarras, documentos): tenlas en cuenta para el resumen, acuerdos y tareas.' : ''), imgs.length ? {images: imgs} : undefined);
+        const out = await sample.json(prompt + PEND_HINT + (imgs.length ? '\n\nSe adjuntan ' + imgs.length + ' imágenes de la reunión (capturas, pizarras, documentos): tenlas en cuenta para el resumen, acuerdos y tareas.' : ''), imgs.length ? {funcion: 'resumen', images: imgs} : {funcion: 'resumen'});
         const resumen = Array.isArray(out && out.resumen) ? out.resumen.map((x) => '- ' + String(x).replace(/^-\s*/, '')).join('\n') : String((out && out.resumen) || '').trim();
         const acuerdos = [];
         const tareas = Array.isArray(out && out.tareas) ? out.tareas.filter((t) => t && t.titulo).slice(0, 15).map((t) => { const resp = String(t.responsable || '').trim(); const mine = t.espera === 'mia' || isMe(resp); const m = membersOf(p).find((n) => sameName(n, resp) || sameName(firstName(n), resp)); return {titulo: String(t.titulo).slice(0, 140), espera: mine ? 'mia' : 'tercero', persona: mine ? null : (m || resp || (isGroup(p) ? null : p.nombre)), vence: /^\d{4}-\d{2}-\d{2}$/.test(t.vence || '') ? t.vence : null, prioridad: PRIO[t.prioridad] != null ? t.prioridad : 'Media'}; }) : [];
@@ -6066,7 +6068,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         state.cuSugg[id] = {tareas};
         setSync(tareas.length ? 'Resumen listo · ' + tareas.length + ' tareas propuestas' : 'Resumen listo');
       } catch (e) {
-        st.textContent = e && e.code === 'rate_limited' ? 'Demasiadas peticiones seguidas. Espera un momento.' : 'No se ha podido resumir. Inténtalo otra vez.'; st.classList.add('err');
+        st.textContent = e && e.code === 'demasiadas_peticiones' ? 'Demasiadas peticiones seguidas. Espera un momento.' : 'No se ha podido resumir. Inténtalo otra vez.'; st.classList.add('err');
       } finally { ai.disabled = false; refresh(); }
     });
     if (cu && cu.resumen) { const rs = el('div', 'cu-h-sum'); rs.appendChild(el('div', 'cu-lbl', 'Temas tratados')); const rb = el('div'); renderRich(rb, cu.resumen); rs.appendChild(rb); if (Array.isArray(cu.acuerdos) && cu.acuerdos.length) { rs.appendChild(el('div', 'cu-lbl', 'Acuerdos')); const ul = el('ul', 'cu-acc'); cu.acuerdos.forEach((a) => ul.appendChild(el('li', null, a))); rs.appendChild(ul); } card.insertBefore(rs, bar); }
@@ -6530,7 +6532,7 @@ addEventListener('DOMContentLoaded', () => { const c = document.querySelector('#
         st.textContent = om.length ? 'He dejado fuera por ser interno: ' + om.join(' · ') + '. Revísalo antes de enviar.' : 'Listo. Revisa el texto, edítalo si quieres y ábrelo en Outlook.';
         saveCu(id, {correo: {asunto: sj.value, cuerpo: tx.value, para: to.value}});
       } catch (e) {
-        fill(fallback()); st.textContent = e && e.code === 'rate_limited' ? 'Demasiadas peticiones seguidas; he montado el correo sin IA.' : 'No he podido redactarlo con IA; he montado el correo con los temas y los próximos pasos.';
+        fill(fallback()); st.textContent = e && e.code === 'demasiadas_peticiones' ? 'Demasiadas peticiones seguidas; he montado el correo sin IA.' : 'No he podido redactarlo con IA; he montado el correo con los temas y los próximos pasos.';
       } finally { regen.disabled = false; tx.disabled = false; }
     };
     regen.addEventListener('click', gen);
