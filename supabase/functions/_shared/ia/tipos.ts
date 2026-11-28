@@ -3,6 +3,7 @@ export type Nivel = 'basico' | 'avanzado';
 
 export const FUNCIONES = [
   'sugerida', 'resumen', 'perfeccionar', 'tareas', 'asistente', 'asistente_voz', 'chat', 'dictado', 'general',
+  'reuniones', 'notas', 'listas', 'mensajes', // 28/11: más funciones para el consumo por función de IA y saldo
 ] as const;
 export type Funcion = typeof FUNCIONES[number];
 
