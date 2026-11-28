@@ -8,16 +8,14 @@
 // «Apuntado»), y asignar tareas, responder correos, responder convocatorias y mandar mensajes de Synqalia («pendiente»:
 // la app lo lee en voz alta y solo lo hace con un «sí»). La app manda en `estado.contexto` sus correos pendientes,
 // tareas abiertas y convocatorias por responder.
+// 28/11/2026 · pasa por el Motor IA común (_shared/ia): nivel (body.nivel = 'basica' | 'avanzada'), saldo, modo ahorro y
+// registro de consumo de cada paso. El modelo lo decide el motor (IA_MODELO_BASICA / IA_MODELO_AVANZADA).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { cors, json } from '../_shared/http.ts';
+import { ErrorAuth, usuarioDePeticion } from '../_shared/auth.ts';
+import { ErrorIA, iaConfigurada, motorIA, nivelDe } from '../_shared/ia/index.ts';
+import type { SaldoVisible } from '../_shared/ia/index.ts';
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
-const MODEL = Deno.env.get('ASISTENTE_MODEL') || Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-5-5';
-const MODEL_VOZ = Deno.env.get('ASISTENTE_VOZ_MODEL') || MODEL;
 const MAX_STEPS = 12;
 const COLS = ['correos', 'teams', 'catchups', 'tareas', 'agenda', 'lb_notas', 'respuestas', 'decisiones', 'equipo', 'brief', 'invitaciones'];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -221,22 +219,26 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const url = Deno.env.get('SUPABASE_URL')!;
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-  const token = (req.headers.get('Authorization') || '').replace('Bearer ', '');
-  const { data: u } = await admin.auth.getUser(token);
-  const email = u?.user?.email?.toLowerCase();
-  if (!email) return json({ error: 'Inicia sesión' }, 401);
-  const { data: m } = await admin.from('members').select('email,name').ilike('email', email).maybeSingle();
-  if (!m) return json({ error: 'No autorizado' }, 403);
-  const key = Deno.env.get('ANTHROPIC_API_KEY');
+  let yo;
+  try { yo = await usuarioDePeticion(req, admin); } catch (e) {
+    if (e instanceof ErrorAuth) return json({ error: e.message }, e.status);
+    throw e;
+  }
+  const { email, token } = yo;
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: 'Petición no válida' }, 400); }
-  if (body.ping) return json({ available: !!key });
-  if (!key) return json({ error: 'IA no configurada' }, 501);
+  if (body.ping) return json({ available: iaConfigurada() });
+  if (!iaConfigurada()) return json({ error: 'IA no configurada', code: 'clave' }, 501);
   const voz = body.modo === 'voz';
+  const motor = motorIA(admin);
+  const ctxIA = { company_id: yo.company_id, email };
+  const nivel = voz ? 'basica' : nivelDe(body.nivel);
+  let saldo: SaldoVisible | null = null;
+  let ahorro = false;
 
   // Cliente con la sesión del usuario: RLS decide qué puede ver.
   const sb = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false }, global: { headers: { Authorization: 'Bearer ' + token } } });
-  const nombre = String((m as any).name || u?.user?.user_metadata?.full_name || email);
+  const nombre = yo.nombre;
   const hoyISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
   const hoy = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()) + ' (' + hoyISO + ')' +
     (voz ? ', son las ' + new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' }).format(new Date()) : '');
@@ -438,13 +440,17 @@ Deno.serve(async (req) => {
   const steps = voz ? 8 : MAX_STEPS;
   for (let step = 0; step < steps; step++) {
     const last = step === steps - 1;
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: voz ? MODEL_VOZ : MODEL, max_tokens: voz ? 800 : 4000, system: voz ? systemPromptVoz(nombre, hoy, body.estado) : systemPrompt(nombre, hoy), tools: voz ? [...TOOLS_VOZ, ...TOOLS] : TOOLS, ...(last ? { tool_choice: { type: 'none' } } : {}), messages }),
-    });
-    const out = await r.json();
-    if (!r.ok) return json({ error: out?.error?.message || 'Error de la IA', pasos }, 502);
+    let out: any;
+    try {
+      const r = await motor.ejecutar(ctxIA, voz ? 'asistente.voz' : 'asistente', nivel, {
+        max_tokens: voz ? 800 : 4000, system: voz ? systemPromptVoz(nombre, hoy, body.estado) : systemPrompt(nombre, hoy),
+        tools: voz ? [...TOOLS_VOZ, ...TOOLS] : TOOLS, ...(last ? { tool_choice: { type: 'none' } } : {}), messages,
+      });
+      out = r.respuesta; saldo = r.saldo; ahorro = ahorro || r.ahorro;
+    } catch (e) {
+      if (e instanceof ErrorIA) return json({ error: e.message, code: e.codigo, pasos, saldo }, e.status);
+      throw e;
+    }
     messages.push({ role: 'assistant', content: out.content });
     const uses = (out.content || []).filter((c: any) => c.type === 'tool_use');
     const text = (out.content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('');
@@ -464,11 +470,11 @@ Deno.serve(async (req) => {
     }
     messages.push({ role: 'user', content: results });
   }
-  if (voz) return json({ answer: answer.replace(/\[\[[^\]]+\]\]/g, '').trim() || (propuesta ? 'Preparado.' : directas.length ? 'Apuntado.' : 'Perdona, no he podido terminar. ¿Me lo repites?'), propuesta, directas, pasos });
+  if (voz) return json({ answer: answer.replace(/\[\[[^\]]+\]\]/g, '').trim() || (propuesta ? 'Preparado.' : directas.length ? 'Apuntado.' : 'Perdona, no he podido terminar. ¿Me lo repites?'), propuesta, directas, pasos, saldo, ahorro });
   // Fuentes citadas en la respuesta (en el orden en que aparecen)
   const citadas: any[] = [];
   for (const mm of answer.matchAll(/\[\[([a-z_]+):([^\]\s]+)\]\]/g)) { const k = mm[1] + ':' + mm[2]; const v = vistos.get(k); if (v && !citadas.find((c) => c.col === v.col && c.id === v.id)) citadas.push(v); }
-  return json({ answer: answer.trim() || 'No he podido completar la respuesta. Prueba a concretar la pregunta.', fuentes: citadas, pasos });
+  return json({ answer: answer.trim() || 'No he podido completar la respuesta. Prueba a concretar la pregunta.', fuentes: citadas, pasos, saldo, ahorro });
   } catch (e) {
     console.error('asistente', e);
     return json({ error: 'Fallo interno del asistente: ' + String((e as Error)?.message || e) }, 500);
